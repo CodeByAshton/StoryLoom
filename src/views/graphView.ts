@@ -32,6 +32,8 @@ export class GraphView extends ItemView {
 	private edgeEls = new Map<string, SVGGElement>();
 	private nodeEls = new Map<string, SVGGElement>();
 	private view = { x: 0, y: 0, w: W, h: H };
+	/** Until the user pans or zooms, the view fits the nodes. */
+	private userMoved = false;
 	refresh = debounce(() => this.rebuild(), 300, true);
 
 	constructor(
@@ -48,7 +50,7 @@ export class GraphView extends ItemView {
 		return "Story graph";
 	}
 	getIcon() {
-		return "git-fork";
+		return "network";
 	}
 
 	async onOpen() {
@@ -164,17 +166,30 @@ export class GraphView extends ItemView {
 			t.textContent = "No codex entries to show.";
 		}
 		for (const e of entities) this.drawNode(e);
+		if (!this.userMoved) this.fitView(names);
 		this.update();
+	}
+
+	private fitView(names: string[]) {
+		const pts = names.map((n) => this.positions.get(n)).filter((p): p is Point => !!p);
+		if (!pts.length) return;
+		const pad = 70;
+		const minX = Math.min(...pts.map((p) => p.x)) - pad;
+		const maxX = Math.max(...pts.map((p) => p.x)) + pad;
+		const minY = Math.min(...pts.map((p) => p.y)) - pad;
+		const maxY = Math.max(...pts.map((p) => p.y)) + pad;
+		this.view = { x: minX, y: minY, w: Math.max(240, maxX - minX), h: Math.max(200, maxY - minY) };
+		this.svgEl.setAttribute("viewBox", `${this.view.x} ${this.view.y} ${this.view.w} ${this.view.h}`);
 	}
 
 	private drawNode(e: Entity) {
 		const p = this.positions.get(e.name) as Point;
 		const g = svg("g", { class: `storyloom-node storyloom-type-${e.type}`, transform: `translate(${p.x},${p.y})` }, this.nodeLayer);
-		const r = e.type === "character" ? 11 : e.type === "location" ? 9 : 7;
+		const r = e.type === "character" ? 14 : e.type === "location" ? 12 : 10;
 		if (e.type === "location") svg("rect", { x: -r, y: -r, width: r * 2, height: r * 2, rx: 3 }, g);
 		else if (e.type === "character") svg("circle", { r }, g);
 		else svg("polygon", { points: `0,${-r - 1} ${r + 1},0 0,${r + 1} ${-r - 1},0` }, g);
-		const label = svg("text", { y: r + 15, "text-anchor": "middle" }, g);
+		const label = svg("text", { y: r + 18, "text-anchor": "middle" }, g);
 		label.textContent = e.name;
 		this.nodeEls.set(e.name, g);
 
@@ -214,10 +229,14 @@ export class GraphView extends ItemView {
 		this.tooltipEl.show();
 		const stage = this.tooltipEl.parentElement as HTMLElement;
 		const rect = stage.getBoundingClientRect();
-		const x = ev.clientX - rect.left + 14;
-		const y = ev.clientY - rect.top + 14;
-		this.tooltipEl.style.left = `${Math.min(x, rect.width - 340)}px`;
-		this.tooltipEl.style.top = `${Math.min(y, rect.height - 200)}px`;
+		const w = this.tooltipEl.offsetWidth;
+		const h = this.tooltipEl.offsetHeight;
+		let x = ev.clientX - rect.left + 14;
+		let y = ev.clientY - rect.top + 14;
+		if (x + w > rect.width - 8) x = Math.max(8, ev.clientX - rect.left - w - 14);
+		if (y + h > rect.height - 8) y = Math.max(8, rect.height - h - 8);
+		this.tooltipEl.style.left = `${x}px`;
+		this.tooltipEl.style.top = `${y}px`;
 	}
 
 	/** Re-resolve edges for the current chapter and animate the difference. Node positions never move. */
@@ -301,6 +320,7 @@ export class GraphView extends ItemView {
 			"wheel",
 			(ev) => {
 				ev.preventDefault();
+				this.userMoved = true;
 				const p = this.toSvg(ev);
 				const f = ev.deltaY > 0 ? 1.1 : 1 / 1.1;
 				const w = Math.min(W * 4, Math.max(W / 4, this.view.w * f));
@@ -317,6 +337,7 @@ export class GraphView extends ItemView {
 		});
 		this.svgEl.addEventListener("pointermove", (ev) => {
 			if (!pan) return;
+			this.userMoved = true;
 			const rect = this.svgEl.getBoundingClientRect();
 			const s = Math.max(this.view.w / rect.width, this.view.h / rect.height);
 			this.view.x = pan.vx - (ev.clientX - pan.x) * s;

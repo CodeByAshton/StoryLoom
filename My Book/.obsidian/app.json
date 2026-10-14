@@ -1,4 +1,5 @@
 {
   "showFrontmatter": false,
-  "readableLineLength": true
+  "readableLineLength": true,
+  "propertiesInDocument": "hidden"
 }

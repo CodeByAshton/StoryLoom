@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view";
-import { Editor, MarkdownView, Menu, Notice, normalizePath, Plugin, requestUrl, TFile, type MarkdownFileInfo, type WorkspaceLeaf } from "obsidian";
+import { Editor, MarkdownView, Menu, Notice, normalizePath, Plugin, requestUrl, Scope, TFile, type MarkdownFileInfo, type Modifier, type WorkspaceLeaf } from "obsidian";
 import { AIService } from "./ai";
 import { applyChanges, createEntities, ensureFolder, readTemplate } from "./codex/apply";
 import { CodexIndex } from "./codex/index";
@@ -70,12 +70,13 @@ export default class StoryloomPlugin extends Plugin {
 
 		this.registerEditorExtension([entityHighlighter(this), entityHover(this), inlineEditExtension(this, this.inline)]);
 
-		this.addRibbonIcon("git-fork", "Storyloom: Story graph", () => void this.openView(GRAPH_VIEW, "tab"));
+		this.addRibbonIcon("network", "Storyloom: Story graph", () => void this.openView(GRAPH_VIEW, "tab"));
 		this.addRibbonIcon("table", "Storyloom: Story timeline", () => void this.openView(TIMELINE_VIEW, "tab"));
 		this.addRibbonIcon("users", "Storyloom: Cast", () => void this.openView(CAST_VIEW, "right"));
 		this.addRibbonIcon("message-circle", "Storyloom: Story assistant", () => void this.openView(CHAT_VIEW, "right"));
 
 		this.addSettingTab(new StoryloomSettingTab(this.app, this));
+		this.registerInlineEditKey();
 		this.registerCommands();
 		this.registerEditorMenu();
 
@@ -93,6 +94,25 @@ export default class StoryloomPlugin extends Plugin {
 
 	onunload() {
 		for (const type of Object.keys(this.settings.entityColors)) document.body.style.removeProperty(`--storyloom-${type}`);
+	}
+
+	/**
+	 * Obsidian's own hotkeys (Mod+K is "Insert Markdown link") run before CodeMirror keymaps,
+	 * so the inline-edit key is claimed through a keymap scope, and only while an editor has focus.
+	 */
+	private registerInlineEditKey() {
+		const parsed = parseKey(this.settings.inlineEditKey);
+		if (!parsed) return;
+		const scope = new Scope(this.app.scope);
+		scope.register(parsed.modifiers, parsed.key, () => {
+			const editor = this.app.workspace.activeEditor?.editor;
+			const cm = editor ? cmOf(editor) : null;
+			if (!cm || !cm.hasFocus) return true;
+			this.inline.open(cm);
+			return false;
+		});
+		this.app.keymap.pushScope(scope);
+		this.register(() => this.app.keymap.popScope(scope));
 	}
 
 	async loadSettings() {
@@ -585,6 +605,16 @@ export default class StoryloomPlugin extends Plugin {
 		for (const f of files) await this.app.fileManager.trashFile(f);
 		new Notice(`Removed ${files.length} sample notes.`);
 	}
+}
+
+/** "Mod-Shift-k" -> { modifiers: ["Mod", "Shift"], key: "k" } */
+export function parseKey(spec: string): { modifiers: Modifier[]; key: string } | null {
+	const parts = spec.split("-").map((p) => p.trim()).filter(Boolean);
+	const key = parts.pop();
+	if (!key) return null;
+	const map: Record<string, Modifier> = { mod: "Mod", ctrl: "Ctrl", meta: "Meta", cmd: "Meta", shift: "Shift", alt: "Alt" };
+	const modifiers = parts.map((p) => map[p.toLowerCase()]).filter(Boolean);
+	return { modifiers, key: key.length === 1 ? key.toLowerCase() : key };
 }
 
 /** The CodeMirror view behind an Obsidian editor. */

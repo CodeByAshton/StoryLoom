@@ -6,3 +6,5 @@ node_modules/
 **/.obsidian/plugins/storyloom/data.json
 My Book/.obsidian/workspace.json
 My Book/.obsidian/workspace-mobile.json
+e2e/node_modules/
+e2e/requests.jsonl

@@ -13,10 +13,12 @@ Everything is stored in plain notes. You can read and edit every bit of it by ha
 
 ## A short tour (with the sample story)
 
+The first time you open this vault, Obsidian asks whether you trust it. Choose **Trust author and enable plugins** so Storyloom can run.
+
 1. Open **Manuscript → 01 - The Manor**. Character and place names are underlined. Hover one to see where that character is *as of this chapter*.
 2. Open chapter 3 and hover **Mara** again: she has moved, she's injured, and she knows something new.
 3. Click the **people icon** in the left ribbon to open the **Cast** panel. It shows everyone in the current chapter.
-4. Click the **fork icon** to open the **Story graph**. Drag the chapter slider and watch relationships and meetings change.
+4. Click the **network icon** to open the **Story graph**. Drag the chapter slider and watch relationships and meetings change.
 5. Click the **table icon** to open the **Story timeline**: characters down the side, chapters across the top.
 
 ## Using the AI
@@ -26,7 +28,7 @@ Everything is stored in plain notes. You can read and edit every bit of it by ha
 3. Right-click in a chapter for more tools: continue writing, rewrite, describe, expand, brainstorm.
 4. When you finish a chapter, run **Update story state** (in the Cast panel or the command palette). The AI proposes timeline and relationship changes; you tick what's right and click Apply.
 
-If Cmd/Ctrl+K inserts a link instead, open **Settings → Hotkeys**, search "Insert Markdown link" and remove its Cmd/Ctrl+K binding.
+Inside a note, Cmd/Ctrl+K belongs to Storyloom instead of Obsidian's "Insert Markdown link". You can pick a different key in **Settings → Storyloom → Inline edit key**.
 
 ## How the codex is written
 

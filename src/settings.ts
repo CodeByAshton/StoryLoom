@@ -179,7 +179,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		this.toggleSetting("Highlight entities", "Underline character, location and lore names in chapters.", "highlightEntities");
 		this.toggleSetting("Highlight outside the manuscript", "Also highlight in non-chapter notes.", "highlightOutsideManuscript");
 		this.toggleSetting("Show “Ask AI” button", "A small button near selections of three or more words.", "askAiButton");
-		this.textSetting("Inline edit key", "CodeMirror key name, e.g. Mod-k or Mod-Shift-e. Reload the plugin after changing. If Mod-k also inserts a link, remove that binding in Settings → Hotkeys.", "inlineEditKey");
+		this.textSetting("Inline edit key", "Opens inline edit while you are in a note, e.g. Mod-k or Mod-Shift-e (Mod is Cmd on macOS, Ctrl elsewhere). Takes priority over Obsidian's own Mod-k (insert link) inside the editor. Leave empty to turn off. Reload the plugin after changing.", "inlineEditKey");
 
 		new Setting(containerEl)
 			.setName("Quick actions")

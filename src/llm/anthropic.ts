@@ -80,7 +80,7 @@ export class AnthropicClient implements LLMClient {
 			const res = await send(this.http, buildAnthropicRequest(this.opts, req, withFallback), "Anthropic");
 			if (res.status >= 200 && res.status < 300) return parseAnthropicResponse(res.text);
 			// If the account or model doesn't accept the fallback beta, retry once without it.
-			if (withFallback && res.status === 400 && /fallback|anthropic-beta/i.test(errorDetail(res.text))) {
+			if (withFallback && res.status === 400 && /fallback|beta/i.test(errorDetail(res.text))) {
 				withFallback = false;
 				continue;
 			}

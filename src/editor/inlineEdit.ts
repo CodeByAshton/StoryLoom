@@ -1,7 +1,7 @@
 import { isolateHistory } from "@codemirror/commands";
 import { Prec, StateEffect, StateField, Transaction, type EditorState, type Extension } from "@codemirror/state";
-import { Decoration, EditorView, keymap, showTooltip, WidgetType, type DecorationSet, type Tooltip } from "@codemirror/view";
-import { editorInfoField, setIcon } from "obsidian";
+import { Decoration, EditorView, keymap, showTooltip, ViewPlugin, WidgetType, type DecorationSet, type Tooltip, type ViewUpdate } from "@codemirror/view";
+import { editorInfoField, Scope, setIcon } from "obsidian";
 import { cleanProse, inlineEditPrompt, REWRITE_PRESETS } from "../context/prompts";
 import { friendlyError } from "../llm/types";
 import type StoryloomPlugin from "../main";
@@ -323,7 +323,6 @@ export function inlineEditExtension(plugin: StoryloomPlugin, ctrl: InlineEditCon
 	});
 	const keys = Prec.highest(
 		keymap.of([
-			{ key: plugin.settings.inlineEditKey || "Mod-k", run: (v) => ctrl.open(v) },
 			{ key: "Tab", run: (v) => ctrl.accept(v) },
 			{ key: "Mod-Enter", run: (v) => ctrl.accept(v) },
 			{
@@ -337,5 +336,31 @@ export function inlineEditExtension(plugin: StoryloomPlugin, ctrl: InlineEditCon
 			},
 		]),
 	);
-	return [inlineEditField, decorations, ask, keys];
+	// Obsidian binds Mod+Enter globally ("open link in new tab") ahead of CodeMirror, and a scope
+	// handler can't pass a key through, so claim it only while a result is waiting.
+	const acceptScope = ViewPlugin.fromClass(
+		class {
+			scope: Scope | null = null;
+			constructor(private view: EditorView) {}
+			update(u: ViewUpdate) {
+				const pending = u.state.field(inlineEditField, false)?.phase === "result";
+				if (pending && !this.scope) {
+					this.scope = new Scope(plugin.app.scope);
+					this.scope.register(["Mod"], "Enter", () => {
+						ctrl.accept(this.view);
+						return false;
+					});
+					plugin.app.keymap.pushScope(this.scope);
+				} else if (!pending && this.scope) this.release();
+			}
+			release() {
+				if (this.scope) plugin.app.keymap.popScope(this.scope);
+				this.scope = null;
+			}
+			destroy() {
+				this.release();
+			}
+		},
+	);
+	return [inlineEditField, decorations, ask, keys, acceptScope];
 }

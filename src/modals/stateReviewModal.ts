@@ -138,7 +138,7 @@ export class StateReviewModal extends Modal {
 				const cb = row.createEl("input", { type: "checkbox" });
 				cb.checked = r.checked;
 				cb.addEventListener("change", () => (r.checked = cb.checked));
-				row.createSpan({ cls: "storyloom-review-key", text: `${r.from} → ${r.to}` });
+				row.createSpan({ cls: "storyloom-review-key is-names", text: `${r.from} → ${r.to}` });
 				const input = row.createEl("input", { type: "text", cls: "storyloom-review-value" });
 				input.value = r.label;
 				input.addEventListener("input", () => (r.label = input.value));

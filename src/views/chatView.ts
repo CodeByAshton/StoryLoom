@@ -64,7 +64,8 @@ export class ChatView extends ItemView {
 		this.input = composer.createEl("textarea", { cls: "storyloom-chat-input" });
 		this.input.placeholder = "Ask about your book… Use @ to mention a character or chapter.";
 		this.input.rows = 3;
-		this.sendBtn = composer.createEl("button", { cls: "mod-cta", text: "Send" });
+		this.sendBtn = composer.createEl("button", { cls: "mod-cta storyloom-chat-send", attr: { "aria-label": "Send" } });
+		setIcon(this.sendBtn, "send");
 		this.sendBtn.addEventListener("click", () => void this.send());
 		this.input.addEventListener("input", () => this.updateSuggestions());
 		this.input.addEventListener("keydown", (e) => this.onKey(e));
@@ -252,7 +253,7 @@ export class ChatView extends ItemView {
 	private async addBubble(role: "user" | "assistant", text: string) {
 		const msg = this.listEl.createDiv({ cls: `storyloom-chat-msg is-${role}` });
 		if (role === "user") {
-			msg.setText(text);
+			msg.setText(text.replace(/@\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g, "@$1"));
 			return;
 		}
 		const body = msg.createDiv({ cls: "markdown-rendered" });
