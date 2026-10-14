@@ -27,7 +27,7 @@ describe("edgesAt", () => {
 	it("co-location edges change between chapters", () => {
 		const t1 = edgesAt(ents, 1, opts).filter((e) => e.kind === "together").map((e) => `${e.a}-${e.b}`);
 		const t3 = edgesAt(ents, 3, opts).filter((e) => e.kind === "together").map((e) => `${e.a}-${e.b}`);
-		expect(t1).toEqual([]); // Mara & Arthur together at ch 1, but they already share a relationship edge
+		expect(t1).toEqual(["Arthur-Mara"]);
 		expect(t3).toEqual(["Elias-Mara"]);
 	});
 	it("presence edges point characters at their location", () => {

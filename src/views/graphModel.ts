@@ -68,7 +68,7 @@ export function edgesAt(entities: Entity[], chapter: number, opts: { together: b
 			const add = (x: string, y: string, why: string) => {
 				const [a, b] = pairKey(x, y);
 				const key = `${a}\u0000${b}`;
-				if (seen.has(key) || rel.has(key)) return;
+				if (seen.has(key)) return;
 				seen.add(key);
 				edges.push({ id: `together:${a}:${b}`, a, b, kind: "together", label: why });
 			};

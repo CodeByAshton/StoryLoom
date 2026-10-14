@@ -6,6 +6,7 @@ import { isEntityType, type ChapterInfo, type Entity, type ResolvedState } from 
 export interface IndexSettings {
 	manuscriptFolder: string;
 	codexFolder: string;
+	templatesFolder: string;
 	debug: boolean;
 }
 
@@ -87,6 +88,7 @@ export class CodexIndex extends Events {
 
 	private async indexFile(file: TFile, finish: boolean) {
 		const s = this.settings();
+		if (s.templatesFolder && this.inFolder(file.path, s.templatesFolder)) return;
 		const cache = this.app.metadataCache.getFileCache(file);
 		const fm = cache?.frontmatter ?? {};
 		let touched = false;
@@ -127,7 +129,8 @@ export class CodexIndex extends Events {
 		if (!fm) return null;
 		const isChapter = fm.type === "chapter" || (this.inFolder(file.path, this.settings().manuscriptFolder) && fm.chapter !== undefined);
 		if (!isChapter) return null;
-		const n = Number(fm.chapter);
+		const raw = fm.chapter;
+		const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
 		if (!Number.isFinite(n)) return null;
 		const pov = typeof fm.pov === "string" ? (parseWikilink(fm.pov) ?? stripWikilinks(fm.pov)) : undefined;
 		return {

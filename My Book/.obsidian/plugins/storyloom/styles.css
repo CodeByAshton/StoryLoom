@@ -1,0 +1,243 @@
+/* Storyloom — uses Obsidian's CSS variables so light and dark themes both work.
+   The only hard-coded colors are the per-type entity colors, set on <body> from settings. */
+
+body {
+	--storyloom-character: #d9822b;
+	--storyloom-location: #2f9e8f;
+	--storyloom-lore: #8a63d2;
+	--storyloom-item: #c4a000;
+	--storyloom-faction: #d0466b;
+}
+
+.storyloom-type-character { --sl-color: var(--storyloom-character); }
+.storyloom-type-location { --sl-color: var(--storyloom-location); }
+.storyloom-type-lore { --sl-color: var(--storyloom-lore); }
+.storyloom-type-item { --sl-color: var(--storyloom-item); }
+.storyloom-type-faction { --sl-color: var(--storyloom-faction); }
+
+.storyloom-muted { color: var(--text-muted); font-size: var(--font-ui-small); }
+.storyloom-empty { color: var(--text-muted); padding: var(--size-4-4); font-size: var(--font-ui-small); }
+.storyloom-btn-icon { display: inline-flex; align-items: center; }
+.storyloom-btn-icon svg { width: 14px; height: 14px; }
+button .storyloom-btn-icon + span { margin-left: 6px; }
+.storyloom-wide-input { width: 100%; }
+
+/* ---------- Entity highlighting ---------- */
+
+.storyloom-entity {
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, var(--sl-color) 70%, transparent);
+	text-decoration-thickness: 1.5px;
+	text-underline-offset: 3px;
+	cursor: help;
+}
+
+/* ---------- Cards (hover, cast, graph) ---------- */
+
+.storyloom-hover {
+	width: 320px;
+	max-width: 90vw;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+	padding: var(--size-4-3);
+	font-size: var(--font-ui-small);
+}
+.cm-tooltip:has(> .storyloom-hover) { background: transparent; border: none; }
+
+.storyloom-card { border-left: 3px solid var(--sl-color); padding-left: var(--size-4-2); }
+.storyloom-card + .storyloom-card { margin-top: var(--size-4-2); }
+.storyloom-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--size-4-2); }
+.storyloom-card-name { font-weight: var(--font-semibold); color: var(--text-normal); }
+.storyloom-card-name.is-link, .storyloom-card-rel-target.is-link { cursor: pointer; }
+.storyloom-card-name.is-link:hover, .storyloom-card-rel-target.is-link:hover { color: var(--text-accent); }
+.storyloom-card-type { color: var(--text-faint); font-size: var(--font-smallest); white-space: nowrap; }
+.storyloom-card-asof { color: var(--text-muted); font-size: var(--font-smallest); margin: 2px 0 6px; }
+.storyloom-card-fields { display: grid; grid-template-columns: max-content 1fr; gap: 2px var(--size-4-3); margin: 4px 0; }
+.storyloom-card-label { font-variant: all-small-caps; letter-spacing: 0.04em; color: var(--text-muted); }
+.storyloom-card-value { color: var(--text-normal); }
+.storyloom-since { color: var(--text-faint); font-size: var(--font-smallest); margin-left: 6px; }
+.storyloom-card-rel, .storyloom-card-note { margin-top: 4px; display: flex; gap: var(--size-4-2); align-items: baseline; }
+.storyloom-card-rel-list { color: var(--text-normal); }
+.storyloom-card-desc { color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+.storyloom-card-empty { color: var(--text-faint); font-style: italic; margin: 4px 0; }
+.storyloom-card-actions { display: flex; gap: var(--size-4-2); margin-top: var(--size-4-2); }
+.storyloom-card-btn { font-size: var(--font-smallest); padding: 2px 8px; height: auto; }
+.storyloom-card.is-compact { padding-top: 2px; padding-bottom: 2px; }
+.storyloom-card.is-compact .storyloom-card-fields { margin: 2px 0 0; }
+
+/* ---------- Cast panel ---------- */
+
+.storyloom-cast { padding: var(--size-4-3); }
+.storyloom-cast-title { font-weight: var(--font-semibold); font-size: var(--font-ui-medium); }
+.storyloom-cast-actions { display: flex; flex-wrap: wrap; gap: var(--size-4-2); margin: var(--size-4-3) 0; }
+.storyloom-cast-actions button { font-size: var(--font-ui-small); }
+.storyloom-cast-section { margin-top: var(--size-4-3); font-size: var(--font-ui-small); }
+.storyloom-section-title { font-variant: all-small-caps; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: var(--size-4-2); cursor: default; }
+details.storyloom-cast-section > summary { cursor: pointer; }
+
+/* ---------- Modals ---------- */
+
+.storyloom-result-modal { width: min(760px, 92vw); }
+.storyloom-result-body { max-height: 60vh; overflow-y: auto; }
+.storyloom-result-item + .storyloom-result-item { margin-top: var(--size-4-3); }
+.storyloom-result-label { font-variant: all-small-caps; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; }
+.storyloom-result-text { width: 100%; resize: vertical; font-family: var(--font-text); font-size: var(--font-text-size); line-height: 1.5; padding: var(--size-4-2); }
+.storyloom-result-item-actions { display: flex; gap: var(--size-4-2); justify-content: flex-end; margin-top: 4px; }
+.storyloom-result-footer { display: flex; justify-content: space-between; gap: var(--size-4-2); margin-top: var(--size-4-4); flex-wrap: wrap; }
+.storyloom-footer-left, .storyloom-footer-right { display: flex; gap: var(--size-4-2); flex-wrap: wrap; }
+.storyloom-loading { display: flex; align-items: center; gap: var(--size-4-2); color: var(--text-muted); padding: var(--size-4-2) 0; }
+.storyloom-spinner {
+	width: 14px; height: 14px; border-radius: 50%;
+	border: 2px solid var(--background-modifier-border);
+	border-top-color: var(--interactive-accent);
+	animation: storyloom-spin 0.8s linear infinite;
+}
+@keyframes storyloom-spin { to { transform: rotate(360deg); } }
+.storyloom-error { display: flex; gap: var(--size-4-2); align-items: flex-start; color: var(--text-error); padding: var(--size-4-2); background: color-mix(in srgb, var(--text-error) 8%, transparent); border-radius: var(--radius-s); }
+.storyloom-preview { max-height: 60vh; overflow: auto; white-space: pre-wrap; font-size: var(--font-smallest); background: var(--background-secondary); padding: var(--size-4-2); border-radius: var(--radius-s); }
+.storyloom-report { max-height: 65vh; overflow-y: auto; }
+.storyloom-issue { padding: var(--size-4-2) var(--size-4-3); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-s); cursor: pointer; margin-bottom: var(--size-4-2); }
+.storyloom-issue:hover { background: var(--background-modifier-hover); }
+.storyloom-issue blockquote { margin: 4px 0; padding-left: var(--size-4-2); border-left: 2px solid var(--background-modifier-border); color: var(--text-muted); font-style: italic; }
+.storyloom-issues { max-height: 60vh; overflow-y: auto; }
+.storyloom-badge { display: inline-block; font-size: var(--font-smallest); padding: 0 6px; border-radius: var(--radius-s); background: var(--background-modifier-hover); color: var(--text-muted); margin-left: 4px; }
+.storyloom-sev-high { background: color-mix(in srgb, var(--text-error) 18%, transparent); color: var(--text-error); }
+.storyloom-sev-medium { background: color-mix(in srgb, var(--text-warning) 18%, transparent); color: var(--text-warning); }
+
+.storyloom-review-modal { width: min(820px, 94vw); }
+.storyloom-review-group { border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); padding: var(--size-4-2) var(--size-4-3); margin-bottom: var(--size-4-3); }
+.storyloom-review-entity { font-weight: var(--font-semibold); margin-bottom: var(--size-4-2); }
+.storyloom-review-row { display: flex; align-items: center; gap: var(--size-4-2); margin: 4px 0; }
+.storyloom-review-key { min-width: 90px; color: var(--text-muted); font-variant: all-small-caps; letter-spacing: 0.04em; }
+.storyloom-review-value { flex: 1; min-width: 0; }
+.storyloom-review-name { width: 180px; }
+.storyloom-review-prev { color: var(--text-faint); font-size: var(--font-smallest); white-space: nowrap; }
+.storyloom-wordcount { width: 100%; }
+.storyloom-num { text-align: right; font-variant-numeric: tabular-nums; }
+.storyloom-total td { font-weight: var(--font-semibold); border-top: 1px solid var(--background-modifier-border); }
+.storyloom-file-list { max-height: 30vh; overflow-y: auto; font-size: var(--font-ui-small); color: var(--text-muted); }
+
+/* ---------- Inline edit ---------- */
+
+.storyloom-ie-selected { background: color-mix(in srgb, var(--interactive-accent) 16%, transparent); }
+.storyloom-ie-pulse { animation: storyloom-pulse 1.4s ease-in-out infinite; border-radius: 2px; }
+@keyframes storyloom-pulse {
+	0%, 100% { background: color-mix(in srgb, var(--interactive-accent) 10%, transparent); }
+	50% { background: color-mix(in srgb, var(--interactive-accent) 26%, transparent); }
+}
+.storyloom-ie-original { text-decoration: line-through; text-decoration-color: var(--text-faint); opacity: 0.5; }
+.storyloom-ie-panel {
+	margin: 6px 0 10px;
+	padding: var(--size-4-2) var(--size-4-3);
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+	font-family: var(--font-interface);
+	font-size: var(--font-ui-small);
+	white-space: normal;
+}
+.storyloom-ie-result {
+	white-space: pre-wrap;
+	font-family: var(--font-text);
+	font-size: var(--font-text-size);
+	line-height: var(--line-height-normal);
+	color: var(--text-normal);
+	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+	border-left: 3px solid var(--interactive-accent);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-s);
+	margin-bottom: var(--size-4-2);
+}
+.storyloom-ie-bar { display: flex; align-items: center; gap: var(--size-4-2); flex-wrap: wrap; }
+.storyloom-ie-input, .storyloom-ie-follow { flex: 1; min-width: 160px; }
+.storyloom-ie-btn { font-size: var(--font-ui-small); height: auto; padding: 4px 10px; }
+.storyloom-kbd { margin-left: 6px; font-size: var(--font-smallest); color: var(--text-faint); border: 1px solid var(--background-modifier-border); border-radius: 3px; padding: 0 4px; }
+.mod-cta .storyloom-kbd { color: inherit; opacity: 0.75; border-color: currentColor; }
+.storyloom-ie-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--size-4-2); }
+.storyloom-chip { font-size: var(--font-smallest); height: auto; padding: 2px 10px; border-radius: 999px; background: var(--background-primary); }
+.storyloom-chip:hover { background: var(--background-modifier-hover); }
+.storyloom-ask-ai { padding: 0; }
+.cm-tooltip:has(> .storyloom-ask-ai) { background: transparent; border: none; }
+.storyloom-ask-ai-btn { font-size: var(--font-smallest); height: auto; padding: 3px 10px; box-shadow: var(--shadow-s); border-radius: 999px; }
+
+/* ---------- Shared view chrome ---------- */
+
+.storyloom-view-toolbar { display: flex; align-items: center; gap: var(--size-4-3); flex-wrap: wrap; padding: var(--size-4-2) var(--size-4-3); border-bottom: 1px solid var(--background-modifier-border); }
+.storyloom-view-title { font-weight: var(--font-semibold); }
+.storyloom-segmented { display: inline-flex; margin-left: auto; border: 1px solid var(--background-modifier-border); border-radius: var(--radius-s); overflow: hidden; }
+.storyloom-segmented button { border-radius: 0; box-shadow: none; background: transparent; font-size: var(--font-ui-small); height: auto; padding: 3px 10px; }
+.storyloom-segmented button.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
+.storyloom-dot-type { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--sl-color); margin-right: 6px; flex-shrink: 0; }
+
+/* ---------- Graph ---------- */
+
+.storyloom-graph { display: flex; flex-direction: column; padding: 0 !important; }
+.storyloom-graph-filters { display: flex; flex-wrap: wrap; gap: var(--size-4-3); font-size: var(--font-ui-small); color: var(--text-muted); }
+.storyloom-filter { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.storyloom-scrubber { display: flex; align-items: center; gap: var(--size-4-2); padding: var(--size-4-2) var(--size-4-3); border-bottom: 1px solid var(--background-modifier-border); }
+.storyloom-scrubber button { height: auto; padding: 4px 6px; }
+.storyloom-slider { flex: 1; max-width: 420px; }
+.storyloom-scrub-label { font-size: var(--font-ui-small); color: var(--text-normal); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.storyloom-graph-stage { position: relative; flex: 1; min-height: 300px; overflow: hidden; background: var(--background-primary); }
+.storyloom-graph-stage svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.storyloom-graph-stage svg:active { cursor: grabbing; }
+.storyloom-graph-tooltip { position: absolute; pointer-events: none; z-index: 5; }
+.storyloom-graph-empty { fill: var(--text-faint); font-size: 14px; }
+
+.storyloom-node { cursor: pointer; transition: opacity 200ms ease; }
+.storyloom-node circle, .storyloom-node rect, .storyloom-node polygon {
+	fill: color-mix(in srgb, var(--sl-color) 35%, var(--background-primary));
+	stroke: var(--sl-color);
+	stroke-width: 1.5;
+}
+.storyloom-node:hover circle, .storyloom-node:hover rect, .storyloom-node:hover polygon { fill: color-mix(in srgb, var(--sl-color) 60%, var(--background-primary)); }
+.storyloom-node text { fill: var(--text-normal); font-size: 12px; font-family: var(--font-interface); pointer-events: none; paint-order: stroke; stroke: var(--background-primary); stroke-width: 3px; }
+.storyloom-node.is-dormant { opacity: 0.35; }
+
+.storyloom-edge { transition: opacity 200ms ease; opacity: 1; }
+.storyloom-edge.is-entering, .storyloom-edge.is-leaving { opacity: 0; }
+.storyloom-edge path { fill: none; stroke: var(--text-faint); stroke-width: 1.2; }
+.storyloom-edge.is-together path { stroke-dasharray: 5 4; stroke: var(--text-muted); }
+.storyloom-edge.is-at path { stroke-dasharray: 1 4; stroke-linecap: round; stroke-width: 1.5; stroke: color-mix(in srgb, var(--storyloom-location) 60%, transparent); }
+.storyloom-edge text { fill: var(--text-muted); font-size: 10px; font-family: var(--font-interface); paint-order: stroke; stroke: var(--background-primary); stroke-width: 3px; pointer-events: none; }
+
+/* ---------- Timeline ---------- */
+
+.storyloom-timeline { padding: 0 !important; display: flex; flex-direction: column; }
+.storyloom-grid-wrap { overflow: auto; flex: 1; }
+.storyloom-grid { border-collapse: separate; border-spacing: 0; font-size: var(--font-ui-small); }
+.storyloom-grid th, .storyloom-grid td { border-bottom: 1px solid var(--background-modifier-border); border-right: 1px solid var(--background-modifier-border); padding: 6px 10px; vertical-align: top; }
+.storyloom-grid thead th { position: sticky; top: 0; background: var(--background-secondary); z-index: 2; text-align: left; cursor: pointer; min-width: 130px; }
+.storyloom-grid-corner { left: 0; z-index: 3 !important; }
+.storyloom-grid-ch { font-variant: all-small-caps; letter-spacing: 0.05em; color: var(--text-muted); }
+.storyloom-grid-title { font-weight: var(--font-semibold); color: var(--text-normal); }
+.storyloom-grid-words { color: var(--text-faint); font-size: var(--font-smallest); }
+.storyloom-grid-row { position: sticky; left: 0; background: var(--background-secondary); text-align: left; white-space: nowrap; cursor: pointer; z-index: 1; font-weight: var(--font-medium); }
+.storyloom-grid-row:hover { color: var(--text-accent); }
+.storyloom-grid-cell { cursor: pointer; position: relative; min-height: 36px; }
+.storyloom-grid-cell:hover { background: var(--background-modifier-hover); }
+.storyloom-cell-loc { color: var(--text-faint); }
+.storyloom-cell-loc.is-changed { color: var(--text-normal); font-weight: var(--font-medium); }
+.storyloom-mention-dot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--interactive-accent); }
+
+/* ---------- Chat ---------- */
+
+.storyloom-chat { display: flex; flex-direction: column; padding: 0 !important; }
+.storyloom-chat-head { display: flex; justify-content: space-between; align-items: center; padding: var(--size-4-2) var(--size-4-3); border-bottom: 1px solid var(--background-modifier-border); }
+.storyloom-chat-list { flex: 1; overflow-y: auto; padding: var(--size-4-3); display: flex; flex-direction: column; gap: var(--size-4-3); }
+.storyloom-chat-empty { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; color: var(--text-muted); font-size: var(--font-ui-small); }
+.storyloom-chat-msg { font-size: var(--font-ui-small); line-height: 1.5; border-radius: var(--radius-m); padding: var(--size-4-2) var(--size-4-3); max-width: 100%; }
+.storyloom-chat-msg.is-user { align-self: flex-end; background: var(--background-modifier-hover); white-space: pre-wrap; }
+.storyloom-chat-msg.is-assistant { align-self: stretch; background: var(--background-secondary); }
+.storyloom-chat-msg .markdown-rendered > *:first-child { margin-top: 0; }
+.storyloom-chat-msg .markdown-rendered > *:last-child { margin-bottom: 0; }
+.storyloom-chat-actions { display: flex; gap: 2px; justify-content: flex-end; margin-top: 4px; }
+.storyloom-chat-composer { position: relative; display: flex; flex-direction: column; gap: var(--size-4-2); padding: var(--size-4-3); border-top: 1px solid var(--background-modifier-border); }
+.storyloom-chat-composer button { align-self: flex-end; }
+.storyloom-chat-input { width: 100%; resize: vertical; font-size: var(--font-ui-small); }
+.storyloom-chat-suggest { position: absolute; bottom: 100%; left: var(--size-4-3); right: var(--size-4-3); background: var(--background-primary); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); box-shadow: var(--shadow-s); z-index: 10; max-height: 240px; overflow-y: auto; }
+.storyloom-suggest-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; font-size: var(--font-ui-small); }
+.storyloom-suggest-item.is-selected, .storyloom-suggest-item:hover { background: var(--background-modifier-hover); }

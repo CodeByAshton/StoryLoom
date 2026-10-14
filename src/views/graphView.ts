@@ -255,7 +255,7 @@ export class GraphView extends ItemView {
 		const g = svg("g", { class: `storyloom-edge is-${e.kind} is-entering` }, this.edgeLayer);
 		g.dataset.a = e.a;
 		g.dataset.b = e.b;
-		svg("line", {}, g);
+		svg("path", {}, g);
 		if (e.label) {
 			const t = svg("text", { "text-anchor": "middle" }, g);
 			t.textContent = e.label;
@@ -268,15 +268,19 @@ export class GraphView extends ItemView {
 			const a = this.positions.get(g.dataset.a as string);
 			const b = this.positions.get(g.dataset.b as string);
 			if (!a || !b) continue;
-			const line = g.querySelector("line") as SVGLineElement;
-			line.setAttribute("x1", String(a.x));
-			line.setAttribute("y1", String(a.y));
-			line.setAttribute("x2", String(b.x));
-			line.setAttribute("y2", String(b.y));
+			// "Together" edges bow out so they stay visible beside a relationship line.
+			const curved = g.classList.contains("is-together");
+			const mx = (a.x + b.x) / 2;
+			const my = (a.y + b.y) / 2;
+			const len = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+			const bow = curved ? Math.min(40, len * 0.2) : 0;
+			const cx = mx - ((b.y - a.y) / len) * bow;
+			const cy = my + ((b.x - a.x) / len) * bow;
+			(g.querySelector("path") as SVGPathElement).setAttribute("d", `M${a.x},${a.y} Q${cx},${cy} ${b.x},${b.y}`);
 			const t = g.querySelector("text");
 			if (t) {
-				t.setAttribute("x", String((a.x + b.x) / 2));
-				t.setAttribute("y", String((a.y + b.y) / 2 - 4));
+				t.setAttribute("x", String(mx));
+				t.setAttribute("y", String(my - 4));
 			}
 		}
 	}
