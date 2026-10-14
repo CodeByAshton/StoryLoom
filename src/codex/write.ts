@@ -134,3 +134,51 @@ export function hasActiveRelationship(entity: StateSource, target: string, label
 			normalizeValue(r.label) === normalizeValue(stripWikilinks(label)),
 	);
 }
+
+export const TYPE_FOLDERS: Record<string, string> = {
+	character: "Characters",
+	location: "Locations",
+	lore: "Lore",
+	item: "Items",
+	faction: "Factions",
+};
+
+/**
+ * Fill a Codex template for a new entity. Replaces {{title}}/{{name}}, writes aliases into frontmatter
+ * and puts the description under ## Description. Works without a template too.
+ */
+export function fillEntityTemplate(template: string | null, opts: { name: string; type: string; description: string; aliases: string[] }): string {
+	const aliasYaml = `[${opts.aliases.map((a) => (/[,:[\]{}#&*!|>'"%@`]/.test(a) ? JSON.stringify(a) : a)).join(", ")}]`;
+	let t =
+		template ??
+		`---\ntype: ${opts.type}\naliases: []\n---\n\n# {{title}}\n\n## Description\n\n## Relationships\n\n## Timeline\n`;
+	t = t.replace(/\{\{\s*(title|name)\s*\}\}/g, opts.name);
+	const fm = /^---\n([\s\S]*?)\n---/.exec(t);
+	if (fm) {
+		let body = fm[1];
+		body = /^type:.*$/m.test(body) ? body.replace(/^type:.*$/m, `type: ${opts.type}`) : `type: ${opts.type}\n${body}`;
+		body = /^aliases:.*$/m.test(body) ? body.replace(/^aliases:.*$/m, `aliases: ${aliasYaml}`) : `${body}\naliases: ${aliasYaml}`;
+		t = `---\n${body}\n---` + t.slice(fm[0].length);
+	} else {
+		t = `---\ntype: ${opts.type}\naliases: ${aliasYaml}\n---\n\n` + t;
+	}
+	if (opts.description.trim()) {
+		const s = findSection(t, "Description");
+		if (s) {
+			const lines = t.split("\n");
+			const existing = s.lines.filter((l) => l.trim() && !/^\s*<!--/.test(l));
+			if (existing.length === 0) {
+				lines.splice(s.headingLine + 1, s.end - s.headingLine - 1, opts.description.trim(), "");
+				t = lines.join("\n");
+			}
+		} else {
+			t = appendToSection(t, "Description", [opts.description.trim()]);
+		}
+	}
+	return t;
+}
+
+/** A filename-safe version of a name. */
+export function safeFileName(name: string): string {
+	return name.replace(/[\\/:*?"<>|#^[\]]/g, "").replace(/\s+/g, " ").trim();
+}

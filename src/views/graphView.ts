@@ -1,0 +1,327 @@
+import { debounce, ItemView, setIcon, type WorkspaceLeaf } from "obsidian";
+import { ENTITY_TYPES, type Entity, type EntityType } from "../codex/types";
+import type StoryloomPlugin from "../main";
+import { renderEntityCard } from "./card";
+import { allPairs, edgesAt, forceLayout, type GraphEdge, type Point } from "./graphModel";
+
+export const GRAPH_VIEW = "storyloom-graph";
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const W = 1000;
+const H = 700;
+
+function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number> = {}, parent?: Element): SVGElementTagNameMap[K] {
+	const el = document.createElementNS(SVG_NS, tag);
+	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+	parent?.appendChild(el);
+	return el;
+}
+
+export class GraphView extends ItemView {
+	private chapter = 1;
+	private filters = new Set<EntityType>(["character", "location", "lore", "faction", "item"]);
+	private together = true;
+	private presence = true;
+	private positions = new Map<string, Point>();
+	private svgEl!: SVGSVGElement;
+	private edgeLayer!: SVGGElement;
+	private nodeLayer!: SVGGElement;
+	private tooltipEl!: HTMLElement;
+	private labelEl!: HTMLElement;
+	private slider!: HTMLInputElement;
+	private edgeEls = new Map<string, SVGGElement>();
+	private nodeEls = new Map<string, SVGGElement>();
+	private view = { x: 0, y: 0, w: W, h: H };
+	refresh = debounce(() => this.rebuild(), 300, true);
+
+	constructor(
+		leaf: WorkspaceLeaf,
+		private plugin: StoryloomPlugin,
+	) {
+		super(leaf);
+	}
+
+	getViewType() {
+		return GRAPH_VIEW;
+	}
+	getDisplayText() {
+		return "Story graph";
+	}
+	getIcon() {
+		return "git-fork";
+	}
+
+	async onOpen() {
+		const current = this.plugin.index.chapterForPath(this.plugin.activeMarkdownFile()?.path);
+		this.chapter = current?.chapter ?? this.plugin.index.chapters[0]?.chapter ?? 1;
+		this.buildShell();
+		this.rebuild();
+	}
+
+	async onClose() {
+		this.contentEl.empty();
+	}
+
+	private visibleEntities(): Entity[] {
+		return this.plugin.index.sortedEntities().filter((e) => this.filters.has(e.type));
+	}
+
+	private chapterNumbers(): number[] {
+		return this.plugin.index.chapters.map((c) => c.chapter);
+	}
+
+	private buildShell() {
+		const root = this.contentEl;
+		root.empty();
+		root.addClass("storyloom-graph");
+
+		const bar = root.createDiv({ cls: "storyloom-view-toolbar" });
+		const filters = bar.createDiv({ cls: "storyloom-graph-filters" });
+		for (const t of ENTITY_TYPES) {
+			const label = filters.createEl("label", { cls: `storyloom-filter storyloom-type-${t}` });
+			const cb = label.createEl("input", { type: "checkbox" });
+			cb.checked = this.filters.has(t);
+			cb.addEventListener("change", () => {
+				if (cb.checked) this.filters.add(t);
+				else this.filters.delete(t);
+				this.rebuild();
+			});
+			label.createSpan({ cls: "storyloom-dot-type" });
+			label.createSpan({ text: t });
+		}
+		const opt = (text: string, get: () => boolean, set: (v: boolean) => void) => {
+			const label = filters.createEl("label", { cls: "storyloom-filter" });
+			const cb = label.createEl("input", { type: "checkbox" });
+			cb.checked = get();
+			cb.addEventListener("change", () => {
+				set(cb.checked);
+				this.update();
+			});
+			label.createSpan({ text });
+		};
+		opt("together", () => this.together, (v) => (this.together = v));
+		opt("whereabouts", () => this.presence, (v) => (this.presence = v));
+
+		const scrub = root.createDiv({ cls: "storyloom-scrubber" });
+		const prev = scrub.createEl("button", { attr: { "aria-label": "Previous chapter" } });
+		setIcon(prev, "chevron-left");
+		this.slider = scrub.createEl("input", { type: "range", cls: "storyloom-slider" });
+		const next = scrub.createEl("button", { attr: { "aria-label": "Next chapter" } });
+		setIcon(next, "chevron-right");
+		this.labelEl = scrub.createDiv({ cls: "storyloom-scrub-label" });
+		prev.addEventListener("click", () => this.step(-1));
+		next.addEventListener("click", () => this.step(1));
+		this.slider.addEventListener("input", () => {
+			const chs = this.chapterNumbers();
+			this.chapter = chs[Number(this.slider.value)] ?? this.chapter;
+			this.update();
+		});
+
+		const stage = root.createDiv({ cls: "storyloom-graph-stage" });
+		this.svgEl = svg("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMidYMid meet" });
+		stage.appendChild(this.svgEl);
+		this.edgeLayer = svg("g", { class: "storyloom-edges" }, this.svgEl);
+		this.nodeLayer = svg("g", { class: "storyloom-nodes" }, this.svgEl);
+		this.tooltipEl = stage.createDiv({ cls: "storyloom-graph-tooltip storyloom-hover" });
+		this.tooltipEl.hide();
+		this.enablePanZoom(stage);
+	}
+
+	private step(dir: number) {
+		const chs = this.chapterNumbers();
+		const i = chs.indexOf(this.chapter);
+		const n = chs[Math.min(chs.length - 1, Math.max(0, (i === -1 ? 0 : i) + dir))];
+		if (n !== undefined) {
+			this.chapter = n;
+			this.update();
+		}
+	}
+
+	/** Layout (only for new nodes) and full redraw of nodes; then edges for the chapter. */
+	private rebuild() {
+		if (!this.svgEl) return;
+		const entities = this.visibleEntities();
+		const chs = this.chapterNumbers();
+		if (chs.length && !chs.includes(this.chapter)) this.chapter = chs[0];
+		this.slider.min = "0";
+		this.slider.max = String(Math.max(0, chs.length - 1));
+		this.slider.disabled = chs.length < 2;
+
+		const names = entities.map((e) => e.name);
+		const hasAll = names.every((n) => this.positions.has(n));
+		if (!hasAll) {
+			const pairs = allPairs(this.plugin.index.sortedEntities(), chs);
+			const laid = forceLayout(names, pairs, { width: W, height: H, existing: this.positions, fixExisting: this.positions.size > 0 });
+			for (const [n, p] of laid) this.positions.set(n, p);
+		}
+
+		this.nodeLayer.empty();
+		this.nodeEls.clear();
+		this.edgeLayer.empty();
+		this.edgeEls.clear();
+		if (!entities.length) {
+			const t = svg("text", { x: W / 2, y: H / 2, "text-anchor": "middle", class: "storyloom-graph-empty" }, this.nodeLayer);
+			t.textContent = "No codex entries to show.";
+		}
+		for (const e of entities) this.drawNode(e);
+		this.update();
+	}
+
+	private drawNode(e: Entity) {
+		const p = this.positions.get(e.name) as Point;
+		const g = svg("g", { class: `storyloom-node storyloom-type-${e.type}`, transform: `translate(${p.x},${p.y})` }, this.nodeLayer);
+		const r = e.type === "character" ? 11 : e.type === "location" ? 9 : 7;
+		if (e.type === "location") svg("rect", { x: -r, y: -r, width: r * 2, height: r * 2, rx: 3 }, g);
+		else if (e.type === "character") svg("circle", { r }, g);
+		else svg("polygon", { points: `0,${-r - 1} ${r + 1},0 0,${r + 1} ${-r - 1},0` }, g);
+		const label = svg("text", { y: r + 15, "text-anchor": "middle" }, g);
+		label.textContent = e.name;
+		this.nodeEls.set(e.name, g);
+
+		let dragging = false;
+		let moved = false;
+		g.addEventListener("pointerdown", (ev) => {
+			ev.stopPropagation();
+			dragging = true;
+			moved = false;
+			g.setPointerCapture(ev.pointerId);
+			this.tooltipEl.hide();
+		});
+		g.addEventListener("pointermove", (ev) => {
+			if (!dragging) {
+				this.showTooltip(e, ev);
+				return;
+			}
+			const pt = this.toSvg(ev);
+			moved = true;
+			this.positions.set(e.name, pt);
+			g.setAttribute("transform", `translate(${pt.x},${pt.y})`);
+			this.redrawEdgeGeometry();
+		});
+		g.addEventListener("pointerup", (ev) => {
+			dragging = false;
+			g.releasePointerCapture(ev.pointerId);
+			if (!moved) void this.app.workspace.openLinkText(e.path, "", ev.metaKey || ev.ctrlKey ? "tab" : false);
+		});
+		g.addEventListener("pointerleave", () => {
+			if (!dragging) this.tooltipEl.hide();
+		});
+	}
+
+	private showTooltip(e: Entity, ev: PointerEvent) {
+		this.tooltipEl.empty();
+		renderEntityCard(this.tooltipEl, e, this.chapter);
+		this.tooltipEl.show();
+		const stage = this.tooltipEl.parentElement as HTMLElement;
+		const rect = stage.getBoundingClientRect();
+		const x = ev.clientX - rect.left + 14;
+		const y = ev.clientY - rect.top + 14;
+		this.tooltipEl.style.left = `${Math.min(x, rect.width - 340)}px`;
+		this.tooltipEl.style.top = `${Math.min(y, rect.height - 200)}px`;
+	}
+
+	/** Re-resolve edges for the current chapter and animate the difference. Node positions never move. */
+	private update() {
+		const chs = this.chapterNumbers();
+		const ch = this.plugin.index.chapterByNumber(this.chapter);
+		this.slider.value = String(Math.max(0, chs.indexOf(this.chapter)));
+		this.labelEl.setText(ch ? `Chapter ${ch.chapter} — ${ch.title}` : chs.length ? `Chapter ${this.chapter}` : "No chapters yet (showing latest)");
+		const asOf = chs.length ? this.chapter : Infinity;
+
+		const edges = edgesAt(this.visibleEntities(), asOf, { together: this.together, presence: this.presence });
+		const want = new Map(edges.map((e) => [e.id, e]));
+		for (const [id, el] of this.edgeEls) {
+			if (want.has(id)) continue;
+			this.edgeEls.delete(id);
+			el.classList.add("is-leaving");
+			window.setTimeout(() => el.remove(), 220);
+		}
+		for (const e of edges) {
+			if (this.edgeEls.has(e.id)) continue;
+			const el = this.drawEdge(e);
+			this.edgeEls.set(e.id, el);
+			window.requestAnimationFrame(() => el.classList.remove("is-entering"));
+		}
+		this.redrawEdgeGeometry();
+
+		// Dim nodes that have no timeline entries yet at this chapter.
+		for (const e of this.visibleEntities()) {
+			const started = e.timeline.length === 0 || e.timeline.some((t) => t.chapter <= asOf);
+			this.nodeEls.get(e.name)?.classList.toggle("is-dormant", !started);
+		}
+	}
+
+	private drawEdge(e: GraphEdge): SVGGElement {
+		const g = svg("g", { class: `storyloom-edge is-${e.kind} is-entering` }, this.edgeLayer);
+		g.dataset.a = e.a;
+		g.dataset.b = e.b;
+		svg("line", {}, g);
+		if (e.label) {
+			const t = svg("text", { "text-anchor": "middle" }, g);
+			t.textContent = e.label;
+		}
+		return g;
+	}
+
+	private redrawEdgeGeometry() {
+		for (const g of this.edgeEls.values()) {
+			const a = this.positions.get(g.dataset.a as string);
+			const b = this.positions.get(g.dataset.b as string);
+			if (!a || !b) continue;
+			const line = g.querySelector("line") as SVGLineElement;
+			line.setAttribute("x1", String(a.x));
+			line.setAttribute("y1", String(a.y));
+			line.setAttribute("x2", String(b.x));
+			line.setAttribute("y2", String(b.y));
+			const t = g.querySelector("text");
+			if (t) {
+				t.setAttribute("x", String((a.x + b.x) / 2));
+				t.setAttribute("y", String((a.y + b.y) / 2 - 4));
+			}
+		}
+	}
+
+	private toSvg(ev: { clientX: number; clientY: number }): Point {
+		const pt = this.svgEl.createSVGPoint();
+		pt.x = ev.clientX;
+		pt.y = ev.clientY;
+		const m = this.svgEl.getScreenCTM();
+		if (!m) return { x: 0, y: 0 };
+		const p = pt.matrixTransform(m.inverse());
+		return { x: p.x, y: p.y };
+	}
+
+	private enablePanZoom(stage: HTMLElement) {
+		const apply = () => this.svgEl.setAttribute("viewBox", `${this.view.x} ${this.view.y} ${this.view.w} ${this.view.h}`);
+		stage.addEventListener(
+			"wheel",
+			(ev) => {
+				ev.preventDefault();
+				const p = this.toSvg(ev);
+				const f = ev.deltaY > 0 ? 1.1 : 1 / 1.1;
+				const w = Math.min(W * 4, Math.max(W / 4, this.view.w * f));
+				const scale = w / this.view.w;
+				this.view = { x: p.x - (p.x - this.view.x) * scale, y: p.y - (p.y - this.view.y) * scale, w, h: this.view.h * scale };
+				apply();
+			},
+			{ passive: false },
+		);
+		let pan: { x: number; y: number; vx: number; vy: number } | null = null;
+		this.svgEl.addEventListener("pointerdown", (ev) => {
+			pan = { x: ev.clientX, y: ev.clientY, vx: this.view.x, vy: this.view.y };
+			this.svgEl.setPointerCapture(ev.pointerId);
+		});
+		this.svgEl.addEventListener("pointermove", (ev) => {
+			if (!pan) return;
+			const rect = this.svgEl.getBoundingClientRect();
+			const s = Math.max(this.view.w / rect.width, this.view.h / rect.height);
+			this.view.x = pan.vx - (ev.clientX - pan.x) * s;
+			this.view.y = pan.vy - (ev.clientY - pan.y) * s;
+			apply();
+		});
+		this.svgEl.addEventListener("pointerup", (ev) => {
+			pan = null;
+			this.svgEl.releasePointerCapture(ev.pointerId);
+		});
+	}
+}

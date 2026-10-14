@@ -8,6 +8,8 @@
     "allowJs": false,
     "noImplicitAny": true,
     "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "moduleResolution": "bundler",
     "importHelpers": true,
     "isolatedModules": true,

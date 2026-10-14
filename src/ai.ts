@@ -1,0 +1,111 @@
+import { normalizePath, TFile, type App } from "obsidian";
+import type { CodexIndex } from "./codex/index";
+import { stripFrontmatter } from "./codex/parse";
+import type { Entity } from "./codex/types";
+import { buildContext, type BuiltContext } from "./context/builder";
+import { JSON_RETRY, type Prompt } from "./context/prompts";
+import { extractJson, JsonExtractError } from "./llm/json";
+import { LLMError, type ChatMessage, type LLMClient } from "./llm/types";
+import { previewPrompt } from "./modals/instructionModal";
+import type { StoryloomSettings } from "./settings";
+
+export interface ContextRequest {
+	file: TFile | null;
+	/** Full note text (with frontmatter). */
+	text: string;
+	/** Offset in `text` where generation happens. Omit for analysis of the whole note. */
+	cursor?: number;
+	/** Extra text whose entity mentions should get priority (e.g. the selection). */
+	passage?: string;
+	/** Override the "as of" chapter (state update uses N-1). */
+	asOf?: number;
+	/** Entities to put first (e.g. @-mentions in chat). */
+	pinned?: Entity[];
+}
+
+export class AIService {
+	constructor(
+		private app: App,
+		private index: CodexIndex,
+		private settings: () => StoryloomSettings,
+		private client: () => LLMClient,
+	) {}
+
+	async bookText(): Promise<string> {
+		const f = this.app.vault.getAbstractFileByPath(normalizePath(this.settings().bookPath));
+		return f instanceof TFile ? this.app.vault.cachedRead(f) : "";
+	}
+
+	async context(req: ContextRequest): Promise<BuiltContext> {
+		const s = this.settings();
+		const chapter = this.index.chapterForPath(req.file?.path);
+		const asOf = req.asOf ?? chapter?.chapter ?? Infinity;
+		const generate = req.cursor !== undefined;
+		const body = stripFrontmatter(req.text);
+		const fmLength = req.text.length - body.length;
+		const chapterText = generate ? body.slice(0, Math.max(0, (req.cursor as number) - fmLength)) : body;
+
+		const mentionSource = (generate ? chapterText.slice(-4000) : body) + "\n" + (req.passage ?? "");
+		const focus: Entity[] = [...(req.pinned ?? [])];
+		const add = (e?: Entity) => {
+			if (e && !focus.includes(e)) focus.push(e);
+		};
+		if (chapter?.pov) add(this.index.getEntity(chapter.pov));
+		for (const n of this.index.mentionsIn(mentionSource)) add(this.index.entities.get(n));
+		const others = this.index.sortedEntities().filter((e) => !focus.includes(e));
+
+		const earlier = this.index.chapters
+			.filter((c) => (chapter ? c.chapter < chapter.chapter : true) && c.summary)
+			.map((c) => ({ chapter: c.chapter, title: c.title, summary: c.summary as string }));
+
+		const built = buildContext({
+			book: await this.bookText(),
+			chapter,
+			chapterText,
+			mode: generate ? "generate" : "analyze",
+			focusEntities: focus,
+			otherEntities: others,
+			earlierSummaries: earlier,
+			asOf,
+			budget: s.contextBudget,
+		});
+		if (s.debug) console.log(`[Storyloom] context ${built.text.length} chars`, built.sections, built.truncated ? "(truncated)" : "");
+		return built;
+	}
+
+	async complete(prompt: Prompt, opts: { maxTokens?: number; temperature?: number; history?: ChatMessage[] } = {}): Promise<string> {
+		const s = this.settings();
+		if (s.showContextBeforeSending) {
+			const ok = await previewPrompt(this.app, prompt.system, prompt.user);
+			if (!ok) throw new LLMError("config", "Cancelled.");
+		}
+		const messages: ChatMessage[] = [...(opts.history ?? []), { role: "user", content: prompt.user }];
+		if (s.debug) console.log("[Storyloom] request", { system: prompt.system.length, user: prompt.user.length });
+		return this.client().complete({
+			system: prompt.system,
+			messages,
+			maxTokens: opts.maxTokens ?? s.maxTokens,
+			temperature: opts.temperature ?? s.temperature,
+		});
+	}
+
+	/** Ask for JSON; on a parse/shape failure, retry once with the schema restated. */
+	async completeJson<T>(prompt: Prompt, validate: (raw: unknown) => T, schema: string): Promise<T> {
+		const first = await this.complete(prompt, { temperature: 0.2 });
+		try {
+			return validate(extractJson(first));
+		} catch (e) {
+			if (!(e instanceof JsonExtractError)) throw e;
+			if (this.settings().debug) console.warn("[Storyloom] JSON retry:", e.message, first);
+			const second = await this.complete(
+				{ system: prompt.system, user: `${JSON_RETRY}\n${schema}` },
+				{ temperature: 0, history: [{ role: "user", content: prompt.user }, { role: "assistant", content: first }] },
+			);
+			try {
+				return validate(extractJson(second));
+			} catch (e2) {
+				throw new LLMError("bad_request", `The model's answer wasn't usable JSON, even after a retry. ${e2 instanceof Error ? e2.message : ""}`);
+			}
+		}
+	}
+}

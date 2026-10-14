@@ -154,3 +154,22 @@ describe("writing helpers", () => {
 		expect(hasActiveRelationship(e, "Arthur Vane", "rival", 6)).toBe(false);
 	});
 });
+
+import { fillEntityTemplate } from "../src/codex/write";
+import { parseDescription } from "../src/codex/parse";
+
+describe("fillEntityTemplate", () => {
+	const tpl = "---\ntype: character\naliases: []\nrole: \n---\n\n# {{title}}\n\n## Description\n\n## Voice\n\n## Relationships\n\n## Timeline\n";
+	it("fills name, aliases and description", () => {
+		const out = fillEntityTemplate(tpl, { name: "Captain Rook", type: "character", description: "Harbor smuggler.", aliases: ["Rook"] });
+		expect(out).toContain("# Captain Rook");
+		expect(out).toContain("aliases: [Rook]");
+		expect(parseDescription(out)).toBe("Harbor smuggler.");
+		expect(out).toContain("## Voice");
+	});
+	it("works with no template", () => {
+		const out = fillEntityTemplate(null, { name: "The Ledger", type: "lore", description: "A book of debts.", aliases: [] });
+		expect(out.startsWith("---\ntype: lore\naliases: []\n---")).toBe(true);
+		expect(parseDescription(out)).toBe("A book of debts.");
+	});
+});
