@@ -1,0 +1,136 @@
+/**
+ * Pure helpers that produce new note text. The plugin reads the file, runs these, and writes it back,
+ * so all the logic that has to be idempotent is unit-testable.
+ */
+import { findSection, splitPipes, formatChapterRange, isClearValue, parseRelationshipLine, parseWikilink, stripWikilinks } from "./parse";
+import { ACCUMULATING_KEYS, isRelationshipActive, normalizeValue, resolveState, type StateSource } from "./state";
+import type { ChapterRange } from "./types";
+
+const KEY_ORDER = ["location", "status", "with", "knows"];
+
+export function formatTimelineLine(chapter: number, fields: Record<string, string | null>, note?: string): string {
+	const keys = Object.keys(fields).sort((a, b) => {
+		const ia = KEY_ORDER.indexOf(a);
+		const ib = KEY_ORDER.indexOf(b);
+		return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
+	});
+	const parts = [`- ch ${chapter}`];
+	for (const k of keys) parts.push(`${k}: ${fields[k] === null ? "—" : clean(fields[k] as string)}`);
+	if (note && note.trim()) parts.push(`note: ${clean(note)}`);
+	return parts.join(" | ");
+}
+
+/** Pipes and newlines would break the line format. */
+function clean(v: string): string {
+	return splitPipes(v.replace(/\s*\n\s*/g, " ")).join("/").trim();
+}
+
+export function formatRelationshipLine(target: string, label: string, range?: ChapterRange): string {
+	const r = range ? formatChapterRange(range) : "";
+	return `- [[${target}]]: ${clean(label)}${r ? " " + r : ""}`;
+}
+
+/**
+ * Append lines to the end of `## heading` (after its last non-blank line).
+ * Creates the section at the end of the note if it doesn't exist.
+ */
+export function appendToSection(markdown: string, heading: string, newLines: string[]): string {
+	if (newLines.length === 0) return markdown;
+	const section = findSection(markdown, heading);
+	const lines = markdown.split("\n");
+	if (!section) {
+		while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
+		return [...lines, "", `## ${heading}`, ...newLines, ""].join("\n");
+	}
+	let insertAt = section.headingLine + 1;
+	for (let i = section.headingLine + 1; i < section.end; i++) {
+		if (lines[i].trim() !== "") insertAt = i + 1;
+	}
+	lines.splice(insertAt, 0, ...newLines);
+	return lines.join("\n");
+}
+
+/**
+ * Close any open-ended relationship to `target` so it ends at `endChapter`.
+ * `(ch 1+)` -> `(ch 1-6)`; no range -> `(ch 1-6)`. Ranges that start after `endChapter` are left alone.
+ */
+export function closeOpenRelationships(markdown: string, target: string, endChapter: number, exceptLabel?: string): string {
+	const section = findSection(markdown, "Relationships");
+	if (!section) return markdown;
+	const lines = markdown.split("\n");
+	for (let i = section.headingLine + 1; i < section.end; i++) {
+		const rel = parseRelationshipLine(lines[i]);
+		if (!rel || rel.target !== target || rel.range.to !== Infinity) continue;
+		if (exceptLabel && normalizeValue(rel.label) === normalizeValue(exceptLabel)) continue;
+		const from = Number.isFinite(rel.range.from) ? rel.range.from : 1;
+		if (from > endChapter) continue;
+		const indent = /^\s*/.exec(lines[i])?.[0] ?? "";
+		const link = /\[\[[^\]]+\]\]/.exec(lines[i])?.[0] ?? `[[${target}]]`;
+		lines[i] = `${indent}- ${link}: ${rel.label} (ch ${from}-${endChapter})`;
+	}
+	return lines.join("\n");
+}
+
+export interface ProposedTimeline {
+	fields: Record<string, string | null>;
+	note?: string;
+}
+
+/**
+ * Drop fields that the entity already has as of `chapter`, and a note already recorded in that chapter.
+ * Returns null when nothing is left to write. This is what makes "Update story state" idempotent.
+ */
+export function dedupeTimeline(entity: StateSource, chapter: number, proposed: ProposedTimeline): ProposedTimeline | null {
+	const state = resolveState(entity, chapter);
+	const fields: Record<string, string | null> = {};
+	for (const [rawKey, rawValue] of Object.entries(proposed.fields)) {
+		const key = rawKey.trim().toLowerCase();
+		if (!key || key === "note") continue;
+		const value = rawValue === null || isClearValue(rawValue) ? null : rawValue.trim();
+		if (ACCUMULATING_KEYS.has(key)) {
+			if (value === null) {
+				if (state.knows.length > 0) fields[key] = null;
+				continue;
+			}
+			const known = new Set(state.knows.map(normalizeValue));
+			if (!known.has(normalizeValue(value))) fields[key] = value;
+			continue;
+		}
+		const current = state.fields[key];
+		if (value === null) {
+			if (current !== undefined) fields[key] = null;
+		} else if (current === undefined || !sameValue(key, current, value)) {
+			fields[key] = value;
+		}
+	}
+	let note = proposed.note?.trim() || undefined;
+	if (note && state.notes.some((n) => n.chapter === chapter && normalizeValue(n.text) === normalizeValue(note as string))) {
+		note = undefined;
+	}
+	if (Object.keys(fields).length === 0 && !note) return null;
+	return { fields, note };
+}
+
+function sameValue(key: string, a: string, b: string): boolean {
+	if (key === "with") {
+		const set = (v: string) =>
+			v
+				.split(",")
+				.map((s) => normalizeValue(parseWikilink(s) ?? s))
+				.filter(Boolean)
+				.sort()
+				.join(",");
+		return set(a) === set(b);
+	}
+	return normalizeValue(a) === normalizeValue(b);
+}
+
+/** Is this relationship already active at `chapter` with the same label? */
+export function hasActiveRelationship(entity: StateSource, target: string, label: string, chapter: number): boolean {
+	return entity.relationships.some(
+		(r) =>
+			r.target === target &&
+			isRelationshipActive(r, chapter) &&
+			normalizeValue(r.label) === normalizeValue(stripWikilinks(label)),
+	);
+}
