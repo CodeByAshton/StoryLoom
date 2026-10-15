@@ -1,15 +1,18 @@
 import { isolateHistory } from "@codemirror/commands";
 import { Prec, StateEffect, StateField, Transaction, type EditorState, type Extension } from "@codemirror/state";
-import { Decoration, EditorView, keymap, showTooltip, ViewPlugin, WidgetType, type DecorationSet, type Tooltip, type ViewUpdate } from "@codemirror/view";
+import { Decoration, EditorView, keymap, showTooltip, ViewPlugin, type DecorationSet, type Tooltip, type TooltipView, type ViewUpdate } from "@codemirror/view";
 import { editorInfoField, Scope, setIcon } from "obsidian";
 import { cleanProse, inlineEditPrompt, REWRITE_PRESETS } from "../context/prompts";
 import { friendlyError } from "../llm/types";
 import type StoryloomPlugin from "../main";
+import { diffWords, similarity } from "./diff";
 
 type Phase = "input" | "loading" | "result" | "error";
 
 export interface InlineEditState {
 	id: number;
+	/** Stable for one open/close cycle, so the floating panel morphs instead of being rebuilt. */
+	session: number;
 	phase: Phase;
 	from: number;
 	to: number;
@@ -62,12 +65,13 @@ export class InlineEditController {
 	open(view: EditorView): boolean {
 		const cur = this.get(view);
 		if (cur && cur.phase === "input") {
-			(view.dom.querySelector(".storyloom-ie-input") as HTMLInputElement | null)?.focus();
+			(view.dom.querySelector(".storyloom-glass-input") as HTMLInputElement | null)?.focus();
 			return true;
 		}
 		const sel = view.state.selection.main;
 		this.set(view, {
 			id: ++seq,
+			session: ++seq,
 			phase: "input",
 			from: sel.from,
 			to: sel.to,
@@ -80,6 +84,7 @@ export class InlineEditController {
 
 	close(view: EditorView) {
 		if (!this.get(view)) return false;
+		ghostOut(view);
 		this.set(view, null);
 		view.focus();
 		return true;
@@ -113,6 +118,7 @@ export class InlineEditController {
 	accept(view: EditorView): boolean {
 		const cur = this.get(view);
 		if (!cur || cur.phase !== "result" || cur.result === undefined) return false;
+		ghostOut(view);
 		view.dispatch({
 			changes: { from: cur.from, to: cur.to, insert: cur.result },
 			selection: { anchor: cur.from + cur.result.length },
@@ -158,169 +164,309 @@ export class InlineEditController {
 	}
 }
 
-// ---------- Widgets ----------
+// ---------- Floating glass panel ----------
 
-class PanelWidget extends WidgetType {
-	constructor(
-		private st: InlineEditState,
-		private ctrl: InlineEditController,
-		private plugin: StoryloomPlugin,
-	) {
-		super();
-	}
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
-	eq(other: PanelWidget) {
-		return other.st === this.st;
-	}
-
-	ignoreEvent() {
-		return true;
-	}
-
-	toDOM(view: EditorView): HTMLElement {
-		const st = this.st;
-		const root = createDiv({ cls: `storyloom-ie-panel is-${st.phase}` });
-		root.addEventListener("mousedown", (e) => e.stopPropagation());
-
-		if (st.phase === "result" && st.result !== undefined) {
-			const box = root.createDiv({ cls: "storyloom-ie-result" });
-			box.setText(st.result);
-		}
-		if (st.phase === "error") {
-			const err = root.createDiv({ cls: "storyloom-error" });
-			setIcon(err.createSpan(), "alert-triangle");
-			err.createSpan({ text: st.error ?? "Something went wrong." });
-		}
-
-		const bar = root.createDiv({ cls: "storyloom-ie-bar" });
-		if (st.phase === "input") this.renderInput(root, bar, view);
-		else if (st.phase === "loading") {
-			const l = bar.createDiv({ cls: "storyloom-loading" });
-			l.createSpan({ cls: "storyloom-spinner" });
-			l.createSpan({ text: "Writing…" });
-			btn(bar, "Stop", "square", () => this.ctrl.stop(view));
-		} else if (st.phase === "result") {
-			btn(bar, "Accept", "check", () => this.ctrl.accept(view), "Tab", true);
-			btn(bar, "Reject", "x", () => this.ctrl.close(view), "Esc");
-			btn(bar, "Retry", "rotate-ccw", () => this.ctrl.retry(view));
-			const follow = bar.createEl("input", { type: "text", cls: "storyloom-ie-follow" });
-			follow.placeholder = "Refine: shorter, less flowery…";
-			follow.addEventListener("keydown", (e) => {
-				if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-					e.preventDefault();
-					this.ctrl.accept(view);
-				} else if (e.key === "Enter" && !e.isComposing && follow.value.trim()) {
-					e.preventDefault();
-					this.ctrl.refine(view, follow.value);
-				} else if (e.key === "Escape") {
-					e.preventDefault();
-					this.ctrl.close(view);
-				}
-				e.stopPropagation();
-			});
-		} else {
-			btn(bar, "Retry", "rotate-ccw", () => this.ctrl.retry(view), undefined, true);
-			btn(bar, "Edit instruction", "pencil", () => view.dispatch({ effects: setInlineEdit.of({ ...st, id: ++seq, phase: "input" }) }));
-			btn(bar, "Close", "x", () => this.ctrl.close(view), "Esc");
-		}
-		return root;
-	}
-
-	private renderInput(root: HTMLElement, bar: HTMLElement, view: EditorView) {
-		const input = bar.createEl("input", { type: "text", cls: "storyloom-ie-input" });
-		input.placeholder = this.st.insert ? "Tell the AI what to write here…" : "Tell the AI what to do with this…";
-		input.value = this.st.instruction;
-		const history = this.plugin.settings.instructionHistory;
-		let h = -1;
-		input.addEventListener("keydown", (e) => {
-			if (e.key === "Enter" && !e.isComposing) {
-				e.preventDefault();
-				void this.ctrl.run(view, input.value);
-			} else if (e.key === "Escape") {
-				e.preventDefault();
-				this.ctrl.close(view);
-			} else if (e.key === "ArrowUp" && history.length) {
-				e.preventDefault();
-				h = Math.min(history.length - 1, h + 1);
-				input.value = history[h];
-			} else if (e.key === "ArrowDown" && h >= 0) {
-				e.preventDefault();
-				h--;
-				input.value = h >= 0 ? history[h] : "";
-			}
-			e.stopPropagation();
-		});
-		btn(bar, "Run", "corner-down-left", () => void this.ctrl.run(view, input.value), "Enter", true);
-		const chips = root.createDiv({ cls: "storyloom-ie-chips" });
-		for (const c of this.plugin.settings.quickChips) {
-			const chip = chips.createEl("button", { cls: "storyloom-chip", text: c });
-			chip.addEventListener("click", () => void this.ctrl.run(view, c));
-		}
-		window.requestAnimationFrame(() => input.focus());
-	}
+/** Fade a copy of the panel out where it was, so closing feels smooth even though CM removes it at once. */
+function ghostOut(view: EditorView) {
+	const el = view.dom.querySelector(".storyloom-glass-panel") as HTMLElement | null;
+	if (!el || reducedMotion()) return;
+	const rect = el.getBoundingClientRect();
+	const ghost = el.cloneNode(true) as HTMLElement;
+	ghost.addClass("is-ghost");
+	Object.assign(ghost.style, { position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`, margin: "0", zIndex: "1000", pointerEvents: "none" });
+	(view.dom.ownerDocument.body ?? document.body).appendChild(ghost);
+	window.setTimeout(() => ghost.remove(), 220);
 }
 
-function btn(parent: HTMLElement, label: string, icon: string, onClick: () => void, hint?: string, cta = false) {
-	const b = parent.createEl("button", { cls: `storyloom-ie-btn${cta ? " mod-cta" : ""}` });
-	setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), icon);
-	b.createSpan({ text: label });
-	if (hint) b.createSpan({ cls: "storyloom-kbd", text: hint });
+function icon(parent: HTMLElement, name: string, cls = "storyloom-glass-icon") {
+	const span = parent.createSpan({ cls });
+	setIcon(span, name);
+	return span;
+}
+
+function glassButton(parent: HTMLElement, opts: { label?: string; icon?: string; kbd?: string; primary?: boolean; title?: string; onClick: () => void }) {
+	const b = parent.createEl("button", { cls: `storyloom-glass-btn${opts.primary ? " is-primary" : ""}${opts.label ? "" : " is-icon"}` });
+	if (opts.title) b.setAttr("aria-label", opts.title);
+	if (opts.icon) icon(b, opts.icon);
+	if (opts.label) b.createSpan({ text: opts.label });
+	if (opts.kbd) b.createSpan({ cls: "storyloom-glass-kbd", text: opts.kbd });
 	b.addEventListener("mousedown", (e) => e.preventDefault());
 	b.addEventListener("click", (e) => {
 		e.stopPropagation();
-		onClick();
+		opts.onClick();
 	});
 	return b;
 }
 
-function decorationsFor(state: EditorState, ctrl: InlineEditController, plugin: StoryloomPlugin): DecorationSet {
-	const st = state.field(inlineEditField, false);
-	if (!st) return Decoration.none;
-	const ranges = [];
-	if (st.to > st.from) {
-		const cls = st.phase === "result" ? "storyloom-ie-original" : st.phase === "loading" ? "storyloom-ie-pulse" : "storyloom-ie-selected";
-		ranges.push(Decoration.mark({ class: cls }).range(st.from, st.to));
+/** One panel per session. It re-renders in place and animates its height between phases. */
+class GlassPanel implements TooltipView {
+	dom: HTMLElement;
+	private inner: HTMLElement;
+	private st: InlineEditState | null = null;
+
+	constructor(
+		private view: EditorView,
+		private ctrl: InlineEditController,
+		private plugin: StoryloomPlugin,
+	) {
+		this.dom = createDiv({ cls: "storyloom-glass storyloom-glass-panel" });
+		this.dom.addEventListener("mousedown", (e) => e.stopPropagation());
+		this.inner = this.dom.createDiv({ cls: "storyloom-glass-inner" });
+		this.render(view.state.field(inlineEditField, false) ?? null, false);
 	}
-	const anchor = state.doc.lineAt(st.insert ? st.from : st.to).to;
-	ranges.push(Decoration.widget({ widget: new PanelWidget(st, ctrl, plugin), block: true, side: 1 }).range(anchor));
-	return Decoration.set(ranges, true);
+
+	/**
+	 * Anchored at the end of the selection so it sits below it, then shifted left to the start of the
+	 * text column (CM's own offset hook runs in the write phase, where layout can't be read through CM).
+	 */
+	positioned() {
+		const tip = this.dom; // CM puts the cm-tooltip class (and its position) on our element itself
+		// Lines carry the real text column (Obsidian centres them when "readable line length" is on).
+		const line = this.view.contentDOM.querySelector(".cm-line") as HTMLElement | null;
+		if (!line) return;
+		const pad = parseFloat(getComputedStyle(line).paddingLeft) || 0;
+		const shift = line.getBoundingClientRect().left + pad - tip.getBoundingClientRect().left;
+		if (Math.abs(shift) > 1) tip.style.left = `${(parseFloat(tip.style.left) || 0) + shift}px`;
+	}
+
+	mount() {
+		window.requestAnimationFrame(() => (this.dom.querySelector(".storyloom-glass-input") as HTMLInputElement | null)?.focus());
+	}
+
+	update(u: ViewUpdate) {
+		const st = u.state.field(inlineEditField, false) ?? null;
+		if (st && st !== this.st && (st.phase !== this.st?.phase || st.result !== this.st?.result || st.error !== this.st?.error)) this.render(st, true);
+		else this.st = st;
+	}
+
+	private render(st: InlineEditState | null, animate: boolean) {
+		const from = animate && !reducedMotion() ? this.dom.offsetHeight : 0;
+		this.st = st;
+		this.dom.dataset.phase = st?.phase ?? "";
+		const next = createDiv({ cls: "storyloom-glass-inner is-entering" });
+		if (st) this.fill(next, st);
+		this.inner.replaceWith(next);
+		this.inner = next;
+		window.requestAnimationFrame(() => next.removeClass("is-entering"));
+		if (from) {
+			const to = this.dom.offsetHeight;
+			if (Math.abs(to - from) > 2) {
+				this.dom.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration: 260, easing: "cubic-bezier(.2,.9,.25,1)" });
+			}
+		}
+		if (st?.phase === "input") this.mount();
+	}
+
+	private fill(root: HTMLElement, st: InlineEditState) {
+		const v = this.view;
+		if (st.phase === "input") {
+			const row = root.createDiv({ cls: "storyloom-glass-row" });
+			icon(row, "sparkles", "storyloom-glass-icon is-accent");
+			const input = row.createEl("input", { type: "text", cls: "storyloom-glass-input" });
+			input.placeholder = st.insert ? "Tell the AI what to write here…" : "Tell the AI what to do with this…";
+			input.value = st.instruction;
+			const history = this.plugin.settings.instructionHistory;
+			let h = -1;
+			input.addEventListener("keydown", (e) => {
+				if (e.key === "Enter" && !e.isComposing) {
+					e.preventDefault();
+					void this.ctrl.run(v, input.value);
+				} else if (e.key === "Escape") {
+					e.preventDefault();
+					this.ctrl.close(v);
+				} else if (e.key === "ArrowUp" && history.length) {
+					e.preventDefault();
+					h = Math.min(history.length - 1, h + 1);
+					input.value = history[h];
+				} else if (e.key === "ArrowDown" && h >= 0) {
+					e.preventDefault();
+					h--;
+					input.value = h >= 0 ? history[h] : "";
+				}
+				e.stopPropagation();
+			});
+			glassButton(row, { icon: "arrow-up", primary: true, title: "Run (Enter)", onClick: () => void this.ctrl.run(v, input.value) });
+			const chips = root.createDiv({ cls: "storyloom-glass-chips" });
+			this.plugin.settings.quickChips.forEach((c, i) => {
+				const chip = chips.createEl("button", { cls: "storyloom-glass-chip", text: c });
+				chip.style.animationDelay = `${40 + i * 25}ms`;
+				chip.addEventListener("mousedown", (e) => e.preventDefault());
+				chip.addEventListener("click", () => void this.ctrl.run(v, c));
+			});
+			return;
+		}
+
+		const head = root.createDiv({ cls: "storyloom-glass-head" });
+		icon(head, st.phase === "error" ? "alert-triangle" : "sparkles", `storyloom-glass-icon ${st.phase === "error" ? "is-error" : "is-accent"}`);
+		head.createSpan({ cls: "storyloom-glass-instruction", text: st.instruction || "Ask AI" });
+
+		if (st.phase === "loading") {
+			const sk = root.createDiv({ cls: "storyloom-glass-skeleton" });
+			for (const w of [92, 78, 64]) sk.createDiv({ cls: "storyloom-glass-skeleton-line" }).style.width = `${w}%`;
+			const bar = root.createDiv({ cls: "storyloom-glass-bar" });
+			bar.createSpan({ cls: "storyloom-glass-status", text: "Writing…" });
+			bar.createDiv({ cls: "storyloom-glass-spacer" });
+			glassButton(bar, { label: "Stop", icon: "square", onClick: () => this.ctrl.stop(v) });
+			return;
+		}
+
+		if (st.phase === "error") {
+			root.createDiv({ cls: "storyloom-glass-error", text: st.error ?? "Something went wrong." });
+			const bar = root.createDiv({ cls: "storyloom-glass-bar" });
+			bar.createDiv({ cls: "storyloom-glass-spacer" });
+			glassButton(bar, { label: "Edit", icon: "pencil", onClick: () => v.dispatch({ effects: setInlineEdit.of({ ...st, id: ++seq, phase: "input" }) }) });
+			glassButton(bar, { label: "Close", kbd: "esc", onClick: () => this.ctrl.close(v) });
+			glassButton(bar, { label: "Retry", icon: "rotate-ccw", primary: true, onClick: () => this.ctrl.retry(v) });
+			return;
+		}
+
+		// Result: show what changes, word by word, without touching the document.
+		const result = st.result ?? "";
+		const original = st.insert ? "" : v.state.sliceDoc(st.from, st.to);
+		const body = root.createDiv({ cls: "storyloom-glass-result" });
+		const parts = diffWords(original.trim(), result.trim());
+		if (!st.insert && similarity(parts) >= 0.25) {
+			for (const p of parts) {
+				if (p.kind === "same") body.appendText(p.text);
+				else body.createSpan({ cls: p.kind === "add" ? "storyloom-diff-add" : "storyloom-diff-del", text: p.text });
+			}
+		} else {
+			body.createSpan({ cls: st.insert ? "storyloom-diff-add is-soft" : "", text: result.trim() });
+		}
+
+		const bar = root.createDiv({ cls: "storyloom-glass-bar" });
+		const refine = bar.createEl("input", { type: "text", cls: "storyloom-glass-input is-refine" });
+		refine.placeholder = "Ask for changes…";
+		refine.addEventListener("keydown", (e) => {
+			if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+				e.preventDefault();
+				this.ctrl.accept(v);
+			} else if (e.key === "Enter" && !e.isComposing && refine.value.trim()) {
+				e.preventDefault();
+				this.ctrl.refine(v, refine.value);
+			} else if (e.key === "Escape") {
+				e.preventDefault();
+				this.ctrl.close(v);
+			}
+			e.stopPropagation();
+		});
+		glassButton(bar, { icon: "rotate-ccw", title: "Retry", onClick: () => this.ctrl.retry(v) });
+		glassButton(bar, { label: "Discard", kbd: "esc", onClick: () => this.ctrl.close(v) });
+		glassButton(bar, { label: st.insert ? "Insert" : "Replace", kbd: "tab", primary: true, onClick: () => this.ctrl.accept(v) });
+	}
 }
 
-// ---------- "Ask AI" button ----------
-
-function askTooltip(state: EditorState, plugin: StoryloomPlugin, ctrl: InlineEditController): Tooltip | null {
-	if (!plugin.settings.askAiButton || state.field(inlineEditField, false)) return null;
-	const sel = state.selection.main;
-	if (sel.empty) return null;
-	const words = state.sliceDoc(sel.from, sel.to).trim().split(/\s+/).filter(Boolean).length;
-	if (words < 3) return null;
-	return {
-		pos: sel.to,
-		above: false,
-		strictSide: false,
-		arrow: false,
-		create: (view) => {
-			const dom = createDiv({ cls: "storyloom-ask-ai" });
-			const b = dom.createEl("button", { cls: "storyloom-ask-ai-btn" });
-			setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), "sparkles");
-			b.createSpan({ text: "Ask AI" });
-			b.addEventListener("mousedown", (e) => e.preventDefault());
-			b.addEventListener("click", () => ctrl.open(view));
-			return { dom };
+/** The panel's tooltip object stays the same for a whole session, so CM keeps one view and we morph it. */
+function panelTooltipField(ctrl: InlineEditController, plugin: StoryloomPlugin) {
+	return StateField.define<{ key: string; tooltip: Tooltip } | null>({
+		create: () => null,
+		update(prev, tr) {
+			const st = tr.state.field(inlineEditField, false);
+			if (!st) return null;
+			const key = `${st.session}:${st.from}:${st.to}`;
+			if (prev?.key === key) return prev;
+			return {
+				key,
+				tooltip: {
+					pos: st.insert ? st.from : st.to,
+					above: false,
+					strictSide: false,
+					arrow: false,
+					create: (view) => new GlassPanel(view, ctrl, plugin),
+				},
+			};
 		},
-	};
+		provide: (f) => showTooltip.from(f, (v) => v?.tooltip ?? null),
+	});
 }
 
-export function inlineEditExtension(plugin: StoryloomPlugin, ctrl: InlineEditController): Extension {
-	const decorations = EditorView.decorations.compute([inlineEditField], (state) => decorationsFor(state, ctrl, plugin));
-	const ask = StateField.define<Tooltip | null>({
-		create: (s) => askTooltip(s, plugin, ctrl),
+function selectionMarks(state: EditorState): DecorationSet {
+	const st = state.field(inlineEditField, false);
+	if (!st || st.to <= st.from) return Decoration.none;
+	const cls = st.phase === "loading" ? "storyloom-glass-mark is-shimmer" : st.phase === "result" ? "storyloom-glass-mark is-pending" : "storyloom-glass-mark";
+	return Decoration.set([Decoration.mark({ class: cls }).range(st.from, st.to)]);
+}
+
+// ---------- "Ask AI" pill ----------
+
+const showAsk = StateEffect.define<number | null>();
+
+/** Appears once the selection settles (not while dragging), above the start of the selection. */
+function askPill(plugin: StoryloomPlugin, ctrl: InlineEditController): Extension {
+	const field = StateField.define<Tooltip | null>({
+		create: () => null,
 		update(t, tr) {
-			if (!tr.docChanged && !tr.selection && !tr.effects.some((e) => e.is(setInlineEdit))) return t;
-			return askTooltip(tr.state, plugin, ctrl);
+			for (const e of tr.effects) {
+				if (e.is(showAsk)) {
+					const pos = e.value;
+					if (pos === null) return null;
+					return {
+						pos,
+						above: true,
+						strictSide: false,
+						arrow: false,
+						create: (view) => {
+							const dom = createDiv({ cls: "storyloom-glass storyloom-ask-pill" });
+							const b = dom.createEl("button", { cls: "storyloom-ask-pill-btn" });
+							icon(b, "sparkles", "storyloom-glass-icon is-accent");
+							b.createSpan({ text: "Ask AI" });
+							const key = plugin.settings.inlineEditKey.replace(/^Mod-/i, navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl+").toUpperCase();
+							if (key) b.createSpan({ cls: "storyloom-glass-kbd", text: key });
+							b.addEventListener("mousedown", (e) => e.preventDefault());
+							b.addEventListener("click", () => ctrl.open(view));
+							return { dom };
+						},
+					};
+				}
+			}
+			if (t && (tr.docChanged || tr.selection || tr.state.field(inlineEditField, false))) return null;
+			return t;
 		},
 		provide: (f) => showTooltip.from(f),
 	});
+	const watcher = ViewPlugin.fromClass(
+		class {
+			timer = 0;
+			pointerDown = false;
+			constructor(private view: EditorView) {
+				view.dom.addEventListener("pointerdown", this.down);
+				view.dom.ownerDocument.addEventListener("pointerup", this.up);
+			}
+			down = () => (this.pointerDown = true);
+			up = () => {
+				if (!this.pointerDown) return;
+				this.pointerDown = false;
+				this.schedule();
+			};
+			update(u: ViewUpdate) {
+				if (u.selectionSet || u.docChanged) this.schedule();
+			}
+			schedule() {
+				window.clearTimeout(this.timer);
+				if (this.pointerDown) return;
+				this.timer = window.setTimeout(() => {
+					const s = this.view.state;
+					const sel = s.selection.main;
+					const words = sel.empty ? 0 : s.sliceDoc(sel.from, sel.to).trim().split(/\s+/).filter(Boolean).length;
+					const show = plugin.settings.askAiButton && words >= 3 && !s.field(inlineEditField, false) && this.view.hasFocus;
+					const cur = s.field(field, false);
+					if (show && !cur) this.view.dispatch({ effects: showAsk.of(sel.from) });
+				}, 220);
+			}
+			destroy() {
+				window.clearTimeout(this.timer);
+				this.view.dom.removeEventListener("pointerdown", this.down);
+				this.view.dom.ownerDocument.removeEventListener("pointerup", this.up);
+			}
+		},
+	);
+	return [field, watcher];
+}
+
+export function inlineEditExtension(plugin: StoryloomPlugin, ctrl: InlineEditController): Extension {
+	const marks = EditorView.decorations.compute([inlineEditField], (state) => selectionMarks(state));
 	const keys = Prec.highest(
 		keymap.of([
 			{ key: "Tab", run: (v) => ctrl.accept(v) },
@@ -362,5 +508,5 @@ export function inlineEditExtension(plugin: StoryloomPlugin, ctrl: InlineEditCon
 			}
 		},
 	);
-	return [inlineEditField, decorations, ask, keys, acceptScope];
+	return [inlineEditField, panelTooltipField(ctrl, plugin), marks, askPill(plugin, ctrl), keys, acceptScope];
 }

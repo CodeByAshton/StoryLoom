@@ -27,11 +27,15 @@ createServer((req, res) => {
 		let content;
 		if (/report what changed/.test(user)) content = "Here you go:\n```json\n" + JSON.stringify(STATE, null, 2) + "\n```";
 		else if (/continuity errors/.test(user)) content = JSON.stringify({ issues: [{ quote: "Elias Crane sat at a high desk", conflict: "Codex: nothing", fix: "None", severity: "low" }] });
+		else if (/Rewrite the selected span/.test(user) && /tighten/.test(user)) {
+			const sel = user.slice(user.lastIndexOf("⟦") + 1, user.lastIndexOf("⟧"));
+			content = sel.replace("opened before she could knock", "swung open before she knocked").replace("filled it, all good tailoring and bad sleep", "filled it: good tailoring, bad sleep");
+		}
 		else if (/Rewrite the selected span/.test(user)) content = `TENSE VERSION ${++n}. Her heart hammered.`;
 		else content = `The fog pressed in. (reply ${++n})`;
 		setTimeout(() => {
 			res.writeHead(200, { "content-type": "application/json" });
 			res.end(JSON.stringify({ choices: [{ message: { role: "assistant", content } }] }));
-		}, 400);
+		}, /tighten/.test(user) ? 1800 : 400);
 	});
 }).listen(11434, () => console.log("fake server on 11434"));

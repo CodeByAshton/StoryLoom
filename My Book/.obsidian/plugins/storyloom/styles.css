@@ -37,14 +37,19 @@ button .storyloom-btn-icon + span { margin-left: 6px; }
 .storyloom-hover {
 	width: 320px;
 	max-width: 90vw;
-	background: var(--background-primary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	box-shadow: var(--shadow-s);
-	padding: var(--size-4-3);
+	background: var(--sl-glass-bg);
+	-webkit-backdrop-filter: blur(14px) saturate(175%);
+	backdrop-filter: blur(14px) saturate(175%);
+	border: 1px solid var(--sl-glass-border);
+	border-radius: 18px;
+	box-shadow: var(--sl-glass-highlight), 0 0 0 0.5px var(--sl-glass-edge), var(--sl-glass-shadow);
+	padding: 14px 14px 12px;
 	font-size: var(--font-ui-small);
+	animation: sl-pop 260ms var(--sl-spring) backwards;
 }
-.cm-tooltip:has(> .storyloom-hover) { background: transparent; border: none; }
+.storyloom-hover .storyloom-card { border-left: none; padding-left: 0; }
+.storyloom-hover .storyloom-card-name::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--sl-color); margin-right: 7px; vertical-align: 1px; }
+.storyloom-hover .storyloom-card-btn { border-radius: 999px; background: var(--sl-glass-inner); border: 1px solid var(--sl-glass-border); box-shadow: var(--sl-glass-highlight); }
 
 .storyloom-card { border-left: 3px solid var(--sl-color); padding-left: var(--size-4-2); }
 .storyloom-card + .storyloom-card { margin-top: var(--size-4-2); }
@@ -120,49 +125,251 @@ details.storyloom-cast-section > summary { cursor: pointer; }
 .storyloom-total td { font-weight: var(--font-semibold); border-top: 1px solid var(--background-modifier-border); }
 .storyloom-file-list { max-height: 30vh; overflow-y: auto; font-size: var(--font-ui-small); color: var(--text-muted); }
 
-/* ---------- Inline edit ---------- */
+/* ---------- Glass material (inline edit, Ask AI pill, hover cards) ---------- */
 
-.storyloom-ie-selected { background: color-mix(in srgb, var(--interactive-accent) 16%, transparent); }
-.storyloom-ie-pulse { animation: storyloom-pulse 1.4s ease-in-out infinite; border-radius: 2px; }
-@keyframes storyloom-pulse {
-	0%, 100% { background: color-mix(in srgb, var(--interactive-accent) 10%, transparent); }
-	50% { background: color-mix(in srgb, var(--interactive-accent) 26%, transparent); }
+/* Backdrop blur is kept at 14px: larger radii silently stop rendering on some machines (no GPU). */
+body {
+	--sl-glass-bg: rgba(255, 255, 255, 0.66);
+	--sl-glass-inner: rgba(255, 255, 255, 0.55);
+	--sl-glass-inner-hover: rgba(255, 255, 255, 0.85);
+	--sl-glass-border: rgba(255, 255, 255, 0.8);
+	--sl-glass-edge: rgba(15, 23, 42, 0.1);
+	--sl-glass-sheen: linear-gradient(140deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.08) 38%, rgba(255, 255, 255, 0) 60%);
+	--sl-glass-shadow: 0 18px 50px -12px rgba(30, 41, 80, 0.28), 0 4px 14px rgba(30, 41, 80, 0.08);
+	--sl-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+	--sl-accent: var(--interactive-accent);
+	--sl-add-bg: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	--sl-del: color-mix(in srgb, var(--text-error) 75%, var(--text-muted));
+	--sl-spring: cubic-bezier(0.2, 0.9, 0.25, 1.12);
+	--sl-ease: cubic-bezier(0.2, 0.9, 0.25, 1);
 }
-.storyloom-ie-original { text-decoration: line-through; text-decoration-color: var(--text-faint); opacity: 0.5; }
-.storyloom-ie-panel {
-	margin: 6px 0 10px;
-	padding: var(--size-4-2) var(--size-4-3);
-	background: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	box-shadow: var(--shadow-s);
+body.theme-dark {
+	--sl-glass-bg: rgba(36, 37, 44, 0.62);
+	--sl-glass-inner: rgba(255, 255, 255, 0.06);
+	--sl-glass-inner-hover: rgba(255, 255, 255, 0.12);
+	--sl-glass-border: rgba(255, 255, 255, 0.13);
+	--sl-glass-edge: rgba(0, 0, 0, 0.5);
+	--sl-glass-sheen: linear-gradient(140deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0) 60%);
+	--sl-glass-shadow: 0 22px 60px -12px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.35);
+	--sl-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+	--sl-add-bg: color-mix(in srgb, var(--interactive-accent) 28%, transparent);
+}
+
+.storyloom-glass {
+	position: relative;
+	background: var(--sl-glass-bg);
+	-webkit-backdrop-filter: blur(14px) saturate(175%);
+	backdrop-filter: blur(14px) saturate(175%);
+	border: 1px solid var(--sl-glass-border);
+	border-radius: 20px;
+	box-shadow: var(--sl-glass-highlight), 0 0 0 0.5px var(--sl-glass-edge), var(--sl-glass-shadow);
+	color: var(--text-normal);
 	font-family: var(--font-interface);
-	font-size: var(--font-ui-small);
-	white-space: normal;
+	isolation: isolate;
 }
-.storyloom-ie-result {
-	white-space: pre-wrap;
+.storyloom-glass::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: var(--sl-glass-sheen);
+	pointer-events: none;
+	z-index: -1;
+}
+.cm-tooltip.storyloom-glass, .cm-tooltip.storyloom-hover {
+	background: var(--sl-glass-bg) !important;
+	border: 1px solid var(--sl-glass-border) !important;
+}
+
+/* No `filter` in these: a filter on the same element switches off its backdrop blur. */
+@keyframes sl-pop {
+	from { opacity: 0; transform: translateY(-6px) scale(0.965); }
+	to { opacity: 1; transform: none; }
+}
+@keyframes sl-pop-up {
+	from { opacity: 0; transform: translateY(6px) scale(0.9); }
+	to { opacity: 1; transform: none; }
+}
+@keyframes sl-fade-out {
+	to { opacity: 0; transform: translateY(-4px) scale(0.97); }
+}
+@keyframes sl-chip-in {
+	from { opacity: 0; transform: translateY(4px) scale(0.94); }
+	to { opacity: 1; transform: none; }
+}
+@keyframes sl-shimmer {
+	from { background-position: 120% 0; }
+	to { background-position: -120% 0; }
+}
+
+/* The floating panel */
+.storyloom-glass-panel {
+	width: min(560px, calc(100vw - 48px));
+	margin-top: 10px;
+	padding: 10px;
+	overflow: hidden;
+	font-size: var(--font-ui-small);
+	animation: sl-pop 320ms var(--sl-spring) backwards;
+	transform-origin: top left;
+}
+.storyloom-glass-panel.is-ghost { animation: sl-fade-out 200ms var(--sl-ease) forwards; }
+.storyloom-glass-inner { transition: opacity 180ms var(--sl-ease), transform 220ms var(--sl-ease), filter 180ms var(--sl-ease); }
+.storyloom-glass-inner.is-entering { opacity: 0; transform: translateY(3px); filter: blur(3px); }
+
+.storyloom-glass-row { display: flex; align-items: center; gap: 8px; }
+.storyloom-glass-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.storyloom-glass-icon svg { width: 15px; height: 15px; }
+.storyloom-glass-icon.is-accent { color: var(--sl-accent); }
+.storyloom-glass-icon.is-error { color: var(--text-error); }
+.storyloom-glass-row > .storyloom-glass-icon { margin-left: 6px; }
+
+.storyloom-glass input.storyloom-glass-input {
+	flex: 1;
+	min-width: 0;
+	height: 34px;
+	border: none;
+	border-radius: 12px;
+	background: transparent;
+	box-shadow: none;
+	padding: 0 6px;
+	font-size: var(--font-ui-medium);
+	color: var(--text-normal);
+}
+.storyloom-glass input.storyloom-glass-input:focus { box-shadow: none; outline: none; }
+.storyloom-glass input.storyloom-glass-input::placeholder { color: var(--text-faint); }
+.storyloom-glass input.storyloom-glass-input.is-refine {
+	height: 30px;
+	font-size: var(--font-ui-small);
+	background: var(--sl-glass-inner);
+	border: 1px solid var(--sl-glass-border);
+	padding: 0 10px;
+}
+
+.storyloom-glass-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 30px;
+	padding: 0 12px;
+	border-radius: 999px !important;
+	border: 1px solid var(--sl-glass-border) !important;
+	background: var(--sl-glass-inner) !important;
+	box-shadow: var(--sl-glass-highlight) !important;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	transition: transform 160ms var(--sl-spring), background 160ms ease;
+	flex-shrink: 0;
+}
+.storyloom-glass-btn:hover { background: var(--sl-glass-inner-hover) !important; }
+.storyloom-glass-btn:active { transform: scale(0.95); }
+.storyloom-glass-btn.is-icon { width: 30px; padding: 0; justify-content: center; }
+.storyloom-glass-btn.is-primary {
+	background: var(--sl-accent) !important;
+	border-color: transparent !important;
+	color: var(--text-on-accent);
+	box-shadow: 0 6px 16px -6px var(--sl-accent), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+.storyloom-glass-btn.is-primary:hover { filter: brightness(1.08); background: var(--sl-accent) !important; }
+.storyloom-glass-btn svg { width: 14px; height: 14px; }
+.storyloom-glass-kbd { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.6; padding: 1px 5px; border-radius: 5px; border: 1px solid currentColor; line-height: 1.2; }
+
+.storyloom-glass-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 2px 2px; }
+.storyloom-glass-chip {
+	height: 26px;
+	padding: 0 11px;
+	border-radius: 999px !important;
+	border: 1px solid var(--sl-glass-border) !important;
+	background: var(--sl-glass-inner) !important;
+	box-shadow: var(--sl-glass-highlight) !important;
+	color: var(--text-muted);
+	font-size: var(--font-smallest);
+	cursor: pointer;
+	animation: sl-chip-in 280ms var(--sl-spring) both;
+	transition: transform 160ms var(--sl-spring), color 120ms ease, background 120ms ease;
+}
+.storyloom-glass-chip:hover { color: var(--text-normal); background: var(--sl-glass-inner-hover) !important; transform: translateY(-1px); }
+.storyloom-glass-chip:active { transform: scale(0.95); }
+
+.storyloom-glass-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 8px; color: var(--text-muted); }
+.storyloom-glass-instruction { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.storyloom-glass-result {
+	max-height: 42vh;
+	overflow-y: auto;
+	padding: 12px 14px;
+	border-radius: 14px;
+	background: var(--sl-glass-inner);
+	border: 1px solid var(--sl-glass-border);
 	font-family: var(--font-text);
 	font-size: var(--font-text-size);
-	line-height: var(--line-height-normal);
+	line-height: 1.6;
+	white-space: pre-wrap;
 	color: var(--text-normal);
-	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
-	border-left: 3px solid var(--interactive-accent);
-	padding: var(--size-4-2) var(--size-4-3);
-	border-radius: var(--radius-s);
-	margin-bottom: var(--size-4-2);
 }
-.storyloom-ie-bar { display: flex; align-items: center; gap: var(--size-4-2); flex-wrap: wrap; }
-.storyloom-ie-input, .storyloom-ie-follow { flex: 1; min-width: 160px; }
-.storyloom-ie-btn { font-size: var(--font-ui-small); height: auto; padding: 4px 10px; }
-.storyloom-kbd { margin-left: 6px; font-size: var(--font-smallest); color: var(--text-faint); border: 1px solid var(--background-modifier-border); border-radius: 3px; padding: 0 4px; }
-.mod-cta .storyloom-kbd { color: inherit; opacity: 0.75; border-color: currentColor; }
-.storyloom-ie-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--size-4-2); }
-.storyloom-chip { font-size: var(--font-smallest); height: auto; padding: 2px 10px; border-radius: 999px; background: var(--background-primary); }
-.storyloom-chip:hover { background: var(--background-modifier-hover); }
-.storyloom-ask-ai { padding: 0; }
-.cm-tooltip:has(> .storyloom-ask-ai) { background: transparent; border: none; }
-.storyloom-ask-ai-btn { font-size: var(--font-smallest); height: auto; padding: 3px 10px; box-shadow: var(--shadow-s); border-radius: 999px; }
+.storyloom-diff-add { background: var(--sl-add-bg); border-radius: 4px; padding: 1px 1px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.storyloom-diff-add.is-soft { background: none; }
+.storyloom-diff-del { margin-right: 3px; color: var(--sl-del); text-decoration: line-through; text-decoration-thickness: 1px; opacity: 0.75; }
+
+.storyloom-glass-skeleton { display: flex; flex-direction: column; gap: 9px; padding: 8px 6px 12px; }
+.storyloom-glass-skeleton-line {
+	height: 10px;
+	border-radius: 6px;
+	background: linear-gradient(90deg, var(--sl-glass-inner) 0%, color-mix(in srgb, var(--sl-accent) 30%, var(--sl-glass-inner)) 50%, var(--sl-glass-inner) 100%);
+	background-size: 220% 100%;
+	animation: sl-shimmer 1.4s ease-in-out infinite;
+}
+.storyloom-glass-skeleton-line:nth-child(2) { animation-delay: 120ms; }
+.storyloom-glass-skeleton-line:nth-child(3) { animation-delay: 240ms; }
+
+.storyloom-glass-bar { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.storyloom-glass-spacer { flex: 1; }
+.storyloom-glass-status { color: var(--text-muted); padding-left: 6px; }
+.storyloom-glass-error { color: var(--text-error); padding: 2px 6px; line-height: 1.45; }
+
+/* The selection while the panel is open — the document itself is never modified until you accept. */
+.storyloom-glass-mark {
+	background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+	border-radius: 3px;
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+	transition: background 240ms ease;
+}
+.storyloom-glass-mark.is-shimmer {
+	background: linear-gradient(100deg,
+		color-mix(in srgb, var(--interactive-accent) 10%, transparent) 20%,
+		color-mix(in srgb, var(--interactive-accent) 34%, transparent) 50%,
+		color-mix(in srgb, var(--interactive-accent) 10%, transparent) 80%);
+	background-size: 250% 100%;
+	animation: sl-shimmer 1.6s ease-in-out infinite;
+}
+.storyloom-glass-mark.is-pending { background: color-mix(in srgb, var(--interactive-accent) 9%, transparent); opacity: 0.6; }
+
+/* Ask AI pill */
+.storyloom-ask-pill { padding: 3px; border-radius: 999px; margin-bottom: 8px; animation: sl-pop-up 300ms var(--sl-spring) backwards; }
+.storyloom-ask-pill-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 28px;
+	padding: 0 12px 0 10px;
+	border: none !important;
+	border-radius: 999px !important;
+	background: transparent !important;
+	box-shadow: none !important;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	cursor: pointer;
+	transition: transform 160ms var(--sl-spring), background 160ms ease;
+}
+.storyloom-ask-pill-btn:hover { background: var(--sl-glass-inner-hover) !important; }
+.storyloom-ask-pill-btn:active { transform: scale(0.95); }
+
+@media (prefers-reduced-motion: reduce) {
+	.storyloom-glass-panel, .storyloom-ask-pill, .storyloom-glass-chip, .storyloom-hover { animation: none !important; }
+	.storyloom-glass-mark.is-shimmer, .storyloom-glass-skeleton-line { animation: none; }
+}
 
 /* ---------- Shared view chrome ---------- */
 
