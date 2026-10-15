@@ -8,7 +8,7 @@ Everything is stored in plain notes. You can read and edit every bit of it by ha
 
 - **Book** — your book's bible: premise, tone, style guide and a *voice sample*. The AI copies this voice.
 - **Manuscript** — one note per chapter. Each one has a `chapter` number at the top; that number decides the order.
-- **Codex** — your characters, locations and lore. Each note has a *Timeline* and *Relationships* section.
+- **Codex** — your characters, locations and lore. Open it with the **library button** in the left ribbon: searchable cards, and a detail panel with each entry's relationships and timeline. (The Codex folder is hidden from the file list to keep it tidy; turn that off in Settings → Storyloom.) Each entry is still a plain note with a *Timeline* and *Relationships* section.
 - **Templates** — the starting point for new notes.
 
 ## A short tour (with the sample story)
@@ -19,7 +19,7 @@ The first time you open this vault, Obsidian asks whether you trust it. Choose *
 2. Open chapter 3 and hover **Mara** again: she has moved, she's injured, and she knows something new.
 3. Click the **people icon** in the left ribbon to open the **Cast** panel. It shows everyone in the current chapter.
 4. Click the **network icon** to open the **Story graph**. Drag the chapter slider and watch relationships and meetings change.
-5. Click the **table icon** to open the **Story timeline**: characters down the side, chapters across the top.
+5. Click the **table icon** to open the **Story timeline**: one lane per character, with their location as a coloured bar across the chapters they stay there. Hover any square to see that character as of that chapter; switch to **Locations** to see who is where.
 
 ## Using the AI
 

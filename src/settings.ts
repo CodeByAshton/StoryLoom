@@ -19,6 +19,7 @@ export interface StoryloomSettings extends ClientSettings {
 	debug: boolean;
 	showContextBeforeSending: boolean;
 	stream: boolean;
+	hideCodexFolder: boolean;
 	remindStateUpdate: boolean;
 	inlineEditKey: string;
 	askAiButton: boolean;
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: StoryloomSettings = {
 	debug: false,
 	showContextBeforeSending: false,
 	stream: true,
+	hideCodexFolder: true,
 	remindStateUpdate: true,
 	inlineEditKey: "Mod-k",
 	askAiButton: true,
@@ -177,6 +179,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName("Book").setHeading();
 		this.textSetting("Manuscript folder", "Chapter notes live here.", "manuscriptFolder");
 		this.textSetting("Codex folder", "Characters, locations and lore live under here.", "codexFolder");
+		this.toggleSetting("Hide the Codex folder in the file explorer", "Browse it with the Codex button in the ribbon instead. The notes stay in your vault as plain Markdown.", "hideCodexFolder");
 		this.textSetting("Templates folder", "Chapter, Character, Location and Lore templates.", "templatesFolder");
 		this.textSetting("Book note", "Premise, style guide and ## Voice sample.", "bookPath");
 
@@ -259,7 +262,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			);
 	}
 
-	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate") {
+	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate" | "hideCodexFolder") {
 		new Setting(this.containerEl)
 			.setName(name)
 			.setDesc(desc)

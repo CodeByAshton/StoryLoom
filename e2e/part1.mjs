@@ -78,16 +78,21 @@ ok(g3.label === "Chapter 3 — The Harbor", `(4) scrubber label: ${g3.label}`);
 await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-timeline"));
 await sleep(1500);
 await shot(page, "05-timeline");
-const grid = await page.evaluate(() =>
-	[...document.querySelectorAll(".storyloom-grid tbody tr")].map((tr) => ({
-		row: tr.querySelector("th").textContent,
-		cells: [...tr.querySelectorAll("td")].map((td) => (td.querySelector(".storyloom-cell-loc")?.textContent ?? "") + (td.querySelector(".storyloom-mention-dot") ? "•" : "")),
-	})),
-);
-console.log("   grid:", JSON.stringify(grid));
-const row = (n) => grid.find((r) => r.row.includes(n))?.cells ?? [];
-ok(JSON.stringify(row("Mara")) === JSON.stringify(["Blackwood Manor•", "Blackwood Manor•", "Old Harbor•"]), "(5) Mara's locations + mentions per chapter");
-ok(JSON.stringify(row("Elias")) === JSON.stringify(["Old Harbor", "Old Harbor", "Old Harbor•"]), "(5) Elias mentioned only in ch 3");
+const lanes = await page.evaluate(() => {
+	const grid = document.querySelector(".sl-tl-grid");
+	const out = {};
+	for (const name of grid.querySelectorAll(".sl-tl-name")) {
+		const row = name.style.gridRow;
+		const who = name.querySelector(".sl-tl-name-main").textContent;
+		const pills = [...grid.querySelectorAll(":scope > .sl-tl-pill")].filter((p) => p.style.gridRow === row).map((p) => `${p.textContent}@${p.style.gridColumn.replace(/ /g, "")}`);
+		const dots = [...grid.querySelectorAll(".sl-tl-cell")].filter((c) => c.style.gridRow === row).map((c) => (c.querySelector(".sl-tl-mention") ? "•" : "·")).join("");
+		out[who] = { pills, dots };
+	}
+	return out;
+});
+console.log("   lanes:", JSON.stringify(lanes));
+ok(JSON.stringify(lanes["Mara Winston"]) === JSON.stringify({ pills: ["Blackwood Manor@2/4", "Old Harbor@4/5"], dots: "•••" }), "(5) Mara's location pills span ch 1–2 then ch 3; mentioned in every chapter");
+ok(JSON.stringify(lanes["Elias Crane"]) === JSON.stringify({ pills: ["Old Harbor@2/5"], dots: "··•" }), "(5) Elias stays at Old Harbor; mentioned only in ch 3");
 
 // (8) Hand-edit a timeline line; hover card and cast panel update within a second.
 await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-cast"));

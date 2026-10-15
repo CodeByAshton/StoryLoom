@@ -41,6 +41,7 @@ import { TimelineEntryModal } from "./modals/timelineEntryModal";
 import { DEFAULT_SETTINGS, StoryloomSettingTab, type StoryloomSettings } from "./settings";
 import { CAST_VIEW, CastView } from "./views/castView";
 import { CHAT_VIEW, ChatView } from "./views/chatView";
+import { CODEX_VIEW, CodexView } from "./views/codexView";
 import { GRAPH_VIEW, GraphView } from "./views/graphView";
 import { TIMELINE_VIEW, TimelineView } from "./views/timelineView";
 import { proseHash, wordCount } from "./util";
@@ -67,14 +68,17 @@ export default class StoryloomPlugin extends Plugin {
 		this.ai = new AIService(this.app, this.index, () => this.settings, () => this.llm());
 		this.inline = new InlineEditController(this);
 		this.applyColors();
+		this.applyCodexFolderVisibility();
 
 		this.registerView(CAST_VIEW, (leaf) => new CastView(leaf, this));
 		this.registerView(GRAPH_VIEW, (leaf) => new GraphView(leaf, this));
 		this.registerView(TIMELINE_VIEW, (leaf) => new TimelineView(leaf, this));
 		this.registerView(CHAT_VIEW, (leaf) => new ChatView(leaf, this));
+		this.registerView(CODEX_VIEW, (leaf) => new CodexView(leaf, this));
 
 		this.registerEditorExtension([entityHighlighter(this), entityHover(this), inlineEditExtension(this, this.inline)]);
 
+		this.addRibbonIcon("library", "Storyloom: Codex", () => void this.openView(CODEX_VIEW, "tab"));
 		this.addRibbonIcon("network", "Storyloom: Story graph", () => void this.openView(GRAPH_VIEW, "tab"));
 		this.addRibbonIcon("table", "Storyloom: Story timeline", () => void this.openView(TIMELINE_VIEW, "tab"));
 		this.addRibbonIcon("users", "Storyloom: Cast", () => void this.openView(CAST_VIEW, "right"));
@@ -99,6 +103,7 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	onunload() {
+		document.getElementById("storyloom-hide-codex")?.remove();
 		for (const type of Object.keys(this.settings.entityColors)) document.body.style.removeProperty(`--storyloom-${type}`);
 	}
 
@@ -129,6 +134,7 @@ export default class StoryloomPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 		this.applyColors();
+		this.applyCodexFolderVisibility();
 		this.refreshEditors();
 	}
 
@@ -151,7 +157,7 @@ export default class StoryloomPlugin extends Plugin {
 
 	private onIndexChanged() {
 		this.refreshEditors();
-		for (const type of [CAST_VIEW, GRAPH_VIEW, TIMELINE_VIEW]) {
+		for (const type of [CAST_VIEW, GRAPH_VIEW, TIMELINE_VIEW, CODEX_VIEW]) {
 			for (const leaf of this.app.workspace.getLeavesOfType(type)) (leaf.view as unknown as { refresh?: () => void }).refresh?.();
 		}
 	}
@@ -176,6 +182,22 @@ export default class StoryloomPlugin extends Plugin {
 		await leaf.setViewState({ type, active: true });
 		await this.app.workspace.revealLeaf(leaf);
 		return leaf;
+	}
+
+	/** Open the Codex view with an entity selected. */
+	async openInCodex(e: Entity) {
+		const leaf = await this.openView(CODEX_VIEW, "tab");
+		(leaf?.view as CodexView | undefined)?.select?.(e.name);
+	}
+
+	/** The codex lives behind its own button; optionally hide its folder from the file explorer. */
+	applyCodexFolderVisibility() {
+		const id = "storyloom-hide-codex";
+		document.getElementById(id)?.remove();
+		if (!this.settings.hideCodexFolder) return;
+		const folder = normalizePath(this.settings.codexFolder).replace(/["\\]/g, "\\$&");
+		const style = document.head.createEl("style", { attr: { id } });
+		style.textContent = `.nav-folder:has(> .nav-folder-title[data-path="${folder}"]) { display: none; }`;
 	}
 
 	addTimelineEntry(e: Entity, chapter: number) {
@@ -251,6 +273,7 @@ export default class StoryloomPlugin extends Plugin {
 			},
 		});
 
+		this.addCommand({ id: "open-codex", name: "Open codex", callback: () => void this.openView(CODEX_VIEW, "tab") });
 		this.addCommand({ id: "open-cast", name: "Open cast panel", callback: () => void this.openView(CAST_VIEW, "right") });
 		this.addCommand({ id: "open-graph", name: "Open story graph", callback: () => void this.openView(GRAPH_VIEW, "tab") });
 		this.addCommand({ id: "open-timeline", name: "Open story timeline", callback: () => void this.openView(TIMELINE_VIEW, "tab") });

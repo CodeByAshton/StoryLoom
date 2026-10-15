@@ -22,7 +22,7 @@ To use Storyloom in an existing vault, copy `main.js`, `manifest.json` and `styl
 | **Codex** | Character, location and lore notes with `## Relationships` (chapter ranges) and `## Timeline` (`- ch N \| key: value`). |
 | **State as of chapter N** | Entity names are underlined in chapters. Hovering one shows that entity's state as of the current chapter. Cmd/Ctrl+click opens the note. |
 | **Story-state updater** | Reads a chapter and proposes timeline lines, relationship changes and new entities. You review and edit each item before anything is written. Running it twice adds nothing. |
-| **Views** | Cast panel (right sidebar), Story graph (with a chapter scrubber), Story timeline (characters × chapters grid), Story assistant chat (`@` mentions). |
+| **Views** | Codex (its own button: searchable cards and a detail panel; the Codex folder can be hidden from the file explorer), Cast panel (right sidebar), Story graph (with a chapter scrubber), Story timeline (swimlanes: location bars spanning chapters, status/knowledge markers, a Locations mode showing who is where), Story assistant chat (`@` mentions). |
 | **Housekeeping** | New chapter (auto-numbered), New character/location/lore, next/previous chapter, word count by chapter, Export manuscript, Clear sample content. |
 
 ## Providers
