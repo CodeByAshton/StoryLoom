@@ -42,6 +42,8 @@ import { DEFAULT_SETTINGS, StoryloomSettingTab, type StoryloomSettings } from ".
 import { CAST_VIEW, CastView } from "./views/castView";
 import { CHAT_VIEW, ChatView } from "./views/chatView";
 import { CODEX_VIEW, CodexView } from "./views/codexView";
+import { CHAPTERS_VIEW, ChaptersView } from "./views/chaptersView";
+import { remapNote, renumberedBasename, reorderMapping, type ChapterStatus } from "./views/chaptersModel";
 import { GRAPH_VIEW, GraphView } from "./views/graphView";
 import { TIMELINE_VIEW, TimelineView } from "./views/timelineView";
 import { proseHash, wordCount } from "./util";
@@ -75,9 +77,11 @@ export default class StoryloomPlugin extends Plugin {
 		this.registerView(TIMELINE_VIEW, (leaf) => new TimelineView(leaf, this));
 		this.registerView(CHAT_VIEW, (leaf) => new ChatView(leaf, this));
 		this.registerView(CODEX_VIEW, (leaf) => new CodexView(leaf, this));
+		this.registerView(CHAPTERS_VIEW, (leaf) => new ChaptersView(leaf, this));
 
 		this.registerEditorExtension([entityHighlighter(this), entityHover(this), inlineEditExtension(this, this.inline)]);
 
+		this.addRibbonIcon("layout-grid", "Storyloom: Chapters", () => void this.openView(CHAPTERS_VIEW, "tab"));
 		this.addRibbonIcon("library", "Storyloom: Codex", () => void this.openView(CODEX_VIEW, "tab"));
 		this.addRibbonIcon("network", "Storyloom: Story graph", () => void this.openView(GRAPH_VIEW, "tab"));
 		this.addRibbonIcon("table", "Storyloom: Story timeline", () => void this.openView(TIMELINE_VIEW, "tab"));
@@ -157,7 +161,7 @@ export default class StoryloomPlugin extends Plugin {
 
 	private onIndexChanged() {
 		this.refreshEditors();
-		for (const type of [CAST_VIEW, GRAPH_VIEW, TIMELINE_VIEW, CODEX_VIEW]) {
+		for (const type of [CAST_VIEW, GRAPH_VIEW, TIMELINE_VIEW, CODEX_VIEW, CHAPTERS_VIEW]) {
 			for (const leaf of this.app.workspace.getLeavesOfType(type)) (leaf.view as unknown as { refresh?: () => void }).refresh?.();
 		}
 	}
@@ -182,6 +186,69 @@ export default class StoryloomPlugin extends Plugin {
 		await leaf.setViewState({ type, active: true });
 		await this.app.workspace.revealLeaf(leaf);
 		return leaf;
+	}
+
+	async setChapterStatus(file: TFile, status: ChapterStatus) {
+		await this.app.fileManager.processFrontMatter(file, (fm) => {
+			fm.status = status;
+		});
+	}
+
+	/**
+	 * Put chapters in a new order (paths, first to last). Chapter numbers are reassigned, every codex
+	 * timeline line and relationship range moves with its chapter, and "NN - Title" files are renamed.
+	 * Shows exactly what will change and asks first.
+	 */
+	async reorderChapters(order: string[]) {
+		const chapters = order.map((p) => this.index.chapterForPath(p)).filter((c): c is NonNullable<typeof c> => !!c);
+		if (chapters.length !== this.index.chapters.length) return new Notice("Storyloom: the chapter list changed; try again.");
+		const map = reorderMapping(chapters.map((c) => c.chapter));
+		if (!map.size) return;
+
+		const notes: { file: TFile; changed: number }[] = [];
+		for (const e of this.index.entities.values()) {
+			const f = this.index.fileFor(e.path);
+			if (!f) continue;
+			const { changed } = remapNote(await this.app.vault.cachedRead(f), map);
+			if (changed) notes.push({ file: f, changed });
+		}
+		const moves = chapters.filter((c) => map.has(c.chapter)).map((c) => ({ c, to: map.get(c.chapter) as number }));
+		const renames = moves
+			.map(({ c, to }) => ({ file: this.index.fileFor(c.path), name: renumberedBasename(c.basename, to) }))
+			.filter((r): r is { file: TFile; name: string } => !!r.file && !!r.name && r.name !== r.file.basename);
+		const lines = notes.reduce((a, n) => a + n.changed, 0);
+
+		const ok = await ConfirmModal.ask(this.app, {
+			title: "Reorder chapters?",
+			cta: "Reorder",
+			body: (el) => {
+				const ul = el.createEl("ul", { cls: "storyloom-file-list" });
+				for (const { c, to } of moves) ul.createEl("li", { text: `“${c.title}”: chapter ${c.chapter} → ${to}` });
+				el.createEl("p", {
+					cls: "storyloom-muted",
+					text: `Codex timelines follow their chapters: ${lines} line${lines === 1 ? "" : "s"} in ${notes.length} note${notes.length === 1 ? "" : "s"} will be renumbered.${renames.length ? ` ${renames.length} file${renames.length === 1 ? "" : "s"} will be renamed (links update automatically).` : ""}`,
+				});
+			},
+		});
+		if (!ok) return;
+
+		for (const { file } of notes) await this.app.vault.process(file, (t) => remapNote(t, map).text);
+		for (const { c, to } of moves) {
+			const f = this.index.fileFor(c.path);
+			if (f) await this.app.fileManager.processFrontMatter(f, (fm) => (fm.chapter = to));
+		}
+		for (const { file, name } of renames) {
+			const dest = normalizePath(`${file.parent?.path ?? ""}/${name}.${file.extension}`);
+			if (this.app.vault.getAbstractFileByPath(dest)) continue;
+			const old = file.path;
+			await this.app.fileManager.renameFile(file, dest);
+			if (this.settings.stateSynced[old]) {
+				this.settings.stateSynced[dest] = this.settings.stateSynced[old];
+				delete this.settings.stateSynced[old];
+			}
+		}
+		await this.saveData(this.settings);
+		new Notice(`Storyloom: reordered ${moves.length} chapters; updated ${lines} codex line${lines === 1 ? "" : "s"}.`);
 	}
 
 	/** Open the Codex view with an entity selected. */
@@ -273,6 +340,7 @@ export default class StoryloomPlugin extends Plugin {
 			},
 		});
 
+		this.addCommand({ id: "open-chapters", name: "Open chapters board", callback: () => void this.openView(CHAPTERS_VIEW, "tab") });
 		this.addCommand({ id: "open-codex", name: "Open codex", callback: () => void this.openView(CODEX_VIEW, "tab") });
 		this.addCommand({ id: "open-cast", name: "Open cast panel", callback: () => void this.openView(CAST_VIEW, "right") });
 		this.addCommand({ id: "open-graph", name: "Open story graph", callback: () => void this.openView(GRAPH_VIEW, "tab") });

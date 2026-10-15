@@ -19,7 +19,8 @@ The first time you open this vault, Obsidian asks whether you trust it. Choose *
 2. Open chapter 3 and hover **Mara** again: she has moved, she's injured, and she knows something new.
 3. Click the **people icon** in the left ribbon to open the **Cast** panel. It shows everyone in the current chapter.
 4. Click the **network icon** to open the **Story graph**. Drag the chapter slider and watch relationships and meetings change.
-5. Click the **table icon** to open the **Story timeline**: one lane per character, with their location as a coloured bar across the chapters they stay there. Hover any square to see that character as of that chapter; switch to **Locations** to see who is where.
+5. Click the **grid icon** to open **Chapters**: a card per chapter with its summary, point of view, cast and word count. Drag cards to reorder chapters (the codex timelines follow automatically), or switch to **Board** and drag chapters between Draft, Revised and Final.
+6. Click the **table icon** to open the **Story timeline**: one lane per character, with their location as a coloured bar across the chapters they stay there. Hover any square to see that character as of that chapter; switch to **Locations** to see who is where.
 
 ## Using the AI
 
