@@ -6,7 +6,8 @@ const sleep = (ms) => page.waitForTimeout(ms);
 const read = (p) => page.evaluate(async (p) => { const f = window.app.vault.getAbstractFileByPath(p); return f ? window.app.vault.read(f) : null; }, p);
 for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) break; await sleep(300); }
 
-await page.locator('.side-dock-ribbon-action[aria-label="Storyloom: Chapters"]').click();
+await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').click();
+await page.locator(".menu .menu-item", { hasText: /^Chapters$/ }).click();
 await page.waitForSelector(".sl-ch-card[data-path]");
 await sleep(600);
 const titles = () => page.locator(".sl-ch-grid .sl-ch-card[data-path] .sl-ch-card-title").allInnerTexts();

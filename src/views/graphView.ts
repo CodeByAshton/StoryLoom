@@ -1,6 +1,8 @@
 import { debounce, ItemView, setIcon, type WorkspaceLeaf } from "obsidian";
 import { ENTITY_TYPES, type Entity, type EntityType } from "../codex/types";
 import type StoryloomPlugin from "../main";
+import { renderEmpty } from "./empty";
+import { renderNav } from "./nav";
 import { renderEntityCard } from "./card";
 import { allPairs, edgesAt, forceLayout, type GraphEdge, type Point } from "./graphModel";
 
@@ -24,6 +26,8 @@ export class GraphView extends ItemView {
 	private presence = true;
 	private positions = new Map<string, Point>();
 	private svgEl!: SVGSVGElement;
+	private stage!: HTMLElement;
+	private emptyEl?: HTMLElement;
 	private edgeLayer!: SVGGElement;
 	private nodeLayer!: SVGGElement;
 	private tooltipEl!: HTMLElement;
@@ -77,38 +81,47 @@ export class GraphView extends ItemView {
 		root.empty();
 		root.addClass("storyloom-graph");
 
-		const bar = root.createDiv({ cls: "storyloom-view-toolbar" });
-		const filters = bar.createDiv({ cls: "storyloom-graph-filters" });
+		const bar = root.createDiv({ cls: "sl-tl-toolbar" });
+		renderNav(bar, this.leaf, this.getViewType());
+		const chips = root.createDiv({ cls: "sl-cx-chips" });
+		const counts = new Map<string, number>();
+		for (const e of this.plugin.index.sortedEntities()) counts.set(e.type, (counts.get(e.type) ?? 0) + 1);
+		const ICONS: Record<string, string> = { character: "user", location: "map-pin", lore: "scroll-text", item: "gem", faction: "flag" };
 		for (const t of ENTITY_TYPES) {
-			const label = filters.createEl("label", { cls: `storyloom-filter storyloom-type-${t}` });
-			const cb = label.createEl("input", { type: "checkbox" });
-			cb.checked = this.filters.has(t);
-			cb.addEventListener("change", () => {
-				if (cb.checked) this.filters.add(t);
-				else this.filters.delete(t);
+			if (!counts.get(t)) continue;
+			const c = chips.createEl("button", { cls: `sl-cx-chip storyloom-type-${t}${this.filters.has(t) ? " is-active" : ""}` });
+			setIcon(c.createSpan({ cls: "sl-cx-chip-icon" }), ICONS[t]);
+			c.createSpan({ text: t.charAt(0).toUpperCase() + t.slice(1) + (t === "lore" ? "" : "s") });
+			c.createSpan({ cls: "sl-cx-chip-count", text: String(counts.get(t)) });
+			c.addEventListener("click", () => {
+				if (this.filters.has(t)) this.filters.delete(t);
+				else this.filters.add(t);
+				c.toggleClass("is-active", this.filters.has(t));
 				this.rebuild();
 			});
-			label.createSpan({ cls: "storyloom-dot-type" });
-			label.createSpan({ text: t });
 		}
-		const opt = (text: string, get: () => boolean, set: (v: boolean) => void) => {
-			const label = filters.createEl("label", { cls: "storyloom-filter" });
-			const cb = label.createEl("input", { type: "checkbox" });
-			cb.checked = get();
-			cb.addEventListener("change", () => {
-				set(cb.checked);
+
+		const toggles = chips.createDiv({ cls: "sl-gr-toggles" });
+		const toggle = (text: string, icon: string, hint: string, get: () => boolean, set: (v: boolean) => void) => {
+			const b = toggles.createEl("button", { cls: `sl-cx-chip${get() ? " is-active" : ""}`, attr: { "aria-label": hint, "aria-pressed": String(get()) } });
+			setIcon(b.createSpan({ cls: "sl-cx-chip-icon" }), icon);
+			b.createSpan({ text });
+			b.addEventListener("click", () => {
+				set(!get());
+				b.toggleClass("is-active", get());
+				b.setAttr("aria-pressed", String(get()));
 				this.update();
 			});
-			label.createSpan({ text });
 		};
-		opt("together", () => this.together, (v) => (this.together = v));
-		opt("whereabouts", () => this.presence, (v) => (this.presence = v));
+		toggle("Who's together", "users", "Dashed lines between characters in the same place", () => this.together, (v) => (this.together = v));
+		toggle("Where they are", "map-pin", "Dotted lines from characters to their location", () => this.presence, (v) => (this.presence = v));
 
-		const scrub = root.createDiv({ cls: "storyloom-scrubber" });
-		const prev = scrub.createEl("button", { attr: { "aria-label": "Previous chapter" } });
+		const stage = (this.stage = root.createDiv({ cls: "storyloom-graph-stage" }));
+		const scrub = stage.createDiv({ cls: "storyloom-scrubber storyloom-glass" });
+		const prev = scrub.createEl("button", { cls: "storyloom-glass-btn is-icon", attr: { "aria-label": "Previous chapter" } });
 		setIcon(prev, "chevron-left");
 		this.slider = scrub.createEl("input", { type: "range", cls: "storyloom-slider" });
-		const next = scrub.createEl("button", { attr: { "aria-label": "Next chapter" } });
+		const next = scrub.createEl("button", { cls: "storyloom-glass-btn is-icon", attr: { "aria-label": "Next chapter" } });
 		setIcon(next, "chevron-right");
 		this.labelEl = scrub.createDiv({ cls: "storyloom-scrub-label" });
 		prev.addEventListener("click", () => this.step(-1));
@@ -118,8 +131,6 @@ export class GraphView extends ItemView {
 			this.chapter = chs[Number(this.slider.value)] ?? this.chapter;
 			this.update();
 		});
-
-		const stage = root.createDiv({ cls: "storyloom-graph-stage" });
 		this.svgEl = svg("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMidYMid meet" });
 		stage.appendChild(this.svgEl);
 		this.edgeLayer = svg("g", { class: "storyloom-edges" }, this.svgEl);
@@ -161,9 +172,17 @@ export class GraphView extends ItemView {
 		this.nodeEls.clear();
 		this.edgeLayer.empty();
 		this.edgeEls.clear();
+		this.emptyEl?.remove();
 		if (!entities.length) {
-			const t = svg("text", { x: W / 2, y: H / 2, "text-anchor": "middle", class: "storyloom-graph-empty" }, this.nodeLayer);
-			t.textContent = "No codex entries to show.";
+			const any = this.plugin.index.entities.size > 0;
+			this.emptyEl = renderEmpty(this.stage, any
+				? { icon: "filter", title: "Everything is filtered out", body: "Turn a type back on above to see it here." }
+				: {
+						icon: "network",
+						title: "No one to show yet",
+						body: "The graph draws your characters, places and lore, and the relationships between them as of each chapter.",
+						actions: [{ label: "New character", icon: "user", cta: true, onClick: () => void this.plugin.newEntity("character") }],
+					});
 		}
 		for (const e of entities) this.drawNode(e);
 		if (!this.userMoved) this.fitView(names);
@@ -177,7 +196,8 @@ export class GraphView extends ItemView {
 		const minX = Math.min(...pts.map((p) => p.x)) - pad;
 		const maxX = Math.max(...pts.map((p) => p.x)) + pad;
 		const minY = Math.min(...pts.map((p) => p.y)) - pad;
-		const maxY = Math.max(...pts.map((p) => p.y)) + pad;
+		// Extra room at the bottom for the floating chapter scrubber.
+		const maxY = Math.max(...pts.map((p) => p.y)) + pad + 0.18 * (Math.max(...pts.map((p) => p.y)) - Math.min(...pts.map((p) => p.y)) + 2 * pad);
 		this.view = { x: minX, y: minY, w: Math.max(240, maxX - minX), h: Math.max(200, maxY - minY) };
 		this.svgEl.setAttribute("viewBox", `${this.view.x} ${this.view.y} ${this.view.w} ${this.view.h}`);
 	}

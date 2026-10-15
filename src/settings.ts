@@ -28,6 +28,11 @@ export interface StoryloomSettings extends ClientSettings {
 	saveChats: boolean;
 	/** Chapter path -> prose hash at the last "Update story state", to flag chapters edited since. */
 	stateSynced: Record<string, string>;
+	/** The setup wizard has been shown. */
+	onboarded: boolean;
+	/** One Storyloom ribbon button with a menu, or a button per view. */
+	separateRibbonButtons: boolean;
+	statusBar: boolean;
 }
 
 export const DEFAULT_SETTINGS: StoryloomSettings = {
@@ -63,6 +68,9 @@ export const DEFAULT_SETTINGS: StoryloomSettings = {
 	instructionHistory: [],
 	saveChats: false,
 	stateSynced: {},
+	onboarded: false,
+	separateRibbonButtons: false,
+	statusBar: true,
 };
 
 export class StoryloomSettingTab extends PluginSettingTab {
@@ -77,6 +85,11 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		const s = this.plugin.settings;
 		containerEl.empty();
+
+		new Setting(containerEl)
+			.setName("Setup guide")
+			.setDesc("Walks through connecting an AI and creating your book's folders and templates.")
+			.addButton((b) => b.setButtonText("Open setup").onClick(() => this.plugin.openSetup()));
 
 		new Setting(containerEl).setName("AI provider").setHeading();
 
@@ -130,13 +143,8 @@ export class StoryloomSettingTab extends PluginSettingTab {
 				b.setButtonText("Test").onClick(async () => {
 					b.setDisabled(true).setButtonText("Testing…");
 					try {
-						const out = await this.plugin.llm().complete({
-							system: "",
-							messages: [{ role: "user", content: "Reply with the single word: OK" }],
-							maxTokens: 400,
-							temperature: 0,
-						});
-						new Notice(`Storyloom: connected. The model replied “${out.trim().slice(0, 40)}”.`);
+						const out = await this.plugin.testConnection();
+						new Notice(`Storyloom: connected. The model replied “${out}”.`);
 					} catch (e) {
 						this.plugin.errorNotice(e);
 					} finally {
@@ -212,6 +220,10 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			);
 		}
 
+		new Setting(containerEl).setName("Interface").setHeading();
+		this.toggleSetting("Separate ribbon buttons", "Show a ribbon button for each view instead of one Storyloom button with a menu. Reload the plugin after changing.", "separateRibbonButtons");
+		this.toggleSetting("Status bar", "Show the current chapter, its word count and whether its story state is up to date. Click it for chapter actions.", "statusBar");
+
 		new Setting(containerEl).setName("Advanced").setHeading();
 		this.toggleSetting("Remind me to update story state", "When you leave a chapter you've edited since its last story-state update, offer to run it.", "remindStateUpdate");
 		this.toggleSetting("Stream responses", "Show text as it's written. Turns itself off for the session if a provider blocks it (e.g. a local server without CORS enabled).", "stream");
@@ -262,7 +274,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			);
 	}
 
-	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate" | "hideCodexFolder") {
+	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate" | "hideCodexFolder" | "separateRibbonButtons" | "statusBar") {
 		new Setting(this.containerEl)
 			.setName(name)
 			.setDesc(desc)

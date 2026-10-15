@@ -7,13 +7,14 @@ for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugi
 const explorerShows = (folder) => page.evaluate((f) => { const t = document.querySelector(`.nav-folder-title[data-path="${f}"]`); return !!t && getComputedStyle(t.closest(".nav-folder")).display !== "none"; }, folder);
 
 ok(!(await explorerShows("Codex")) && (await explorerShows("Manuscript")), "Codex folder is hidden from the file explorer; Manuscript isn't");
-ok((await page.locator('.side-dock-ribbon-action[aria-label="Storyloom: Codex"]').count()) === 1, "Codex has its own ribbon button");
+ok((await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').count()) === 1, "One Storyloom ribbon button");
 await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; p.settings.hideCodexFolder = false; await p.saveSettings(); });
 await sleep(300);
 ok(await explorerShows("Codex"), "turning the setting off shows the folder again");
 await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; p.settings.hideCodexFolder = true; await p.saveSettings(); });
 
-await page.locator('.side-dock-ribbon-action[aria-label="Storyloom: Codex"]').click();
+await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').click();
+await page.locator(".menu .menu-item", { hasText: /^Codex$/ }).click();
 await page.waitForSelector(".sl-cx-card");
 ok((await page.locator(".sl-cx-card").count()) === 6, "Codex shows a card per entity");
 await page.locator(".sl-cx-search").fill("harbor");

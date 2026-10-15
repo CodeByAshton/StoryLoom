@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view";
-import { Editor, MarkdownView, Menu, Notice, normalizePath, Platform, Plugin, requestUrl, Scope, TFile, type MarkdownFileInfo, type Modifier, type WorkspaceLeaf } from "obsidian";
+import { debounce, Editor, MarkdownView, Menu, Notice, setIcon, normalizePath, Platform, Plugin, requestUrl, Scope, TFile, type MarkdownFileInfo, type Modifier, type WorkspaceLeaf } from "obsidian";
 import { AIService } from "./ai";
 import { applyChanges, createEntities, ensureFolder, readTemplate } from "./codex/apply";
 import { CodexIndex } from "./codex/index";
@@ -38,6 +38,7 @@ import { ReportModal } from "./modals/reportModal";
 import { ResultModal } from "./modals/resultModal";
 import { buildReviewRows, StateReviewModal } from "./modals/stateReviewModal";
 import { TimelineEntryModal } from "./modals/timelineEntryModal";
+import { SetupModal } from "./modals/setupModal";
 import { DEFAULT_SETTINGS, StoryloomSettingTab, type StoryloomSettings } from "./settings";
 import { CAST_VIEW, CastView } from "./views/castView";
 import { CHAT_VIEW, ChatView } from "./views/chatView";
@@ -55,6 +56,15 @@ const http: HttpFn = async (req) => {
 };
 
 export const SAMPLE_FLAG = "storyloom_sample";
+
+const VIEWS: { type: string; name: string; icon: string; where: "tab" | "right" }[] = [
+	{ type: CHAPTERS_VIEW, name: "Chapters", icon: "layout-grid", where: "tab" },
+	{ type: CODEX_VIEW, name: "Codex", icon: "library", where: "tab" },
+	{ type: TIMELINE_VIEW, name: "Story timeline", icon: "table", where: "tab" },
+	{ type: GRAPH_VIEW, name: "Story graph", icon: "network", where: "tab" },
+	{ type: CAST_VIEW, name: "Cast", icon: "users", where: "right" },
+	{ type: CHAT_VIEW, name: "Story assistant", icon: "message-circle", where: "right" },
+];
 
 export default class StoryloomPlugin extends Plugin {
 	settings!: StoryloomSettings;
@@ -81,12 +91,12 @@ export default class StoryloomPlugin extends Plugin {
 
 		this.registerEditorExtension([entityHighlighter(this), entityHover(this), inlineEditExtension(this, this.inline)]);
 
-		this.addRibbonIcon("layout-grid", "Storyloom: Chapters", () => void this.openView(CHAPTERS_VIEW, "tab"));
-		this.addRibbonIcon("library", "Storyloom: Codex", () => void this.openView(CODEX_VIEW, "tab"));
-		this.addRibbonIcon("network", "Storyloom: Story graph", () => void this.openView(GRAPH_VIEW, "tab"));
-		this.addRibbonIcon("table", "Storyloom: Story timeline", () => void this.openView(TIMELINE_VIEW, "tab"));
-		this.addRibbonIcon("users", "Storyloom: Cast", () => void this.openView(CAST_VIEW, "right"));
-		this.addRibbonIcon("message-circle", "Storyloom: Story assistant", () => void this.openView(CHAT_VIEW, "right"));
+		if (this.settings.separateRibbonButtons) {
+			for (const v of VIEWS) this.addRibbonIcon(v.icon, `Storyloom: ${v.name}`, () => void this.openView(v.type, v.where));
+		} else {
+			this.addRibbonIcon("feather", "Storyloom", (ev) => this.storyloomMenu().showAtMouseEvent(ev));
+		}
+		this.setupStatusBar();
 
 		this.addSettingTab(new StoryloomSettingTab(this.app, this));
 		this.registerInlineEditKey();
@@ -97,6 +107,7 @@ export default class StoryloomPlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on("file-open", (f) => void this.onFileOpen(f)));
 		this.app.workspace.onLayoutReady(async () => {
 			await this.index.load((ref) => this.registerEvent(ref));
+			if (!this.settings.onboarded) this.openSetup();
 			// On a cold start the metadata cache may still be filling; rebuild once it has resolved.
 			const ref = this.app.metadataCache.on("resolved", () => {
 				this.app.metadataCache.offref(ref);
@@ -130,6 +141,90 @@ export default class StoryloomPlugin extends Plugin {
 		this.register(() => this.app.keymap.popScope(scope));
 	}
 
+	/** Everything Storyloom opens, in one menu: the ribbon button, and the status bar's "More". */
+	storyloomMenu(): Menu {
+		const menu = new Menu();
+		for (const v of VIEWS) menu.addItem((i) => i.setTitle(v.name).setIcon(v.icon).onClick(() => void this.openView(v.type, v.where)));
+		menu.addSeparator();
+		menu.addItem((i) => i.setTitle("New chapter").setIcon("file-plus").onClick(() => void this.newChapter()));
+		menu.addItem((i) => i.setTitle("New character").setIcon("user-plus").onClick(() => void this.newEntity("character")));
+		menu.addItem((i) => i.setTitle("New location").setIcon("map-pin").onClick(() => void this.newEntity("location")));
+		menu.addSeparator();
+		menu.addItem((i) => i.setTitle("Setup guide").setIcon("sparkles").onClick(() => this.openSetup()));
+		menu.addItem((i) => i.setTitle("Settings").setIcon("settings").onClick(() => openSettings(this.app)));
+		return menu;
+	}
+
+	openSetup() {
+		new SetupModal(this).open();
+	}
+
+	/** A tiny request with the current settings. Resolves to the model's (trimmed) reply. */
+	async testConnection(): Promise<string> {
+		const out = await this.llm().complete({
+			system: "",
+			messages: [{ role: "user", content: "Reply with the single word: OK" }],
+			maxTokens: 400,
+			temperature: 0,
+		});
+		return out.trim().slice(0, 40);
+	}
+
+	// ---------- Status bar ----------
+
+	private statusEl: HTMLElement | null = null;
+	updateStatus = debounce(() => void this.renderStatus(), 400, true);
+
+	private setupStatusBar() {
+		const el = (this.statusEl = this.addStatusBarItem());
+		el.addClass("sl-status", "mod-clickable");
+		el.addEventListener("click", (ev) => this.statusMenu().showAtMouseEvent(ev));
+		this.registerEvent(this.app.workspace.on("file-open", () => this.updateStatus()));
+		this.registerEvent(this.app.workspace.on("editor-change", () => this.updateStatus()));
+		this.registerEvent(this.app.vault.on("modify", (f) => f.path === this.activeMarkdownFile()?.path && this.updateStatus()));
+		this.app.workspace.onLayoutReady(() => this.updateStatus());
+	}
+
+	private async renderStatus() {
+		const el = this.statusEl;
+		if (!el) return;
+		const file = this.activeMarkdownFile();
+		const ch = this.index.chapterForPath(file?.path);
+		if (!this.settings.statusBar || !file || !ch) {
+			el.hide();
+			return;
+		}
+		const editor = this.activeEditor();
+		const text = editor && this.app.workspace.getActiveFile()?.path === file.path ? editor.getValue() : await this.app.vault.cachedRead(file);
+		const synced = this.settings.stateSynced[file.path];
+		const stale = !!synced && synced !== proseHash(text);
+		el.empty();
+		el.show();
+		setIcon(el.createSpan({ cls: "sl-status-icon" }), "feather");
+		const all = this.index.chapters;
+		el.createSpan({ text: `Chapter ${all.indexOf(ch) + 1} of ${all.length}` });
+		el.createSpan({ cls: "sl-status-title", text: ch.title });
+		if (stale) el.createSpan({ cls: "sl-status-dot", attr: { "aria-label": "Edited since the last story-state update" } });
+		el.setAttr("aria-label", stale ? "Edited since the last story-state update. Click for chapter actions." : "Chapter actions");
+		el.setAttr("data-tooltip-position", "top");
+	}
+
+	private statusMenu(): Menu {
+		const menu = new Menu();
+		const file = this.activeMarkdownFile();
+		if (file && this.index.chapterForPath(file.path)) {
+			menu.addItem((i) => i.setTitle("Update story state").setIcon("refresh-cw").onClick(() => void this.updateStoryState(file)));
+			menu.addItem((i) => i.setTitle("Summarize chapter").setIcon("align-left").onClick(() => void this.summarize(file)));
+			menu.addSeparator();
+			menu.addItem((i) => i.setTitle("Previous chapter").setIcon("arrow-left").onClick(() => void this.stepChapter(-1)));
+			menu.addItem((i) => i.setTitle("Next chapter").setIcon("arrow-right").onClick(() => void this.stepChapter(1)));
+			menu.addItem((i) => i.setTitle("Show in Chapters").setIcon("layout-grid").onClick(() => void this.openView(CHAPTERS_VIEW, "tab")));
+		}
+		menu.addSeparator();
+		menu.addItem((i) => i.setTitle("Cast").setIcon("users").onClick(() => void this.openView(CAST_VIEW, "right")));
+		return menu;
+	}
+
 	async loadSettings() {
 		const data = (await this.loadData()) ?? {};
 		this.settings = { ...DEFAULT_SETTINGS, ...data, entityColors: { ...DEFAULT_SETTINGS.entityColors, ...(data.entityColors ?? {}) } };
@@ -140,6 +235,7 @@ export default class StoryloomPlugin extends Plugin {
 		this.applyColors();
 		this.applyCodexFolderVisibility();
 		this.refreshEditors();
+		this.updateStatus?.();
 	}
 
 	llm(): LLMClient {
@@ -160,6 +256,7 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	private onIndexChanged() {
+		this.updateStatus();
 		this.refreshEditors();
 		for (const type of [CAST_VIEW, GRAPH_VIEW, TIMELINE_VIEW, CODEX_VIEW, CHAPTERS_VIEW]) {
 			for (const leaf of this.app.workspace.getLeavesOfType(type)) (leaf.view as unknown as { refresh?: () => void }).refresh?.();
@@ -340,6 +437,7 @@ export default class StoryloomPlugin extends Plugin {
 			},
 		});
 
+		this.addCommand({ id: "open-setup", name: "Open setup guide", callback: () => this.openSetup() });
 		this.addCommand({ id: "open-chapters", name: "Open chapters board", callback: () => void this.openView(CHAPTERS_VIEW, "tab") });
 		this.addCommand({ id: "open-codex", name: "Open codex", callback: () => void this.openView(CODEX_VIEW, "tab") });
 		this.addCommand({ id: "open-cast", name: "Open cast panel", callback: () => void this.openView(CAST_VIEW, "right") });
@@ -620,6 +718,7 @@ export default class StoryloomPlugin extends Plugin {
 		this.settings.stateSynced[file.path] = proseHash(text);
 		await this.saveData(this.settings);
 		this.app.workspace.getLeavesOfType(CAST_VIEW).forEach((l) => (l.view as CastView).refresh());
+		this.updateStatus();
 	}
 
 	async extractEntities(file: TFile) {

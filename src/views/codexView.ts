@@ -3,6 +3,8 @@ import { stripWikilinks } from "../codex/parse";
 import { resolveState, sortedTimeline } from "../codex/state";
 import { ENTITY_TYPES, type Entity, type EntityType } from "../codex/types";
 import type StoryloomPlugin from "../main";
+import { renderEmpty } from "./empty";
+import { renderNav } from "./nav";
 import { huePalette, initials } from "./timelineModel";
 
 export const CODEX_VIEW = "storyloom-codex";
@@ -69,9 +71,7 @@ export class CodexView extends ItemView {
 
 		// Toolbar
 		const bar = root.createDiv({ cls: "sl-cx-toolbar" });
-		const title = bar.createDiv({ cls: "sl-cx-title" });
-		setIcon(title.createSpan({ cls: "sl-cx-title-icon" }), "library");
-		title.createSpan({ text: "Codex" });
+		renderNav(bar, this.leaf, this.getViewType());
 		const search = bar.createDiv({ cls: "sl-cx-searchbox" });
 		setIcon(search.createSpan({ cls: "sl-cx-search-icon" }), "search");
 		const input = search.createEl("input", { type: "search", cls: "sl-cx-search", attr: { placeholder: "Search names, aliases, descriptions…" } });
@@ -129,9 +129,24 @@ export class CodexView extends ItemView {
 		grid.empty();
 		const list = this.filtered();
 		if (!list.length) {
-			const empty = grid.createDiv({ cls: "sl-cx-empty" });
-			empty.createDiv({ text: this.plugin.index.entities.size ? "Nothing matches." : "Your codex is empty." });
-			if (!this.plugin.index.entities.size) empty.createDiv({ cls: "storyloom-muted", text: "Add a character, location or lore entry with New, or run “Extract new entities” on a chapter." });
+			if (this.plugin.index.entities.size) {
+				renderEmpty(grid, {
+					icon: "search-x",
+					title: "Nothing matches",
+					body: "Try another search, or show every type.",
+					actions: [{ label: "Clear filters", icon: "x", onClick: () => { this.query = ""; this.type = "all"; this.render(); } }],
+				});
+			} else {
+				renderEmpty(grid, {
+					icon: "library",
+					title: "Your codex is empty",
+					body: "The codex holds your characters, places and lore. Storyloom uses it to underline names, show who's where, and give the AI context.",
+					actions: [
+						{ label: "New character", icon: "user", cta: true, onClick: () => void this.plugin.newEntity("character") },
+						{ label: "New location", icon: "map-pin", onClick: () => void this.plugin.newEntity("location") },
+					],
+				});
+			}
 			return;
 		}
 		list.forEach((e, i) => {

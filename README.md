@@ -9,9 +9,9 @@ Everything lives in plain Markdown notes that you can edit by hand. The plugin k
 1. `npm install && npm run vault`. This builds the plugin and copies it into the sample vault.
 2. Open the `My Book/` folder as a vault in Obsidian (1.5+). When Obsidian asks, choose **Trust author and enable plugins**.
 3. Read `Start Here.md` in the vault. It walks through the sample story, the hover cards, the Cast panel, the graph and the timeline.
-4. In **Settings → Storyloom**, choose **Claude Code (your Claude subscription)** if you have Claude Code installed, or paste an API key. Then click **Test**.
+4. A setup guide opens on first run. It connects an AI (your Claude subscription through Claude Code, an API key, or Ollama), with a test button. You can reopen it from the Storyloom menu or with **Open setup guide**.
 
-To use Storyloom in an existing vault, copy `main.js`, `manifest.json` and `styles.css` into `<vault>/.obsidian/plugins/storyloom/`. Then enable the plugin and set the Manuscript, Codex and Book paths in its settings.
+To use Storyloom in an existing vault, copy `main.js`, `manifest.json` and `styles.css` into `<vault>/.obsidian/plugins/storyloom/` and enable the plugin. The setup guide's **Your book** step creates whatever is missing: the Manuscript and Codex folders, templates, and a Book note. It never overwrites existing files.
 
 ## What it does
 
@@ -23,6 +23,7 @@ To use Storyloom in an existing vault, copy `main.js`, `manifest.json` and `styl
 | **State as of chapter N** | Entity names are underlined in chapters. Hovering one shows that entity's state as of the current chapter. Cmd/Ctrl+click opens the note. |
 | **Story-state updater** | Reads a chapter and proposes timeline lines, relationship changes and new entities. You review and edit each item before anything is written. Running it twice adds nothing. |
 | **Views** | Chapters (cards with summary, POV, cast and word count; drag to reorder, and every codex timeline line and relationship range follows its chapter; or a Draft/Revised/Final board), Codex (its own button: searchable cards and a detail panel; the Codex folder can be hidden from the file explorer), Cast panel (right sidebar), Story graph (with a chapter scrubber), Story timeline (swimlanes: location bars spanning chapters, status/knowledge markers, a Locations mode showing who is where), Story assistant chat (`@` mentions). |
+| **Getting around** | One **Storyloom** ribbon button (a feather) opens a menu of every view and quick action. You can switch to separate buttons in settings. Chapters, Codex, Timeline and Graph share a tab bar and swap in place. A status-bar item shows the current chapter with a dot when its story state is out of date; click it for chapter actions. Empty views say what's missing and offer a button to fix it. |
 | **Housekeeping** | New chapter (auto-numbered), New character/location/lore, next/previous chapter, word count by chapter, Export manuscript, Clear sample content. |
 
 ## Providers

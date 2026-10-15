@@ -3,6 +3,8 @@ import { stripFrontmatter } from "../codex/parse";
 import { resolveState } from "../codex/state";
 import type { ChapterInfo, Entity } from "../codex/types";
 import type StoryloomPlugin from "../main";
+import { renderEmpty } from "./empty";
+import { renderNav } from "./nav";
 import { wordCount } from "../util";
 import { renderEntityCard } from "./card";
 import { huePalette, initials, laneEvents, locationRuns, presentAt } from "./timelineModel";
@@ -84,9 +86,7 @@ export class TimelineView extends ItemView {
 		// Toolbar
 		const total = Array.from(words.values()).reduce((a, b) => a + b, 0);
 		const bar = root.createDiv({ cls: "sl-tl-toolbar" });
-		const title = bar.createDiv({ cls: "sl-tl-title" });
-		setIcon(title.createSpan({ cls: "sl-tl-title-icon" }), "git-commit-horizontal");
-		title.createSpan({ text: "Story timeline" });
+		renderNav(bar, this.leaf, this.getViewType());
 		const stats = bar.createDiv({ cls: "sl-tl-stats" });
 		for (const [n, label] of [[chapters.length, "chapters"], [total.toLocaleString(), "words"], [index.sortedEntities().filter((e) => e.type === "character").length, "characters"]] as const) {
 			const s = stats.createDiv({ cls: "sl-tl-stat" });
@@ -105,12 +105,23 @@ export class TimelineView extends ItemView {
 		}
 
 		if (!chapters.length) {
-			root.createDiv({ cls: "storyloom-empty", text: "No chapters yet. Chapter notes need `type: chapter` and `chapter: N` in their frontmatter." });
+			renderEmpty(root, {
+				icon: "table",
+				title: "Nothing on the timeline yet",
+				body: "The timeline has a column per chapter and a lane per character, showing where everyone is as the story moves. Write a chapter to get started.",
+				actions: [{ label: "New chapter", icon: "file-plus", cta: true, onClick: () => void this.plugin.newChapter() }],
+			});
 			return;
 		}
 		const rows = index.sortedEntities().filter((e) => e.type === (this.mode === "characters" ? "character" : "location"));
 		if (!rows.length) {
-			root.createDiv({ cls: "storyloom-empty", text: `No ${this.mode} in the codex yet.` });
+			const type = this.mode === "characters" ? "character" : "location";
+			renderEmpty(root, {
+				icon: this.mode === "characters" ? "users" : "map-pin",
+				title: `No ${this.mode} yet`,
+				body: `Add a ${type} to the codex, or run “Extract new entities” on a chapter and Storyloom will suggest them.`,
+				actions: [{ label: `New ${type}`, icon: "plus", cta: true, onClick: () => void this.plugin.newEntity(type) }],
+			});
 			return;
 		}
 

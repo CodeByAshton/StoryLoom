@@ -8,23 +8,25 @@ Everything is stored in plain notes. You can read and edit every bit of it by ha
 
 - **Book** — your book's bible: premise, tone, style guide and a *voice sample*. The AI copies this voice.
 - **Manuscript** — one note per chapter. Each one has a `chapter` number at the top; that number decides the order.
-- **Codex** — your characters, locations and lore. Open it with the **library button** in the left ribbon: searchable cards, and a detail panel with each entry's relationships and timeline. (The Codex folder is hidden from the file list to keep it tidy; turn that off in Settings → Storyloom.) Each entry is still a plain note with a *Timeline* and *Relationships* section.
+- **Codex** — your characters, locations and lore. Open it from the **Storyloom button** (the feather) in the left ribbon: searchable cards, and a detail panel with each entry's relationships and timeline. (The Codex folder is hidden from the file list to keep it tidy; turn that off in Settings → Storyloom.) Each entry is still a plain note with a *Timeline* and *Relationships* section.
 - **Templates** — the starting point for new notes.
 
 ## A short tour (with the sample story)
 
-The first time you open this vault, Obsidian asks whether you trust it. Choose **Trust author and enable plugins** so Storyloom can run.
+The first time you open this vault, Obsidian asks whether you trust it. Choose **Trust author and enable plugins** so Storyloom can run. Storyloom then shows a short **setup guide** to connect an AI. You can skip it and reopen it later from the Storyloom menu.
+
+Everything Storyloom has is behind the **feather button** in the left ribbon. Chapters, Codex, Timeline and Graph also share a tab bar at the top, so you can switch between them in one tab. When you're in a chapter, the status bar at the bottom shows which chapter it is. A dot means you've edited it since its last story-state update. Click it for chapter actions.
 
 1. Open **Manuscript → 01 - The Manor**. Character and place names are underlined. Hover one to see where that character is *as of this chapter*.
 2. Open chapter 3 and hover **Mara** again: she has moved, she's injured, and she knows something new.
-3. Click the **people icon** in the left ribbon to open the **Cast** panel. It shows everyone in the current chapter.
-4. Click the **network icon** to open the **Story graph**. Drag the chapter slider and watch relationships and meetings change.
-5. Click the **grid icon** to open **Chapters**: a card per chapter with its summary, point of view, cast and word count. Drag cards to reorder chapters (the codex timelines follow automatically), or switch to **Board** and drag chapters between Draft, Revised and Final.
-6. Click the **table icon** to open the **Story timeline**: one lane per character, with their location as a coloured bar across the chapters they stay there. Hover any square to see that character as of that chapter; switch to **Locations** to see who is where.
+3. Open **Cast** from the feather menu. It shows everyone in the current chapter.
+4. Open the **Story graph** (the **Graph** tab). Drag the chapter slider and watch relationships and meetings change.
+5. Open **Chapters**: a card per chapter with its summary, point of view, cast and word count. Drag cards to reorder chapters (the codex timelines follow automatically), or switch to **Board** and drag chapters between Draft, Revised and Final.
+6. Open the **Story timeline** (the **Timeline** tab): one lane per character, with their location as a coloured bar across the chapters they stay there. Hover any square to see that character as of that chapter; switch to **Locations** to see who is where.
 
 ## Using the AI
 
-1. Open **Settings → Storyloom** and pick how to connect:
+1. Use the setup guide, or open **Settings → Storyloom**, and pick how to connect:
    - **Claude Code (your Claude subscription)**, if Claude Code is installed on this computer: sign in once by running `claude` in a terminal, then click **Check**. No API key needed; usage counts toward your plan.
    - Or paste an API key (Anthropic, OpenAI, OpenRouter), or point it at Ollama or LM Studio.
    Then click **Test**.

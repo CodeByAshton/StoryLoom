@@ -2,6 +2,8 @@ import { debounce, ItemView, setIcon, TFile, type WorkspaceLeaf } from "obsidian
 import { stripFrontmatter } from "../codex/parse";
 import type { ChapterInfo } from "../codex/types";
 import type StoryloomPlugin from "../main";
+import { renderEmpty } from "./empty";
+import { renderNav } from "./nav";
 import { proseHash, wordCount } from "../util";
 import { normalizeStatus, STATUSES, type ChapterStatus } from "./chaptersModel";
 import { huePalette, initials } from "./timelineModel";
@@ -82,9 +84,7 @@ export class ChaptersView extends ItemView {
 
 		const total = [...scans.values()].reduce((a, s) => a + s.words, 0);
 		const bar = root.createDiv({ cls: "sl-tl-toolbar" });
-		const title = bar.createDiv({ cls: "sl-tl-title" });
-		setIcon(title.createSpan({ cls: "sl-tl-title-icon" }), "layout-grid");
-		title.createSpan({ text: "Chapters" });
+		renderNav(bar, this.leaf, this.getViewType());
 		const stats = bar.createDiv({ cls: "sl-tl-stats" });
 		const stat = (n: string | number, l: string) => {
 			const s = stats.createDiv({ cls: "sl-tl-stat" });
@@ -107,6 +107,18 @@ export class ChaptersView extends ItemView {
 		}
 
 		const body = root.createDiv({ cls: "sl-ch-body" });
+		if (!chapters.length) {
+			renderEmpty(body, {
+				icon: "book-open",
+				title: "No chapters yet",
+				body: `Chapters are notes in ${this.plugin.settings.manuscriptFolder}/ with \`type: chapter\` in their frontmatter. New chapter makes one for you, numbered and ready to write.`,
+				actions: [
+					{ label: "New chapter", icon: "file-plus", cta: true, onClick: () => void this.plugin.newChapter() },
+					{ label: "Set up my book", icon: "sparkles", onClick: () => this.plugin.openSetup() },
+				],
+			});
+			return;
+		}
 		if (this.mode === "outline") this.renderOutline(body, chapters, scans);
 		else this.renderBoard(body, chapters, scans);
 		this.markNow();

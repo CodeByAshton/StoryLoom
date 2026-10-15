@@ -2,6 +2,7 @@ import { setIcon } from "obsidian";
 import { stripWikilinks } from "../codex/parse";
 import { resolveState } from "../codex/state";
 import type { Entity } from "../codex/types";
+import { initials } from "./timelineModel";
 
 export interface CardHandlers {
 	openNote?: (e: Entity) => void;
@@ -17,12 +18,18 @@ export function renderEntityCard(
 	parent: HTMLElement,
 	e: Entity,
 	asOf: number,
-	opts: { compact?: boolean; handlers?: CardHandlers; chapterTitle?: (n: number) => string | undefined } = {},
+	opts: { compact?: boolean; handlers?: CardHandlers; chapterTitle?: (n: number) => string | undefined; avatarHue?: number } = {},
 ): HTMLElement {
 	const s = resolveState(e, asOf);
 	const card = parent.createDiv({ cls: `storyloom-card storyloom-type-${e.type}${opts.compact ? " is-compact" : ""}` });
 
 	const head = card.createDiv({ cls: "storyloom-card-head" });
+	if (opts.avatarHue !== undefined) {
+		card.addClass("has-avatar");
+		const av = head.createDiv({ cls: "sl-tl-avatar is-small", text: initials(e.name) });
+		av.style.setProperty("--hue", String(opts.avatarHue));
+		if (opts.handlers?.openNote) av.addEventListener("click", () => opts.handlers?.openNote?.(e));
+	}
 	const name = head.createDiv({ cls: "storyloom-card-name", text: e.name });
 	if (opts.handlers?.openNote) {
 		name.addClass("is-link");

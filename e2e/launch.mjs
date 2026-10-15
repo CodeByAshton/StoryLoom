@@ -14,6 +14,17 @@ export async function launch() {
 		if (await trust.count()) await trust.first().click().catch(() => {});
 		await page.waitForTimeout(500);
 	}
+	// The setup guide opens on first run; tests that want it call openSetup() themselves.
+	if (!process.env.KEEP_SETUP) {
+		await page.waitForTimeout(400);
+		await page.evaluate(async () => {
+			const p = window.app.plugins.plugins.storyloom;
+			if (!p) return;
+			p.settings.onboarded = true;
+			await p.saveSettings();
+			document.querySelectorAll(".modal.sl-setup").forEach((m) => m.closest(".modal-container")?.querySelector(".modal-close-button")?.click());
+		});
+	}
 	return { browser, page, logs, app: { close: () => browser.close() } };
 }
 export const shot = (page, name) => page.screenshot({ path: `${S}/shots/${name}.png` });
