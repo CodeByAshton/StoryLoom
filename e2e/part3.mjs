@@ -18,6 +18,22 @@ await cmd("storyloom:update-story-state");
 await page.waitForSelector(".storyloom-review-modal", { timeout: 10000 });
 await sleep(300);
 await shot(page, "06-review");
+// A long review scrolls, and Apply stays reachable.
+const scroll = await page.evaluate(async () => {
+	const c = document.querySelector(".storyloom-review-modal .modal-content");
+	const g = c.querySelector(".storyloom-review-group");
+	const before = c.querySelector(".setting-item:last-child");
+	const clones = Array.from({ length: 30 }, () => c.insertBefore(g.cloneNode(true), before));
+	clones.forEach((x) => x.classList.add("e2e-clone"));
+	c.scrollTop = 0;
+	await new Promise((r) => setTimeout(r, 50));
+	const apply = [...document.querySelectorAll(".storyloom-review-modal button")].find((b) => b.textContent === "Apply").getBoundingClientRect();
+	const modal = document.querySelector(".storyloom-review-modal").getBoundingClientRect();
+	return { scrolls: c.scrollHeight > c.clientHeight + 100, overflow: getComputedStyle(c).overflowY, applyVisible: apply.bottom <= modal.bottom && apply.bottom <= window.innerHeight && apply.top >= modal.top };
+});
+await shot(page, "06-review-long");
+await page.evaluate(() => document.querySelectorAll(".e2e-clone").forEach((x) => x.remove()));
+ok(scroll.scrolls && scroll.overflow === "auto" && scroll.applyVisible, `(6) a long review scrolls and Apply stays visible ${JSON.stringify(scroll)}`);
 const rows = await page.evaluate(() => [...document.querySelectorAll(".storyloom-review-group")].map((g) => g.innerText.replace(/\n+/g, " | ")));
 console.log("   review groups:", JSON.stringify(rows));
 ok(!rows.some((r) => r.startsWith("Mara Winston")), "(6) already-recorded changes (Mara's ch 3 location/status/note) are not proposed again");

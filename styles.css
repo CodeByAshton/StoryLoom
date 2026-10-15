@@ -1102,3 +1102,17 @@ body.theme-dark .sl-tl-pill {
 .cm-tooltip.storyloom-hover-host, .cm-tooltip:has(> .storyloom-hover) { background: transparent !important; border: none !important; box-shadow: none !important; border-radius: 18px; padding: 0; }
 .theme-dark .storyloom-hover { background: rgba(36, 37, 44, 0.86); }
 .theme-dark .cm-tooltip.storyloom-hover { background: rgba(36, 37, 44, 0.86) !important; }
+
+/* Long modals scroll inside the glass panel; review modals keep Cancel/Apply in view. */
+.modal.storyloom-glass-modal { display: flex; flex-direction: column; max-height: min(88vh, 900px); }
+.modal.storyloom-glass-modal > .modal-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-right: -8px; padding-right: 8px; }
+.storyloom-review-modal .modal-content > .setting-item:last-child {
+	position: sticky;
+	bottom: -1px;
+	z-index: 2;
+	margin-top: 4px;
+	padding: 12px 0 2px;
+	background: linear-gradient(180deg, transparent, var(--sl-glass-bg) 30%);
+	-webkit-backdrop-filter: blur(8px);
+	backdrop-filter: blur(8px);
+}
