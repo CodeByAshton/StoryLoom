@@ -1097,3 +1097,8 @@ body.theme-dark .sl-tl-pill {
 .sl-gr-toggles .sl-cx-chip.is-active .sl-cx-chip-icon { color: var(--text-accent); }
 .sl-gr-toggles .sl-cx-chip:not(.is-active) { opacity: 0.7; }
 .sl-status-title { color: var(--text-faint); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* CodeMirror's hover wrapper around the glass card: no background, border or shadow of its own. */
+.cm-tooltip.storyloom-hover-host, .cm-tooltip:has(> .storyloom-hover) { background: transparent !important; border: none !important; box-shadow: none !important; border-radius: 18px; padding: 0; }
+.theme-dark .storyloom-hover { background: rgba(36, 37, 44, 0.86); }
+.theme-dark .cm-tooltip.storyloom-hover { background: rgba(36, 37, 44, 0.86) !important; }

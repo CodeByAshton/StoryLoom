@@ -34,7 +34,8 @@ export function entityHover(plugin: StoryloomPlugin) {
 								openLink: (t) => void plugin.app.workspace.openLinkText(t, file?.path ?? "", false),
 							},
 						});
-						return { dom };
+						// CodeMirror wraps hover sections in its own .cm-tooltip box; make that wrapper invisible.
+						return { dom, mount: () => dom.closest(".cm-tooltip")?.addClass("storyloom-hover-host") };
 					},
 				};
 			}

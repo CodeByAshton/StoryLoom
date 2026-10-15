@@ -91,6 +91,20 @@ await page.evaluate(() => window.app.workspace.openLinkText("Start Here.md", "",
 await sleep(800);
 ok(!(await page.locator(".status-bar .sl-status").isVisible()), "status bar item hides outside chapters");
 
+// ---- Dark mode hover card: no light box behind the glass ----
+await page.evaluate(() => window.app.changeTheme("obsidian"));
+await page.evaluate(() => window.app.workspace.openLinkText("Manuscript/03 - The Harbor.md", "", false));
+await sleep(1000);
+await page.locator('.cm-content [data-storyloom-entity="Elias Crane"]').first().hover();
+await page.waitForSelector(".cm-tooltip > .storyloom-hover", { timeout: 5000 }).catch(() => {});
+await sleep(500);
+const wrap = await page.evaluate(() => { const w = document.querySelector(".cm-tooltip > .storyloom-hover")?.parentElement; if (!w) return null; const cs = getComputedStyle(w); return [cs.backgroundColor, cs.borderTopWidth, cs.boxShadow].join(" | "); });
+ok(wrap === "rgba(0, 0, 0, 0) | 0px | none", `hover wrapper is invisible in dark mode (${wrap})`);
+await shot(page, "p8-dark-hover");
+await page.mouse.move(5, 5);
+await page.evaluate(() => window.app.changeTheme("moonstone"));
+await sleep(300);
+
 // ---- Empty vault: empty states and scaffolding ----
 await page.evaluate(async () => {
 	const v = window.app.vault;
