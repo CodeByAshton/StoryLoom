@@ -9,7 +9,7 @@ Everything lives in plain Markdown notes that you can edit by hand. The plugin k
 1. `npm install && npm run vault`. This builds the plugin and copies it into the sample vault.
 2. Open the `My Book/` folder as a vault in Obsidian (1.5+). When Obsidian asks, choose **Trust author and enable plugins**.
 3. Read `Start Here.md` in the vault. It walks through the sample story, the hover cards, the Cast panel, the graph and the timeline.
-4. Add an API key in **Settings → Storyloom** and click **Test**.
+4. In **Settings → Storyloom**, choose **Claude Code (your Claude subscription)** if you have Claude Code installed, or paste an API key. Then click **Test**.
 
 To use Storyloom in an existing vault, copy `main.js`, `manifest.json` and `styles.css` into `<vault>/.obsidian/plugins/storyloom/`. Then enable the plugin and set the Manuscript, Codex and Book paths in its settings.
 
@@ -26,6 +26,8 @@ To use Storyloom in an existing vault, copy `main.js`, `manifest.json` and `styl
 | **Housekeeping** | New chapter (auto-numbered), New character/location/lore, next/previous chapter, word count by chapter, Export manuscript, Clear sample content. |
 
 ## Providers
+
+- **Claude Code (your Claude subscription).** Desktop only. Storyloom runs the Claude Code app installed on your computer (`claude -p`), so requests use whatever Claude Code is signed in with, such as a Pro or Max plan. Storyloom never reads, stores or forwards your Claude login; you sign in once by running `claude` in a terminal. Each run is tool-less, uses safe mode (your CLAUDE.md, plugins and hooks aren't loaded), isn't saved to your Claude Code history, and starts outside your vault. Usage counts toward your plan's limits. Anthropic's terms allow your own subscription for your own use of Claude Code; for anything shared with other people, use an API key.
 
 - **Anthropic** (default model `claude-sonnet-5-5`). Effort and refusal-fallback options are in settings. Claude 4.7+ models reject custom `temperature`, so it's only sent to older models.
 - **OpenAI-compatible**: OpenAI, OpenRouter, Ollama (`http://localhost:11434/v1`, no key), LM Studio, or any custom base URL.

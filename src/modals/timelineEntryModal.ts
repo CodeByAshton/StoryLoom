@@ -3,6 +3,7 @@ import { resolveState } from "../codex/state";
 import { appendToSection, formatTimelineLine } from "../codex/write";
 import type { Entity } from "../codex/types";
 import { stripWikilinks } from "../codex/parse";
+import { glass } from "../ui";
 
 export interface TimelineSuggestions {
 	locations: string[];
@@ -33,6 +34,7 @@ export class TimelineEntryModal extends Modal {
 		private suggestions: TimelineSuggestions = { locations: [], characters: [] },
 	) {
 		super(app);
+		glass(this);
 		this.chapter = Number.isFinite(chapter) ? chapter : 1;
 	}
 

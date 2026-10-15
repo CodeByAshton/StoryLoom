@@ -1,6 +1,7 @@
 import { App, Modal, Setting } from "obsidian";
 import { ENTITY_TYPES } from "../codex/types";
 import type { EntityProposal } from "../llm/json";
+import { glass } from "../ui";
 
 export interface EntityRow extends EntityProposal {
 	checked: boolean;
@@ -36,6 +37,7 @@ export class EntityReviewModal extends Modal {
 		private resolve: (rows: EntityRow[] | null) => void,
 	) {
 		super(app);
+		glass(this);
 	}
 
 	static review(app: App, proposals: EntityProposal[]): Promise<EntityRow[] | null> {

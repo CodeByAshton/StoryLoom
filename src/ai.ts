@@ -5,6 +5,7 @@ import type { Entity } from "./codex/types";
 import { buildContext, type BuiltContext } from "./context/builder";
 import { JSON_RETRY, type Prompt } from "./context/prompts";
 import { extractJson, JsonExtractError } from "./llm/json";
+import { withRetry } from "./llm/retry";
 import { LLMError, StreamUnavailable, type ChatMessage, type LLMClient, type OnText } from "./llm/types";
 import { previewPrompt } from "./modals/instructionModal";
 import type { StoryloomSettings } from "./settings";
@@ -88,7 +89,9 @@ export class AIService {
 	}
 
 	async complete(prompt: Prompt, opts: { maxTokens?: number; temperature?: number; history?: ChatMessage[] } = {}): Promise<string> {
-		return this.client().complete(await this.request(prompt, opts));
+		const req = await this.request(prompt, opts);
+		const client = this.client();
+		return withRetry(() => client.complete(req), this.settings().debug);
 	}
 
 	/**
@@ -101,15 +104,26 @@ export class AIService {
 		const key = JSON.stringify([s.provider, s.providers[s.provider]?.baseUrl ?? ""]);
 		const req = await this.request(prompt, opts);
 		if (s.stream && client.stream && !this.noStream.has(key)) {
+			const stream = client.stream.bind(client);
+			let started = false;
 			try {
-				return await client.stream(req, onText, opts.signal);
+				// Retry only while nothing has been shown yet; a half-written answer isn't restarted.
+				return await withRetry(
+					() =>
+						stream(req, (t: string) => {
+							started = true;
+							onText(t);
+						}, opts.signal),
+					s.debug,
+					() => !started && !opts.signal?.aborted,
+				);
 			} catch (e) {
 				if (!(e instanceof StreamUnavailable)) throw e;
 				this.noStream.add(key);
 				if (s.debug) console.warn("[Storyloom] streaming unavailable, falling back:", e.message);
 			}
 		}
-		const text = await client.complete(req);
+		const text = await withRetry(() => client.complete(req), s.debug, () => !opts.signal?.aborted);
 		onText(text);
 		return text;
 	}

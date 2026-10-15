@@ -1,6 +1,6 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import { PROVIDERS, providerConfig, type ClientSettings, type ProviderConfig, type ProviderId } from "./llm/client";
-import { friendlyError } from "./llm/types";
+import { claudeCodeStatus } from "./llm/claudeCodeNode";
 import { ENTITY_TYPES, type EntityType } from "./codex/types";
 import type StoryloomPlugin from "./main";
 
@@ -19,13 +19,12 @@ export interface StoryloomSettings extends ClientSettings {
 	debug: boolean;
 	showContextBeforeSending: boolean;
 	stream: boolean;
+	remindStateUpdate: boolean;
 	inlineEditKey: string;
 	askAiButton: boolean;
 	quickChips: string[];
 	instructionHistory: string[];
 	saveChats: boolean;
-	/** Paths created by the sample-content installer, for "Clear sample content". */
-	samplePaths: string[];
 	/** Chapter path -> prose hash at the last "Update story state", to flag chapters edited since. */
 	stateSynced: Record<string, string>;
 }
@@ -55,12 +54,12 @@ export const DEFAULT_SETTINGS: StoryloomSettings = {
 	debug: false,
 	showContextBeforeSending: false,
 	stream: true,
+	remindStateUpdate: true,
 	inlineEditKey: "Mod-k",
 	askAiButton: true,
 	quickChips: ["Tighter", "More vivid", "More tension", "Show, don't tell", "Fix grammar", "Continue"],
 	instructionHistory: [],
 	saveChats: false,
-	samplePaths: [],
 	stateSynced: {},
 };
 
@@ -81,7 +80,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Provider")
-			.setDesc("Anthropic, or any OpenAI-compatible endpoint (OpenAI, OpenRouter, Ollama, LM Studio).")
+			.setDesc("Your Claude subscription through Claude Code, an Anthropic API key, or any OpenAI-compatible endpoint (OpenAI, OpenRouter, Ollama, LM Studio).")
 			.addDropdown((d) => {
 				for (const [id, p] of Object.entries(PROVIDERS)) d.addOption(id, p.name);
 				d.setValue(s.provider).onChange(async (v) => {
@@ -97,31 +96,30 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			await this.plugin.saveSettings();
 		};
 
-		const keyDesc = document.createDocumentFragment();
-		keyDesc.appendText(
-			PROVIDERS[s.provider].needsKey ? "Required. " : "Optional for local servers. ",
-		);
-		keyDesc.appendText("Stored locally and unencrypted in this vault's .obsidian/plugins/storyloom/data.json. Don't sync or commit that file.");
-		new Setting(containerEl)
-			.setName("API key")
-			.setDesc(keyDesc)
-			.addText((t) => {
-				t.inputEl.type = "password";
-				t.setPlaceholder(PROVIDERS[s.provider].needsKey ? "sk-..." : "(none)")
-					.setValue(cfg.apiKey)
-					.onChange((v) => update({ apiKey: v.trim() }));
-			});
-
-		if (s.provider !== "anthropic") {
+		if (s.provider === "claudecode") this.claudeCodeSettings(containerEl, cfg, update);
+		else {
+			const keyDesc = document.createDocumentFragment();
+			keyDesc.appendText(PROVIDERS[s.provider].needsKey ? "Required. " : "Optional for local servers. ");
+			keyDesc.appendText("Stored locally and unencrypted in this vault's .obsidian/plugins/storyloom/data.json. Don't sync or commit that file.");
 			new Setting(containerEl)
-				.setName("Base URL")
-				.setDesc("The /v1 endpoint. Requests go to {base}/chat/completions.")
-				.addText((t) => t.setPlaceholder(PROVIDERS[s.provider].defaults.baseUrl).setValue(cfg.baseUrl).onChange((v) => update({ baseUrl: v.trim() })));
+				.setName("API key")
+				.setDesc(keyDesc)
+				.addText((t) => {
+					t.inputEl.type = "password";
+					t.setPlaceholder(PROVIDERS[s.provider].needsKey ? "sk-..." : "(none)")
+						.setValue(cfg.apiKey)
+						.onChange((v) => update({ apiKey: v.trim() }));
+				});
+			if (s.provider !== "anthropic") {
+				new Setting(containerEl)
+					.setName("Base URL")
+					.setDesc("The /v1 endpoint. Requests go to {base}/chat/completions.")
+					.addText((t) => t.setPlaceholder(PROVIDERS[s.provider].defaults.baseUrl).setValue(cfg.baseUrl).onChange((v) => update({ baseUrl: v.trim() })));
+			}
+			new Setting(containerEl)
+				.setName("Model")
+				.addText((t) => t.setPlaceholder(PROVIDERS[s.provider].defaults.model).setValue(cfg.model).onChange((v) => update({ model: v.trim() || PROVIDERS[s.provider].defaults.model })));
 		}
-
-		new Setting(containerEl)
-			.setName("Model")
-			.addText((t) => t.setPlaceholder(PROVIDERS[s.provider].defaults.model).setValue(cfg.model).onChange((v) => update({ model: v.trim() || PROVIDERS[s.provider].defaults.model })));
 
 		new Setting(containerEl)
 			.setName("Test connection")
@@ -138,14 +136,14 @@ export class StoryloomSettingTab extends PluginSettingTab {
 						});
 						new Notice(`Storyloom: connected. The model replied “${out.trim().slice(0, 40)}”.`);
 					} catch (e) {
-						new Notice(`Storyloom: ${friendlyError(e)}`, 10000);
+						this.plugin.errorNotice(e);
 					} finally {
 						b.setDisabled(false).setButtonText("Test");
 					}
 				}),
 			);
 
-		if (s.provider === "anthropic") {
+		if (s.provider === "anthropic" || s.provider === "claudecode") {
 			new Setting(containerEl)
 				.setName("Effort")
 				.setDesc("How hard Claude 5.x thinks before writing. Lower is faster and cheaper. Ignored by older models.")
@@ -158,6 +156,8 @@ export class StoryloomSettingTab extends PluginSettingTab {
 							await this.plugin.saveSettings();
 						}),
 				);
+		}
+		if (s.provider === "anthropic") {
 			new Setting(containerEl)
 				.setName("Refusal fallback")
 				.setDesc("If Claude declines a passage (e.g. dark fiction), let the API retry on a fallback model automatically.")
@@ -210,10 +210,41 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl).setName("Advanced").setHeading();
+		this.toggleSetting("Remind me to update story state", "When you leave a chapter you've edited since its last story-state update, offer to run it.", "remindStateUpdate");
 		this.toggleSetting("Stream responses", "Show text as it's written. Turns itself off for the session if a provider blocks it (e.g. a local server without CORS enabled).", "stream");
 		this.toggleSetting("Save chats", "Keep Story Assistant conversations in .storyloom/chats/.", "saveChats");
 		this.toggleSetting("Show context before sending", "Preview the full prompt in a modal before each request.", "showContextBeforeSending");
 		this.toggleSetting("Debug mode", "Log context sizes and requests to the developer console.", "debug");
+	}
+
+	private claudeCodeSettings(containerEl: HTMLElement, cfg: ProviderConfig, update: (p: Partial<ProviderConfig>) => Promise<void>) {
+		const info = containerEl.createDiv({ cls: "storyloom-provider-note" });
+		info.createEl("p", {
+			text: "Storyloom runs the Claude Code app installed on this computer, so requests use whatever Claude Code is signed in with, such as your Pro or Max subscription. Storyloom never sees or stores your Claude login. Usage counts toward your plan's limits.",
+		});
+		info.createEl("p", {
+			cls: "storyloom-muted",
+			text: "Desktop only. Sign in once by running `claude` in a terminal. Anthropic's terms allow your own subscription for your own use of Claude Code; for anything shared with other people, use an API key.",
+		});
+		const status = new Setting(containerEl).setName("Sign-in").setDesc("Checks Claude Code's sign-in status (runs `claude auth status`).");
+		status.addButton((b) =>
+			b.setButtonText("Check").onClick(async () => {
+				b.setDisabled(true).setButtonText("Checking…");
+				this.plugin.llm(); // creates the desktop host on first use
+				const r = await claudeCodeStatus(this.plugin.claudeHost ?? null, cfg.baseUrl || "claude");
+				status.setDesc(r.message);
+				status.descEl.toggleClass("mod-warning", !r.ok);
+				b.setDisabled(false).setButtonText("Check");
+			}),
+		);
+		new Setting(containerEl)
+			.setName("Claude Code path")
+			.setDesc("Leave empty to find it automatically. Otherwise the full path to the claude program.")
+			.addText((t) => t.setPlaceholder("Auto-detect").setValue(cfg.baseUrl).onChange((v) => update({ baseUrl: v.trim() })));
+		new Setting(containerEl)
+			.setName("Model")
+			.setDesc("A Claude Code model name: sonnet, opus or haiku (or a full model ID).")
+			.addText((t) => t.setPlaceholder("sonnet").setValue(cfg.model).onChange((v) => update({ model: v.trim() || "sonnet" })));
 	}
 
 	private textSetting(name: string, desc: string, key: "manuscriptFolder" | "codexFolder" | "templatesFolder" | "bookPath" | "inlineEditKey") {
@@ -228,7 +259,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			);
 	}
 
-	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream") {
+	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate") {
 		new Setting(this.containerEl)
 			.setName(name)
 			.setDesc(desc)

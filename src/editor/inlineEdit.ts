@@ -117,6 +117,7 @@ export class InlineEditController {
 		} catch (e) {
 			if (this.get(view)?.id !== next.id) return;
 			this.set(view, { ...next, id: ++seq, phase: "error", error: friendlyError(e) });
+			view.focus(); // so Esc closes it
 		}
 	}
 

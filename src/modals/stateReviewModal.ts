@@ -5,6 +5,7 @@ import { resolveState } from "../codex/state";
 import { dedupeTimeline, hasActiveRelationship } from "../codex/write";
 import type { StateUpdate } from "../llm/json";
 import { renderEntityRows, type EntityRow } from "./entityReviewModal";
+import { glass } from "../ui";
 
 export interface FieldRow {
 	key: string;
@@ -83,6 +84,7 @@ export class StateReviewModal extends Modal {
 		private resolve: (c: ApprovedChanges | null) => void,
 	) {
 		super(app);
+		glass(this);
 	}
 
 	static review(app: App, chapter: number, rows: ReturnType<typeof buildReviewRows>): Promise<ApprovedChanges | null> {

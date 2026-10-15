@@ -1,7 +1,7 @@
 import { App, Editor, Modal, Notice, setIcon, type EditorPosition } from "obsidian";
 import { friendlyError } from "../llm/types";
 import { InstructionModal } from "./instructionModal";
-import { addSettingsButton } from "../ui";
+import { addSettingsButton, glass } from "../ui";
 
 export interface ResultItem {
 	label?: string;
@@ -54,6 +54,7 @@ export class ResultModal extends Modal {
 		private opts: ResultModalOptions,
 	) {
 		super(app);
+		glass(this);
 		if (opts.editor) {
 			this.cursor = opts.editor.getCursor("to");
 			this.from = opts.editor.getCursor("from");
@@ -131,7 +132,7 @@ export class ResultModal extends Modal {
 			ta.value = item.text;
 			ta.rows = Math.min(16, Math.max(2, Math.ceil(item.text.length / 80) + item.text.split("\n").length));
 			ta.addEventListener("input", () => (item.text = ta.value));
-			if (multi || this.opts.perItemButtons) {
+			if (multi) {
 				const bar = card.createDiv({ cls: "storyloom-result-item-actions" });
 				this.editorButtons(bar, () => item.text);
 			}

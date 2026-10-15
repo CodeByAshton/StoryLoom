@@ -18,3 +18,9 @@ export function addSettingsButton(parent: HTMLElement, app: App, message: string
 	const b = parent.createEl("button", { cls, text: "Open settings" });
 	b.addEventListener("click", () => openSettings(app));
 }
+
+/** Give an Obsidian modal (or suggester) Storyloom's glass look. */
+export function glass(modal: { modalEl: HTMLElement; containerEl: HTMLElement }) {
+	modal.modalEl.addClass("storyloom-glass-modal");
+	modal.containerEl.addClass("storyloom-glass-container");
+}

@@ -1,5 +1,6 @@
 import { App, Modal, Setting, SuggestModal } from "obsidian";
 import { CACHE_MARK } from "../llm/types";
+import { glass } from "../ui";
 
 /** Single-line text prompt. Resolves to null when cancelled. */
 export class InstructionModal extends Modal {
@@ -12,6 +13,7 @@ export class InstructionModal extends Modal {
 		private resolve: (v: string | null) => void,
 	) {
 		super(app);
+		glass(this);
 		this.value = opts.initial ?? "";
 	}
 
@@ -62,6 +64,7 @@ export class ChoiceModal extends SuggestModal<string> {
 		private resolve: (v: string | null) => void,
 	) {
 		super(app);
+		glass(this);
 		this.setPlaceholder(placeholder);
 	}
 
@@ -96,6 +99,7 @@ export class ConfirmModal extends Modal {
 		private resolve: (v: boolean) => void,
 	) {
 		super(app);
+		glass(this);
 	}
 	static ask(app: App, opts: ConfirmModal["opts"]): Promise<boolean> {
 		return new Promise((resolve) => new ConfirmModal(app, opts, resolve).open());

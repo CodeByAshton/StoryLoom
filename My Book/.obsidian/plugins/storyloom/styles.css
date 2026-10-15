@@ -471,3 +471,110 @@ body.theme-dark {
 .storyloom-timeline-preview { font-family: var(--font-monospace); font-size: var(--font-smallest); padding: 8px 10px; margin: 6px 0 4px; border-radius: var(--radius-s); background: var(--background-secondary); color: var(--text-normal); white-space: pre-wrap; word-break: break-word; }
 .storyloom-timeline-preview.is-empty { color: var(--text-faint); font-family: var(--font-interface); }
 .storyloom-stale { display: flex; align-items: center; gap: 6px; margin-top: var(--size-4-2); font-size: var(--font-ui-small); color: var(--text-accent); }
+
+/* ---------- Glass modals and pickers (every Storyloom pop-up) ---------- */
+
+.modal-container.storyloom-glass-container .modal-bg {
+	background: rgba(10, 12, 20, 0.22) !important;
+	-webkit-backdrop-filter: blur(3px);
+	backdrop-filter: blur(3px);
+}
+body.theme-dark .modal-container.storyloom-glass-container .modal-bg { background: rgba(0, 0, 0, 0.42) !important; }
+
+.modal.storyloom-glass-modal,
+.prompt.storyloom-glass-modal {
+	background: var(--sl-glass-bg) !important;
+	-webkit-backdrop-filter: blur(14px) saturate(175%);
+	backdrop-filter: blur(14px) saturate(175%);
+	border: 1px solid var(--sl-glass-border) !important;
+	border-radius: 22px !important;
+	box-shadow: var(--sl-glass-highlight), 0 0 0 0.5px var(--sl-glass-edge), var(--sl-glass-shadow) !important;
+	animation: sl-pop 300ms var(--sl-spring) backwards;
+	overflow: hidden;
+}
+.storyloom-glass-modal .modal-title { font-weight: var(--font-semibold); letter-spacing: -0.01em; }
+.storyloom-glass-modal .modal-close-button { border-radius: 999px; }
+
+/* Fields */
+.storyloom-glass-modal input[type="text"],
+.storyloom-glass-modal input[type="number"],
+.storyloom-glass-modal input[type="password"],
+.storyloom-glass-modal textarea,
+.storyloom-glass-modal select,
+.storyloom-glass-modal .prompt-input {
+	background: var(--sl-glass-inner) !important;
+	border: 1px solid var(--sl-glass-border) !important;
+	border-radius: 12px !important;
+	box-shadow: none !important;
+	transition: border-color 140ms ease, background 140ms ease;
+}
+.storyloom-glass-modal input:focus,
+.storyloom-glass-modal textarea:focus,
+.storyloom-glass-modal .prompt-input:focus {
+	border-color: color-mix(in srgb, var(--sl-accent) 55%, var(--sl-glass-border)) !important;
+	background: var(--sl-glass-inner-hover) !important;
+}
+
+/* Buttons: pills, accent for the main action */
+.storyloom-glass-modal button:not(.clickable-icon):not(.modal-close-button):not(.mod-cta):not(.mod-warning) {
+	border-radius: 999px !important;
+	border: 1px solid var(--sl-glass-border) !important;
+	background: var(--sl-glass-inner) !important;
+	box-shadow: var(--sl-glass-highlight) !important;
+	transition: transform 160ms var(--sl-spring), background 140ms ease;
+}
+.storyloom-glass-modal button:not(.clickable-icon):not(.modal-close-button):not(.mod-cta):not(.mod-warning):hover { background: var(--sl-glass-inner-hover) !important; }
+.storyloom-glass-modal button:not(.clickable-icon):active { transform: scale(0.96); }
+.storyloom-glass-modal button.mod-cta {
+	border-radius: 999px !important;
+	transition: transform 160ms var(--sl-spring), filter 140ms ease;
+	background: var(--sl-accent) !important;
+	border-color: transparent !important;
+	color: var(--text-on-accent) !important;
+	box-shadow: 0 6px 16px -6px var(--sl-accent), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+.storyloom-glass-modal button.mod-cta:hover { filter: brightness(1.08); background: var(--sl-accent) !important; }
+.storyloom-glass-modal button.mod-warning {
+	border-radius: 999px !important;
+	background: var(--background-modifier-error) !important;
+	border-color: transparent !important;
+	color: var(--text-on-accent) !important;
+}
+.storyloom-glass-modal .setting-item { border-top: none; }
+
+/* Inner cards */
+.storyloom-glass-modal .storyloom-review-group,
+.storyloom-glass-modal .storyloom-issue,
+.storyloom-glass-modal .storyloom-preview,
+.storyloom-glass-modal .storyloom-timeline-preview,
+.storyloom-glass-modal .storyloom-result-live {
+	background: var(--sl-glass-inner);
+	border: 1px solid var(--sl-glass-border);
+	border-radius: 16px;
+	box-shadow: var(--sl-glass-highlight);
+}
+.storyloom-glass-modal .storyloom-issue:hover { background: var(--sl-glass-inner-hover); }
+.storyloom-glass-modal .storyloom-result-text { line-height: 1.6; padding: 12px 14px; }
+.storyloom-glass-modal .storyloom-error { border-radius: 14px; }
+.storyloom-glass-modal .storyloom-result-label { padding-left: 4px; }
+
+/* Pickers (SuggestModal) */
+.prompt.storyloom-glass-modal .suggestion-item { border-radius: 12px; margin: 2px 6px; }
+.prompt.storyloom-glass-modal .suggestion-item.is-selected { background: var(--sl-glass-inner-hover); }
+
+/* Chat @-mention dropdown */
+.storyloom-chat-suggest {
+	background: var(--sl-glass-bg) !important;
+	-webkit-backdrop-filter: blur(14px) saturate(175%);
+	backdrop-filter: blur(14px) saturate(175%);
+	border: 1px solid var(--sl-glass-border) !important;
+	border-radius: 16px !important;
+	box-shadow: var(--sl-glass-highlight), var(--sl-glass-shadow) !important;
+	padding: 4px;
+	animation: sl-pop-up 240ms var(--sl-spring) backwards;
+}
+.storyloom-suggest-item { border-radius: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+	.modal.storyloom-glass-modal, .prompt.storyloom-glass-modal, .storyloom-chat-suggest { animation: none !important; }
+}

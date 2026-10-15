@@ -23,7 +23,10 @@ The first time you open this vault, Obsidian asks whether you trust it. Choose *
 
 ## Using the AI
 
-1. Open **Settings → Storyloom** and paste an API key (Anthropic by default; OpenAI, OpenRouter, Ollama and LM Studio also work). Click **Test**.
+1. Open **Settings → Storyloom** and pick how to connect:
+   - **Claude Code (your Claude subscription)**, if Claude Code is installed on this computer: sign in once by running `claude` in a terminal, then click **Check**. No API key needed; usage counts toward your plan.
+   - Or paste an API key (Anthropic, OpenAI, OpenRouter), or point it at Ollama or LM Studio.
+   Then click **Test**.
 2. In a chapter, **select a sentence and press Cmd/Ctrl+K**. Type what you want ("make it tenser") and press Enter. Press **Tab** to accept or **Esc** to reject. One undo brings the original back.
 3. Right-click in a chapter for more tools: continue writing, rewrite, describe, expand, brainstorm.
 4. When you finish a chapter, run **Update story state** (in the Cast panel or the command palette). The AI proposes timeline and relationship changes; you tick what's right and click Apply.

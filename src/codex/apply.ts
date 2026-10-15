@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile, TFolder } from "obsidian";
+import { App, normalizePath, TFile } from "obsidian";
 import type { ApprovedChanges } from "../modals/stateReviewModal";
 import type { EntityRow } from "../modals/entityReviewModal";
 import type { CodexIndex } from "./index";
@@ -93,8 +93,4 @@ function fileAt(app: App, path?: string): TFile | null {
 	if (!path) return null;
 	const f = app.vault.getAbstractFileByPath(path);
 	return f instanceof TFile ? f : null;
-}
-
-export function isFolder(app: App, path: string) {
-	return app.vault.getAbstractFileByPath(path) instanceof TFolder;
 }

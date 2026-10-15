@@ -66,10 +66,16 @@ export class LLMError extends Error {
 		public kind: LLMErrorKind,
 		message: string,
 		public status?: number,
+		/** Worth trying again shortly: overloaded, server errors, network blips, per-minute rate limits. */
+		public retryable = kind === "server" || kind === "network",
 	) {
 		super(message);
 		this.name = "LLMError";
 	}
+}
+
+export function isRetryable(e: unknown): boolean {
+	return e instanceof LLMError && e.retryable;
 }
 
 /** Pull a readable message out of a provider error body. */
@@ -92,7 +98,7 @@ export function errorFromStatus(status: number, text: string, providerName: stri
 		case status === 404:
 			return new LLMError("not_found", `Model "${model}" was not found by ${providerName}. Check the model name in settings. (${detail})`, status);
 		case status === 429:
-			return new LLMError("rate_limit", `${providerName} rate limit reached. Wait a moment and try again. (${detail})`, status);
+			return new LLMError("rate_limit", `${providerName} rate limit reached. Wait a moment and try again. (${detail})`, status, true);
 		case status === 529 || status === 503:
 			return new LLMError("server", `${providerName} is overloaded right now. Try again shortly.`, status);
 		case status >= 500:

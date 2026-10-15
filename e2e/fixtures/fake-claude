@@ -1,0 +1,27 @@
+#!/usr/bin/env node
+// Fake Claude Code CLI for e2e: streams stream-json like `claude -p --output-format stream-json --include-partial-messages`.
+const fs = require("fs");
+const args = process.argv.slice(2);
+if (args[0] === "auth" && args[1] === "status") {
+	console.log(JSON.stringify({ loggedIn: true, authMethod: "claude.ai", apiProvider: "firstParty" }));
+	process.exit(0);
+}
+let input = "";
+process.stdin.on("data", (d) => (input += d));
+process.stdin.on("end", () => {
+	const sysFile = args[args.indexOf("--system-prompt-file") + 1];
+	fs.writeFileSync(__dirname + "/last-call.json", JSON.stringify({ args, stdin: input, system: fs.readFileSync(sysFile, "utf8"), cwd: process.cwd() }));
+	const text = /Rewrite the selected span/.test(input) ? "CC version: her heart hammered at the door." : "Claude Code says the fog lifted.";
+	const words = text.split(/(?<= )/);
+	const out = (o) => process.stdout.write(JSON.stringify(o) + "\n");
+	out({ type: "system", subtype: "init", model: "claude-sonnet-5-5", tools: [] });
+	let i = 0;
+	const t = setInterval(() => {
+		if (i < words.length) out({ type: "stream_event", event: { type: "content_block_delta", delta: { type: "text_delta", text: words[i++] } } });
+		else {
+			clearInterval(t);
+			out({ type: "result", subtype: "success", is_error: false, result: text });
+			process.exit(0);
+		}
+	}, 90);
+});

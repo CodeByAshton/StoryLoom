@@ -123,10 +123,17 @@ export class AnthropicClient implements LLMClient {
 	}
 }
 
-export async function send(http: HttpFn, req: HttpRequest, providerName: string) {
+export const REQUEST_TIMEOUT_MS = 120_000;
+
+export async function send(http: HttpFn, req: HttpRequest, providerName: string, timeoutMs = REQUEST_TIMEOUT_MS) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => reject(new LLMError("server", `${providerName} didn't answer within ${Math.round(timeoutMs / 1000)} seconds. Try again.`)), timeoutMs);
+	});
 	try {
-		return await http(req);
+		return await Promise.race([http(req), timeout]);
 	} catch (e) {
+		if (e instanceof LLMError) throw e;
 		const host = (() => {
 			try {
 				return new URL(req.url).host;
@@ -141,6 +148,8 @@ export async function send(http: HttpFn, req: HttpRequest, providerName: string)
 				? `Couldn't reach ${providerName} at ${host}. Is it running?`
 				: `Couldn't reach ${providerName} (${host}). Check your internet connection. ${e instanceof Error ? e.message : ""}`.trim(),
 		);
+	} finally {
+		clearTimeout(timer);
 	}
 }
 

@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view";
-import { Editor, MarkdownView, Menu, Notice, normalizePath, Plugin, requestUrl, Scope, TFile, type MarkdownFileInfo, type Modifier, type WorkspaceLeaf } from "obsidian";
+import { Editor, MarkdownView, Menu, Notice, normalizePath, Platform, Plugin, requestUrl, Scope, TFile, type MarkdownFileInfo, type Modifier, type WorkspaceLeaf } from "obsidian";
 import { AIService } from "./ai";
 import { applyChanges, createEntities, ensureFolder, readTemplate } from "./codex/apply";
 import { CodexIndex } from "./codex/index";
@@ -28,6 +28,8 @@ import { entityHighlighter, refreshEntities } from "./editor/highlight";
 import { entityHover } from "./editor/hover";
 import { InlineEditController, inlineEditExtension } from "./editor/inlineEdit";
 import { createClient } from "./llm/client";
+import type { ClaudeCodeHost } from "./llm/claudeCode";
+import { createClaudeCodeHost } from "./llm/claudeCodeNode";
 import { validateContinuity, validateEntityList, validateStateUpdate } from "./llm/json";
 import { friendlyError, type HttpFn, type LLMClient } from "./llm/types";
 import { EntityReviewModal } from "./modals/entityReviewModal";
@@ -56,6 +58,8 @@ export default class StoryloomPlugin extends Plugin {
 	index!: CodexIndex;
 	ai!: AIService;
 	inline!: InlineEditController;
+	/** Lazily created: loads Node modules, desktop only. */
+	claudeHost: ClaudeCodeHost | null | undefined;
 
 	async onload() {
 		await this.loadSettings();
@@ -82,6 +86,7 @@ export default class StoryloomPlugin extends Plugin {
 		this.registerEditorMenu();
 
 		this.index.on("changed", () => this.onIndexChanged());
+		this.registerEvent(this.app.workspace.on("file-open", (f) => void this.onFileOpen(f)));
 		this.app.workspace.onLayoutReady(async () => {
 			await this.index.load((ref) => this.registerEvent(ref));
 			// On a cold start the metadata cache may still be filling; rebuild once it has resolved.
@@ -129,7 +134,8 @@ export default class StoryloomPlugin extends Plugin {
 
 	llm(): LLMClient {
 		// fetch is only used for streaming; everything else goes through requestUrl (no CORS issues).
-		return createClient(this.settings, http, (url, init) => window.fetch(url, init));
+		if (this.settings.provider === "claudecode") this.claudeHost ??= Platform.isDesktopApp ? createClaudeCodeHost() : null;
+		return createClient(this.settings, http, (url, init) => window.fetch(url, init), this.claudeHost);
 	}
 
 	applyColors() {
@@ -446,6 +452,10 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	async updateStoryState(file: TFile) {
+		return this.once(`state:${file.path}`, "updating this chapter's story state", () => this.updateStoryStateNow(file));
+	}
+
+	private async updateStoryStateNow(file: TFile) {
 		const chapter = this.index.chapterForPath(file.path);
 		if (!chapter) {
 			new Notice("This note isn't a chapter (it needs `chapter: N` in its frontmatter).");
@@ -475,6 +485,45 @@ export default class StoryloomPlugin extends Plugin {
 		}
 	}
 
+	/** Commands that write to the vault shouldn't run twice at once for the same chapter. */
+	private running = new Set<string>();
+	private async once(key: string, label: string, fn: () => Promise<void>) {
+		if (this.running.has(key)) {
+			new Notice(`Storyloom: already ${label}…`);
+			return;
+		}
+		this.running.add(key);
+		try {
+			await fn();
+		} finally {
+			this.running.delete(key);
+		}
+	}
+
+	private lastOpened: TFile | null = null;
+	private reminded = new Set<string>();
+
+	/** Leaving a chapter that changed since its last story-state update: offer to update it (once per edit). */
+	private async onFileOpen(next: TFile | null) {
+		const prev = this.lastOpened;
+		this.lastOpened = next;
+		if (!this.settings.remindStateUpdate || !prev || prev === next || !this.index.chapterForPath(prev.path)) return;
+		const synced = this.settings.stateSynced[prev.path];
+		if (!synced) return; // only for chapters you've started tracking
+		const hash = proseHash(await this.app.vault.cachedRead(prev));
+		const key = `${prev.path}:${hash}`;
+		if (hash === synced || this.reminded.has(key)) return;
+		this.reminded.add(key);
+		const frag = document.createDocumentFragment();
+		frag.createSpan({ text: `“${this.index.chapterForPath(prev.path)?.title}” changed since its last story-state update.` });
+		const b = frag.createEl("button", { text: "Update story state", cls: "storyloom-notice-btn mod-cta" });
+		const notice = new Notice(frag, 12000);
+		b.addEventListener("click", () => {
+			notice.hide();
+			void this.updateStoryState(prev);
+		});
+	}
+
 	/** Remember the prose we just synced, so the Cast panel can tell when the chapter changes again. */
 	async markStateSynced(file: TFile, text: string) {
 		this.settings.stateSynced[file.path] = proseHash(text);
@@ -483,6 +532,10 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	async extractEntities(file: TFile) {
+		return this.once(`extract:${file.path}`, "looking for new names", () => this.extractEntitiesNow(file));
+	}
+
+	private async extractEntitiesNow(file: TFile) {
 		const notice = new Notice("Storyloom: looking for new names…", 0);
 		try {
 			const text = await this.fileText(file, this.editorFor(file) ?? undefined);
@@ -659,7 +712,7 @@ export function jumpToQuote(editor: Editor, quote: string): boolean {
 		const m = new RegExp(pattern, "i").exec(text);
 		if (m) {
 			const from = editor.offsetToPos(m.index);
-			const to = editor.offsetToPos(m.index + (c === q ? m[0].length : m[0].length));
+			const to = editor.offsetToPos(m.index + m[0].length);
 			editor.setSelection(from, to);
 			editor.scrollIntoView({ from, to }, true);
 			editor.focus();

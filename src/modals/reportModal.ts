@@ -1,7 +1,7 @@
 import { App, Component, MarkdownRenderer, Modal, Notice, setIcon } from "obsidian";
 import { friendlyError } from "../llm/types";
 import type { ContinuityIssue } from "../llm/json";
-import { addSettingsButton } from "../ui";
+import { addSettingsButton, glass } from "../ui";
 
 /** Markdown report (critique) or a clickable list of continuity issues. */
 export class ReportModal extends Modal {
@@ -17,6 +17,7 @@ export class ReportModal extends Modal {
 		},
 	) {
 		super(app);
+		glass(this);
 	}
 
 	onOpen() {
