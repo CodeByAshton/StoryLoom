@@ -9,8 +9,9 @@ export OBSIDIAN_BIN=/path/to/obsidian                    # e.g. an extracted Obs
 npm run vault                                            # build into My Book/
 (cd e2e && npm i --no-save playwright-core@1)
 # Register $STORYLOOM_E2E_DIR/vault in ~/.config/obsidian/obsidian.json with "open": true.
-node e2e/fakeserver.mjs &
-for p in part1 part2 part3; do e2e/start.sh && node e2e/$p.mjs; done
+node e2e/fakeserver.mjs &                      # streams, with CORS (like a configured Ollama)
+PORT=11435 CORS=0 node e2e/fakeserver.mjs &    # no CORS, to test the non-streaming fallback
+for p in part1 part2 part3 part4; do e2e/start.sh && node e2e/$p.mjs; done
 ```
 
 On a headless Linux box, `start.sh` starts Xvfb on display :99. Each script prints PASS or FAIL lines.

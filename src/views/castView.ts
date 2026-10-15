@@ -3,6 +3,7 @@ import { stripFrontmatter } from "../codex/parse";
 import type { Entity } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEntityCard } from "./card";
+import { proseHash } from "../util";
 
 export const CAST_VIEW = "storyloom-cast";
 
@@ -47,8 +48,12 @@ export class CastView extends ItemView {
 		const asOf = chapter?.chapter ?? Infinity;
 
 		let mentioned: Entity[] = [];
+		let stale = false;
 		if (file instanceof TFile && file.extension === "md") {
-			const text = stripFrontmatter(await this.app.vault.cachedRead(file));
+			const raw = await this.app.vault.cachedRead(file);
+			const synced = this.plugin.settings.stateSynced[file.path];
+			stale = !!chapter && !!synced && synced !== proseHash(raw);
+			const text = stripFrontmatter(raw);
 			const names = index.mentionsIn(text);
 			if (chapter?.pov) {
 				const pov = index.getEntity(chapter.pov);
@@ -67,8 +72,13 @@ export class CastView extends ItemView {
 		if (!chapter) header.createDiv({ cls: "storyloom-muted", text: "Open a chapter to see everyone as of that point in the story." });
 
 		if (chapter && file) {
+			if (stale) {
+				const note = root.createDiv({ cls: "storyloom-stale" });
+				setIcon(note.createSpan({ cls: "storyloom-btn-icon" }), "circle-dot");
+				note.createSpan({ text: "Edited since the last story-state update" });
+			}
 			const actions = root.createDiv({ cls: "storyloom-cast-actions" });
-			this.button(actions, "Update story state", "refresh-cw", () => void this.plugin.updateStoryState(file));
+			this.button(actions, "Update story state", "refresh-cw", () => void this.plugin.updateStoryState(file), stale);
 			this.button(actions, "Summarize chapter", "align-left", () => void this.plugin.summarize(file));
 		}
 
@@ -101,8 +111,8 @@ export class CastView extends ItemView {
 		}
 	}
 
-	private button(parent: HTMLElement, label: string, icon: string, onClick: () => void) {
-		const b = parent.createEl("button");
+	private button(parent: HTMLElement, label: string, icon: string, onClick: () => void, cta = false) {
+		const b = parent.createEl("button", { cls: cta ? "mod-cta" : "" });
 		setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), icon);
 		b.createSpan({ text: label });
 		b.addEventListener("click", onClick);

@@ -4,6 +4,7 @@ import type { Entity } from "../codex/types";
 import { chatSystem } from "../context/prompts";
 import { friendlyError, type ChatMessage } from "../llm/types";
 import type StoryloomPlugin from "../main";
+import { addSettingsButton } from "../ui";
 
 export const CHAT_VIEW = "storyloom-chat";
 
@@ -234,7 +235,12 @@ export class ChatView extends ItemView {
 			}
 			const system = chatSystem(ctx.text + (extra ? `\n\n## Referenced in full${extra}` : ""));
 			const question = q.replace(/@\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g, "[[$1]]");
-			const answer = await this.plugin.ai.complete({ system, user: question }, { history: this.history });
+			const answer = await this.plugin.ai.stream({ system, user: question }, (soFar) => {
+				pending.empty();
+				pending.addClass("is-streaming");
+				pending.setText(soFar);
+				this.scroll();
+			}, { history: this.history });
 			this.history.push({ role: "user", content: question }, { role: "assistant", content: answer });
 			pending.remove();
 			await this.addBubble("assistant", answer);
@@ -243,6 +249,7 @@ export class ChatView extends ItemView {
 			pending.empty();
 			pending.addClass("storyloom-error");
 			pending.setText(friendlyError(e));
+			addSettingsButton(pending, this.app, friendlyError(e), "storyloom-settings-btn");
 		} finally {
 			this.busy = false;
 			this.sendBtn.disabled = false;

@@ -13,6 +13,8 @@ type Mode = "characters" | "locations";
 export class TimelineView extends ItemView {
 	private mode: Mode = "characters";
 	private seq = 0;
+	/** Per-chapter scan results, reused until the file's mtime changes. */
+	private scans = new Map<string, { mtime: number; mentions: Set<string>; words: number; index: unknown }>();
 	refresh = debounce(() => void this.render(), 300, true);
 
 	constructor(
@@ -33,7 +35,12 @@ export class TimelineView extends ItemView {
 	}
 
 	async onOpen() {
-		this.registerEvent(this.app.vault.on("modify", () => this.refresh()));
+		// Only chapter text affects this view (mention dots, word counts); codex changes arrive via refresh().
+		this.registerEvent(
+			this.app.vault.on("modify", (f) => {
+				if (this.plugin.index.chapterForPath(f.path)) this.refresh();
+			}),
+		);
 		await this.render();
 	}
 
@@ -45,9 +52,15 @@ export class TimelineView extends ItemView {
 		const words = new Map<string, number>();
 		for (const c of chapters) {
 			const f = index.fileFor(c.path);
-			const text = f ? await this.app.vault.cachedRead(f) : "";
-			mentions.set(c.path, index.mentionsIn(stripFrontmatter(text)));
-			words.set(c.path, wordCount(text));
+			// Mentions also depend on the codex (names/aliases), so a new nameRegex invalidates the cache.
+			let scan = this.scans.get(c.path);
+			if (!scan || !f || scan.mtime !== f.stat.mtime || scan.index !== index.nameRegex) {
+				const text = f ? await this.app.vault.cachedRead(f) : "";
+				scan = { mtime: f?.stat.mtime ?? 0, mentions: index.mentionsIn(stripFrontmatter(text)), words: wordCount(text), index: index.nameRegex };
+				this.scans.set(c.path, scan);
+			}
+			mentions.set(c.path, scan.mentions);
+			words.set(c.path, scan.words);
 		}
 		if (seq !== this.seq) return;
 

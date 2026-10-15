@@ -3,6 +3,7 @@ import { parseRelationships, parseTimeline } from "../src/codex/parse";
 import { buildContext, entityCard, voiceSample } from "../src/context/builder";
 import { cleanProse, parseSenses, parseVersions } from "../src/context/prompts";
 import type { Entity } from "../src/codex/types";
+import { CACHE_MARK } from "../src/llm/types";
 
 function ent(name: string, md: string, type: Entity["type"] = "character"): Entity {
 	return { name, path: `Codex/${name}.md`, type, aliases: [], description: `${name} desc`, voice: "", relationships: parseRelationships(md), timeline: parseTimeline(md) };
@@ -52,6 +53,14 @@ describe("buildContext", () => {
 		const c = buildContext({ ...base, chapterText: "START" + "x".repeat(5000) + "END", budget: 2000 });
 		expect(c.text).toContain("END");
 		expect(c.text).not.toContain("START");
+	});
+	it("marks the cache boundary right before the chapter, with cards in a fixed order", () => {
+		const c = buildContext(base);
+		const [stable, rest] = c.text.split(CACHE_MARK);
+		expect(rest).toContain("Text so far");
+		expect(stable).not.toContain("Text so far");
+		const swapped = buildContext({ ...base, focusEntities: base.otherEntities, otherEntities: base.focusEntities });
+		expect(swapped.text.split(CACHE_MARK)[0]).toBe(stable);
 	});
 	it("reads the voice sample", () => {
 		expect(voiceSample(base.book)).toBe("Short. Cold.");

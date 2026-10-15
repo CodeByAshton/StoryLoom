@@ -86,6 +86,8 @@ details.storyloom-cast-section > summary { cursor: pointer; }
 
 .storyloom-result-modal { width: min(760px, 92vw); }
 .storyloom-result-body { max-height: 60vh; overflow-y: auto; }
+.storyloom-result-live { white-space: pre-wrap; font-family: var(--font-text); font-size: var(--font-text-size); line-height: 1.5; padding: var(--size-4-2); max-height: 60vh; overflow-y: auto; }
+.storyloom-result-live::after { content: ""; display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: -0.2em; background: var(--interactive-accent); animation: sl-caret 1s steps(2, start) infinite; }
 .storyloom-result-item + .storyloom-result-item { margin-top: var(--size-4-3); }
 .storyloom-result-label { text-transform: uppercase; font-size: 0.72em; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
 .storyloom-result-text { width: 100%; resize: vertical; font-family: var(--font-text); font-size: var(--font-text-size); line-height: 1.5; padding: var(--size-4-2); }
@@ -307,6 +309,18 @@ body.theme-dark {
 	white-space: pre-wrap;
 	color: var(--text-normal);
 }
+.storyloom-glass-result.is-streaming::after {
+	content: "";
+	display: inline-block;
+	width: 2px;
+	height: 1.1em;
+	margin-left: 2px;
+	vertical-align: -0.2em;
+	background: var(--sl-accent);
+	border-radius: 1px;
+	animation: sl-caret 1s steps(2, start) infinite;
+}
+@keyframes sl-caret { to { visibility: hidden; } }
 .storyloom-diff-add { background: var(--sl-add-bg); border-radius: 4px; padding: 1px 1px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .storyloom-diff-add.is-soft { background: none; }
 .storyloom-diff-del { margin-right: 3px; color: var(--sl-del); text-decoration: line-through; text-decoration-thickness: 1px; opacity: 0.75; }
@@ -449,3 +463,11 @@ body.theme-dark {
 .storyloom-chat-suggest { position: absolute; bottom: 100%; left: var(--size-4-3); right: var(--size-4-3); background: var(--background-primary); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); box-shadow: var(--shadow-s); z-index: 10; max-height: 240px; overflow-y: auto; }
 .storyloom-suggest-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; font-size: var(--font-ui-small); }
 .storyloom-suggest-item.is-selected, .storyloom-suggest-item:hover { background: var(--background-modifier-hover); }
+
+.storyloom-settings-btn { margin-top: var(--size-4-2); }
+.storyloom-notice-btn { display: block; margin-top: 6px; }
+.storyloom-chat-msg.is-streaming { white-space: pre-wrap; }
+.storyloom-timeline-modal .setting-item { padding: 6px 0; }
+.storyloom-timeline-preview { font-family: var(--font-monospace); font-size: var(--font-smallest); padding: 8px 10px; margin: 6px 0 4px; border-radius: var(--radius-s); background: var(--background-secondary); color: var(--text-normal); white-space: pre-wrap; word-break: break-word; }
+.storyloom-timeline-preview.is-empty { color: var(--text-faint); font-family: var(--font-interface); }
+.storyloom-stale { display: flex; align-items: center; gap: 6px; margin-top: var(--size-4-2); font-size: var(--font-ui-small); color: var(--text-accent); }

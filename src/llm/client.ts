@@ -1,6 +1,6 @@
 import { AnthropicClient } from "./anthropic";
 import { OpenAICompatClient } from "./openaiCompat";
-import type { HttpFn, LLMClient } from "./types";
+import type { FetchFn, HttpFn, LLMClient } from "./types";
 
 export type ProviderId = "anthropic" | "openai" | "openrouter" | "ollama" | "lmstudio" | "custom";
 
@@ -30,13 +30,14 @@ export function providerConfig(s: ClientSettings, id: ProviderId = s.provider): 
 	return { ...PROVIDERS[id].defaults, ...(s.providers[id] ?? {}) };
 }
 
-export function createClient(s: ClientSettings, http: HttpFn): LLMClient {
+export function createClient(s: ClientSettings, http: HttpFn, fetchFn?: FetchFn): LLMClient {
 	const cfg = providerConfig(s);
 	if (s.provider === "anthropic") {
-		return new AnthropicClient({ apiKey: cfg.apiKey.trim(), model: cfg.model.trim(), effort: s.effort, refusalFallback: s.refusalFallback }, http);
+		return new AnthropicClient({ apiKey: cfg.apiKey.trim(), model: cfg.model.trim(), effort: s.effort, refusalFallback: s.refusalFallback }, http, fetchFn);
 	}
 	return new OpenAICompatClient(
 		{ providerName: PROVIDERS[s.provider].name, baseUrl: cfg.baseUrl, apiKey: cfg.apiKey.trim(), model: cfg.model.trim() },
 		http,
+		fetchFn,
 	);
 }

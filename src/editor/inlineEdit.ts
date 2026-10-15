@@ -6,6 +6,7 @@ import { cleanProse, inlineEditPrompt, REWRITE_PRESETS } from "../context/prompt
 import { friendlyError } from "../llm/types";
 import type StoryloomPlugin from "../main";
 import { diffWords, similarity } from "./diff";
+import { isSettingsError, openSettings } from "../ui";
 
 type Phase = "input" | "loading" | "result" | "error";
 
@@ -22,14 +23,20 @@ export interface InlineEditState {
 	source: string;
 	result?: string;
 	error?: string;
+	/** Text streamed so far while loading. */
+	partial?: string;
 }
 
 export const setInlineEdit = StateEffect.define<InlineEditState | null>();
+const setPartial = StateEffect.define<{ id: number; text: string }>();
 
 export const inlineEditField = StateField.define<InlineEditState | null>({
 	create: () => null,
 	update(value, tr) {
-		for (const e of tr.effects) if (e.is(setInlineEdit)) return e.value;
+		for (const e of tr.effects) {
+			if (e.is(setInlineEdit)) return e.value;
+			if (e.is(setPartial) && value?.id === e.value.id) value = { ...value, partial: e.value.text };
+		}
 		// Any edit to the document while a result is pending cancels it cleanly.
 		if (value && tr.docChanged) return null;
 		return value;
@@ -52,6 +59,8 @@ export function preserveWhitespace(original: string, replacement: string): strin
 }
 
 export class InlineEditController {
+	private abort: AbortController | null = null;
+
 	constructor(private plugin: StoryloomPlugin) {}
 
 	get(view: EditorView) {
@@ -84,6 +93,7 @@ export class InlineEditController {
 
 	close(view: EditorView) {
 		if (!this.get(view)) return false;
+		this.abort?.abort();
 		ghostOut(view);
 		this.set(view, null);
 		view.focus();
@@ -111,6 +121,7 @@ export class InlineEditController {
 	}
 
 	stop(view: EditorView) {
+		this.abort?.abort();
 		const cur = this.get(view);
 		if (cur?.phase === "loading") this.set(view, { ...cur, id: ++seq, phase: "input" });
 	}
@@ -155,7 +166,25 @@ export class InlineEditController {
 			after,
 			insert: st.insert && !refining,
 		});
-		const raw = cleanProse(await this.plugin.ai.complete(prompt));
+		this.abort?.abort();
+		const abort = (this.abort = new AbortController());
+		// Stream into the panel, at most one update per frame.
+		let pending: string | null = null;
+		const flush = () => {
+			if (pending === null || this.get(view)?.id !== st.id) return;
+			view.dispatch({ effects: setPartial.of({ id: st.id, text: cleanProse(pending) }) });
+			pending = null;
+		};
+		const raw = cleanProse(
+			await this.plugin.ai.stream(
+				prompt,
+				(soFar) => {
+					if (pending === null) window.requestAnimationFrame(flush);
+					pending = soFar;
+				},
+				{ signal: abort.signal },
+			),
+		);
 		if (st.insert) {
 			const prev = doc.slice(Math.max(0, st.from - 1), st.from);
 			return prev && !/\s/.test(prev) && !/^[\s,.;:!?)]/.test(raw) ? " " + raw : raw;
@@ -238,7 +267,27 @@ class GlassPanel implements TooltipView {
 	update(u: ViewUpdate) {
 		const st = u.state.field(inlineEditField, false) ?? null;
 		if (st && st !== this.st && (st.phase !== this.st?.phase || st.result !== this.st?.result || st.error !== this.st?.error)) this.render(st, true);
-		else this.st = st;
+		else {
+			const grew = st?.phase === "loading" && st.partial !== this.st?.partial;
+			this.st = st;
+			if (grew && st) this.showPartial(st.partial ?? "");
+		}
+	}
+
+	/** While streaming: swap the skeleton for the text so far, growing smoothly. */
+	private showPartial(text: string) {
+		const sk = this.inner.querySelector(".storyloom-glass-skeleton");
+		let live = this.inner.querySelector(".storyloom-glass-result") as HTMLElement | null;
+		const from = this.dom.offsetHeight;
+		if (!live) {
+			live = createDiv({ cls: "storyloom-glass-result is-streaming" });
+			if (sk) sk.replaceWith(live);
+			else this.inner.querySelector(".storyloom-glass-bar")?.before(live);
+		}
+		live.setText(text);
+		live.scrollTop = live.scrollHeight;
+		const to = this.dom.offsetHeight;
+		if (!reducedMotion() && Math.abs(to - from) > 2) this.dom.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration: 160, easing: "ease-out" });
 	}
 
 	private render(st: InlineEditState | null, animate: boolean) {
@@ -318,7 +367,9 @@ class GlassPanel implements TooltipView {
 			bar.createDiv({ cls: "storyloom-glass-spacer" });
 			glassButton(bar, { label: "Edit", icon: "pencil", onClick: () => v.dispatch({ effects: setInlineEdit.of({ ...st, id: ++seq, phase: "input" }) }) });
 			glassButton(bar, { label: "Close", kbd: "esc", onClick: () => this.ctrl.close(v) });
-			glassButton(bar, { label: "Retry", icon: "rotate-ccw", primary: true, onClick: () => this.ctrl.retry(v) });
+			if (isSettingsError(st.error ?? "")) {
+				glassButton(bar, { label: "Open settings", icon: "settings", primary: true, onClick: () => { this.ctrl.close(v); openSettings(this.plugin.app); } });
+			} else glassButton(bar, { label: "Retry", icon: "rotate-ccw", primary: true, onClick: () => this.ctrl.retry(v) });
 			return;
 		}
 

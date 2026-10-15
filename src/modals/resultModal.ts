@@ -1,6 +1,7 @@
 import { App, Editor, Modal, Notice, setIcon, type EditorPosition } from "obsidian";
 import { friendlyError } from "../llm/types";
 import { InstructionModal } from "./instructionModal";
+import { addSettingsButton } from "../ui";
 
 export interface ResultItem {
 	label?: string;
@@ -18,7 +19,8 @@ export interface ResultModalOptions {
 	title: string;
 	editor?: Editor;
 	/** Produce results. `extra` is an additional instruction from "Retry with instruction…". */
-	run: (extra?: string) => Promise<ResultItem[]>;
+	/** `live` receives text as it streams in (single-result tools only). */
+	run: (extra: string | undefined, live: (text: string) => void) => Promise<ResultItem[]>;
 	/** Replace the default Insert/Replace buttons on the whole result. */
 	actions?: ResultAction[];
 	/** Render items as Markdown-ish blocks with per-item buttons (multi-version results). */
@@ -78,7 +80,9 @@ export class ResultModal extends Modal {
 		this.busy = true;
 		this.renderLoading();
 		try {
-			const items = await this.opts.run(extra);
+			const items = await this.opts.run(extra, (text) => {
+				if (id === this.runId) this.renderLive(text);
+			});
 			if (id !== this.runId) return;
 			this.items = items;
 			this.busy = false;
@@ -88,6 +92,16 @@ export class ResultModal extends Modal {
 			this.busy = false;
 			this.renderError(friendlyError(e));
 		}
+	}
+
+	private renderLive(text: string) {
+		let el = this.bodyEl.querySelector(".storyloom-result-live") as HTMLElement | null;
+		if (!el) {
+			this.bodyEl.empty();
+			el = this.bodyEl.createDiv({ cls: "storyloom-result-live" });
+		}
+		el.setText(text);
+		el.scrollTop = el.scrollHeight;
 	}
 
 	private renderLoading() {
@@ -103,6 +117,7 @@ export class ResultModal extends Modal {
 		const err = this.bodyEl.createDiv({ cls: "storyloom-error" });
 		setIcon(err.createSpan(), "alert-triangle");
 		err.createSpan({ text: msg });
+		addSettingsButton(this.bodyEl, this.app, msg, "mod-cta storyloom-settings-btn");
 		this.renderFooter();
 	}
 

@@ -5,7 +5,7 @@ import type { Entity } from "./codex/types";
 import { buildContext, type BuiltContext } from "./context/builder";
 import { JSON_RETRY, type Prompt } from "./context/prompts";
 import { extractJson, JsonExtractError } from "./llm/json";
-import { LLMError, type ChatMessage, type LLMClient } from "./llm/types";
+import { LLMError, StreamUnavailable, type ChatMessage, type LLMClient, type OnText } from "./llm/types";
 import { previewPrompt } from "./modals/instructionModal";
 import type { StoryloomSettings } from "./settings";
 
@@ -73,20 +73,45 @@ export class AIService {
 		return built;
 	}
 
-	async complete(prompt: Prompt, opts: { maxTokens?: number; temperature?: number; history?: ChatMessage[] } = {}): Promise<string> {
+	/** Providers (by config) that failed to stream this session, e.g. because of CORS. */
+	private noStream = new Set<string>();
+
+	private async request(prompt: Prompt, opts: { maxTokens?: number; temperature?: number; history?: ChatMessage[] }) {
 		const s = this.settings();
 		if (s.showContextBeforeSending) {
 			const ok = await previewPrompt(this.app, prompt.system, prompt.user);
-			if (!ok) throw new LLMError("config", "Cancelled.");
+			if (!ok) throw new LLMError("aborted", "Cancelled.");
 		}
 		const messages: ChatMessage[] = [...(opts.history ?? []), { role: "user", content: prompt.user }];
 		if (s.debug) console.log("[Storyloom] request", { system: prompt.system.length, user: prompt.user.length });
-		return this.client().complete({
-			system: prompt.system,
-			messages,
-			maxTokens: opts.maxTokens ?? s.maxTokens,
-			temperature: opts.temperature ?? s.temperature,
-		});
+		return { system: prompt.system, messages, maxTokens: opts.maxTokens ?? s.maxTokens, temperature: opts.temperature ?? s.temperature };
+	}
+
+	async complete(prompt: Prompt, opts: { maxTokens?: number; temperature?: number; history?: ChatMessage[] } = {}): Promise<string> {
+		return this.client().complete(await this.request(prompt, opts));
+	}
+
+	/**
+	 * Like `complete`, but calls `onText` as the answer arrives. Falls back to a single request when
+	 * streaming is off or the provider can't stream from inside Obsidian.
+	 */
+	async stream(prompt: Prompt, onText: OnText, opts: { maxTokens?: number; temperature?: number; history?: ChatMessage[]; signal?: AbortSignal } = {}): Promise<string> {
+		const s = this.settings();
+		const client = this.client();
+		const key = JSON.stringify([s.provider, s.providers[s.provider]?.baseUrl ?? ""]);
+		const req = await this.request(prompt, opts);
+		if (s.stream && client.stream && !this.noStream.has(key)) {
+			try {
+				return await client.stream(req, onText, opts.signal);
+			} catch (e) {
+				if (!(e instanceof StreamUnavailable)) throw e;
+				this.noStream.add(key);
+				if (s.debug) console.warn("[Storyloom] streaming unavailable, falling back:", e.message);
+			}
+		}
+		const text = await client.complete(req);
+		onText(text);
+		return text;
 	}
 
 	/** Ask for JSON; on a parse/shape failure, retry once with the schema restated. */

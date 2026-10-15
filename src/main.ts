@@ -41,7 +41,8 @@ import { CAST_VIEW, CastView } from "./views/castView";
 import { CHAT_VIEW, ChatView } from "./views/chatView";
 import { GRAPH_VIEW, GraphView } from "./views/graphView";
 import { TIMELINE_VIEW, TimelineView } from "./views/timelineView";
-import { wordCount } from "./util";
+import { proseHash, wordCount } from "./util";
+import { isSettingsError, openSettings } from "./ui";
 
 const http: HttpFn = async (req) => {
 	const res = await requestUrl({ url: req.url, method: req.method, headers: req.headers, body: req.body, contentType: "application/json", throw: false });
@@ -127,7 +128,8 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	llm(): LLMClient {
-		return createClient(this.settings, http);
+		// fetch is only used for streaming; everything else goes through requestUrl (no CORS issues).
+		return createClient(this.settings, http, (url, init) => window.fetch(url, init));
 	}
 
 	applyColors() {
@@ -171,7 +173,8 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	addTimelineEntry(e: Entity, chapter: number) {
-		new TimelineEntryModal(this.app, e, chapter).open();
+		const names = (type: string) => this.index.sortedEntities().filter((x) => x.type === type && x !== e).map((x) => x.name);
+		new TimelineEntryModal(this.app, e, chapter, { locations: names("location"), characters: names("character") }).open();
 	}
 
 	/** The markdown file the user is working in (ignores focus on sidebar views). */
@@ -302,10 +305,10 @@ export default class StoryloomPlugin extends Plugin {
 		new ResultModal(this.app, {
 			title: "Continue writing",
 			editor,
-			run: async (extra) => {
+			run: async (extra, live) => {
 				const ctx = await this.ctxForEditor(editor, file);
 				const p = continuePrompt(ctx.text, this.settings.continueWords, [direction, extra].filter(Boolean).join(". "));
-				return [{ text: cleanProse(await this.ai.complete(p)) }];
+				return [{ text: cleanProse(await this.ai.stream(p, (t) => live(cleanProse(t)))) }];
 			},
 		}).open();
 	}
@@ -352,11 +355,11 @@ export default class StoryloomPlugin extends Plugin {
 		new ResultModal(this.app, {
 			title: "Expand",
 			editor,
-			run: async (extra) => {
+			run: async (extra, live) => {
 				const ctx = await this.ctxForEditor(editor, file);
 				const p = expandPrompt(ctx.text, passage);
 				if (extra) p.user += `\nAlso: ${extra}`;
-				return [{ text: cleanProse(await this.ai.complete(p)) }];
+				return [{ text: cleanProse(await this.ai.stream(p, (t) => live(cleanProse(t)))) }];
 			},
 		}).open();
 	}
@@ -401,11 +404,11 @@ export default class StoryloomPlugin extends Plugin {
 					},
 				},
 			],
-			run: async (extra) => {
+			run: async (extra, live) => {
 				const ctx = await this.ai.context({ file, text: await this.fileText(file, editor) });
 				const p = summarizePrompt(ctx.text);
 				if (extra) p.user += `\nAlso: ${extra}`;
-				return [{ text: cleanProse(await this.ai.complete(p)) }];
+				return [{ text: cleanProse(await this.ai.stream(p, (t) => live(cleanProse(t)))) }];
 			},
 		}).open();
 	}
@@ -455,8 +458,10 @@ export default class StoryloomPlugin extends Plugin {
 			const update = await this.ai.completeJson(stateUpdatePrompt(ctx.text, chapter.chapter), validateStateUpdate, STATE_SCHEMA);
 			notice.hide();
 			const rows = buildReviewRows(update, this.index, chapter.chapter);
+			if (!rows.groups.length && !rows.rels.length && !rows.entities.length) await this.markStateSynced(file, text);
 			const approved = await StateReviewModal.review(this.app, chapter.chapter, rows);
 			if (!approved) return;
+			await this.markStateSynced(file, text);
 			const res = await applyChanges(this.app, this.index, this.settings, approved);
 			const parts = [
 				res.lines ? `${res.lines} timeline ${res.lines === 1 ? "entry" : "entries"}` : "",
@@ -466,8 +471,15 @@ export default class StoryloomPlugin extends Plugin {
 			new Notice(parts.length ? `Storyloom: added ${parts.join(", ")}${res.touched.length ? ` (${res.touched.join(", ")})` : ""}.` : "Storyloom: nothing new to write.");
 		} catch (e) {
 			notice.hide();
-			new Notice(`Storyloom: ${friendlyError(e)}`, 10000);
+			this.errorNotice(e);
 		}
+	}
+
+	/** Remember the prose we just synced, so the Cast panel can tell when the chapter changes again. */
+	async markStateSynced(file: TFile, text: string) {
+		this.settings.stateSynced[file.path] = proseHash(text);
+		await this.saveData(this.settings);
+		this.app.workspace.getLeavesOfType(CAST_VIEW).forEach((l) => (l.view as CastView).refresh());
 	}
 
 	async extractEntities(file: TFile) {
@@ -485,8 +497,20 @@ export default class StoryloomPlugin extends Plugin {
 			new Notice(`Storyloom: created ${rows.length} note${rows.length === 1 ? "" : "s"}.`);
 		} catch (e) {
 			notice.hide();
-			new Notice(`Storyloom: ${friendlyError(e)}`, 10000);
+			this.errorNotice(e);
 		}
+	}
+
+	/** A notice for an AI error, with an "Open settings" button when that's where the fix is. */
+	errorNotice(e: unknown) {
+		const msg = friendlyError(e);
+		const frag = document.createDocumentFragment();
+		frag.createSpan({ text: `Storyloom: ${msg}` });
+		if (isSettingsError(msg)) {
+			const b = frag.createEl("button", { text: "Open settings", cls: "storyloom-notice-btn" });
+			b.addEventListener("click", () => openSettings(this.app));
+		}
+		new Notice(frag, 10000);
 	}
 
 	// ---------- Quality of life ----------

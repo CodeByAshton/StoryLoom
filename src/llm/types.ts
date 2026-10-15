@@ -12,9 +12,37 @@ export interface CompleteRequest {
 	temperature?: number;
 }
 
-/** Single seam for every provider. A streaming variant can be added beside it later. */
+export type OnText = (soFar: string) => void;
+
+/** Single seam for every provider. */
 export interface LLMClient {
 	complete(req: CompleteRequest): Promise<string>;
+	/**
+	 * Stream the answer, calling `onText` with the text so far. Throws `StreamUnavailable` when the
+	 * provider can't be reached from the browser (e.g. CORS), so callers can fall back to `complete`.
+	 */
+	stream?(req: CompleteRequest, onText: OnText, signal?: AbortSignal): Promise<string>;
+}
+
+export class StreamUnavailable extends Error {}
+
+export type FetchFn = (url: string, init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal }) => Promise<Response>;
+
+/**
+ * The context builder puts this between the stable part of the system prompt (book, codex, summaries)
+ * and the part that changes per request (the chapter text). Providers that support prompt caching cache
+ * everything before it; everyone else just drops it.
+ */
+export const CACHE_MARK = "\u0000storyloom-cache\u0000";
+
+export function splitSystem(system: string): { prefix: string; rest: string } {
+	const i = system.indexOf(CACHE_MARK);
+	if (i === -1) return { prefix: "", rest: system };
+	return { prefix: system.slice(0, i), rest: system.slice(i + CACHE_MARK.length) };
+}
+
+export function plainSystem(system: string): string {
+	return system.split(CACHE_MARK).join("");
 }
 
 export interface HttpRequest {
@@ -31,7 +59,7 @@ export interface HttpResponse {
 
 export type HttpFn = (req: HttpRequest) => Promise<HttpResponse>;
 
-export type LLMErrorKind = "auth" | "rate_limit" | "not_found" | "bad_request" | "server" | "network" | "refusal" | "empty" | "config";
+export type LLMErrorKind = "aborted" | "auth" | "rate_limit" | "not_found" | "bad_request" | "server" | "network" | "refusal" | "empty" | "config";
 
 export class LLMError extends Error {
 	constructor(

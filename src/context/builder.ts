@@ -2,6 +2,7 @@
 import { sectionText, stripFrontmatter, stripWikilinks } from "../codex/parse";
 import { resolveState } from "../codex/state";
 import type { ChapterInfo, Entity } from "../codex/types";
+import { CACHE_MARK } from "../llm/types";
 
 export interface ContextInput {
 	/** Raw Book.md text (frontmatter allowed). */
@@ -74,10 +75,12 @@ export function buildContext(input: ContextInput): BuiltContext {
 	const bookPart = book ? `## The book\n${book}` : "";
 	remaining -= bookPart.length;
 
-	const focus: string[] = [];
+	// Cards are chosen by priority but written out in a fixed order, so the cached prefix of the
+	// prompt stays byte-identical while you work in one chapter.
+	const cards: { e: Entity; text: string }[] = [];
 	for (const e of input.focusEntities) {
 		const c = entityCard(e, input.asOf);
-		if (take(c)) focus.push(c);
+		if (take(c)) cards.push({ e, text: c });
 		else truncated = true;
 	}
 
@@ -104,18 +107,19 @@ export function buildContext(input: ContextInput): BuiltContext {
 	// If the chapter text had to be cut, there's no room for lower-priority cards.
 	remaining = truncated && chapterText !== input.chapterText ? 0 : remaining - chapterText.length;
 
-	const others: string[] = [];
 	for (const e of input.otherEntities) {
 		const c = entityCard(e, input.asOf);
-		if (take(c)) others.push(c);
+		if (take(c)) cards.push({ e, text: c });
 		else truncated = true;
 	}
 
 	const parts: { name: string; text: string }[] = [];
 	if (bookPart) parts.push({ name: "book", text: bookPart });
-	if (focus.length || others.length) {
+	if (cards.length) {
 		const when = Number.isFinite(input.asOf) ? ` (states as of chapter ${input.asOf}; treat these as facts)` : " (latest states; treat these as facts)";
-		parts.push({ name: "codex", text: `## Codex${when}\n${[...focus, ...others].join("\n\n")}` });
+		const order = ["character", "location", "lore", "faction", "item"];
+		cards.sort((a, b) => order.indexOf(a.e.type) - order.indexOf(b.e.type) || a.e.name.localeCompare(b.e.name));
+		parts.push({ name: "codex", text: `## Codex${when}\n${cards.map((c) => c.text).join("\n\n")}` });
 	}
 	if (summaries.length) parts.push({ name: "summaries", text: `## Earlier chapters\n${summaries.join("\n")}` });
 	if (input.chapter || chapterText.trim()) {
@@ -125,8 +129,11 @@ export function buildContext(input: ContextInput): BuiltContext {
 		const label = input.mode === "generate" ? "Text so far" : "Full text";
 		parts.push({ name: "chapter", text: `${head}\n${label}:\n<<<\n${chapterText}\n>>>` });
 	}
+	// Everything before the chapter is stable between requests; mark the boundary for prompt caching.
+	const stable = parts.filter((p) => p.name !== "chapter").map((p) => p.text).join("\n\n");
+	const chapterPart = parts.find((p) => p.name === "chapter")?.text ?? "";
 	return {
-		text: parts.map((p) => p.text).join("\n\n"),
+		text: stable && chapterPart ? `${stable}${CACHE_MARK}\n\n${chapterPart}` : stable || chapterPart,
 		sections: parts.map((p) => ({ name: p.name, chars: p.text.length })),
 		truncated,
 	};

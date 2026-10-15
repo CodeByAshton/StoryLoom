@@ -18,6 +18,7 @@ export interface StoryloomSettings extends ClientSettings {
 	entityColors: Record<EntityType, string>;
 	debug: boolean;
 	showContextBeforeSending: boolean;
+	stream: boolean;
 	inlineEditKey: string;
 	askAiButton: boolean;
 	quickChips: string[];
@@ -25,6 +26,8 @@ export interface StoryloomSettings extends ClientSettings {
 	saveChats: boolean;
 	/** Paths created by the sample-content installer, for "Clear sample content". */
 	samplePaths: string[];
+	/** Chapter path -> prose hash at the last "Update story state", to flag chapters edited since. */
+	stateSynced: Record<string, string>;
 }
 
 export const DEFAULT_SETTINGS: StoryloomSettings = {
@@ -51,12 +54,14 @@ export const DEFAULT_SETTINGS: StoryloomSettings = {
 	},
 	debug: false,
 	showContextBeforeSending: false,
+	stream: true,
 	inlineEditKey: "Mod-k",
 	askAiButton: true,
 	quickChips: ["Tighter", "More vivid", "More tension", "Show, don't tell", "Fix grammar", "Continue"],
 	instructionHistory: [],
 	saveChats: false,
 	samplePaths: [],
+	stateSynced: {},
 };
 
 export class StoryloomSettingTab extends PluginSettingTab {
@@ -205,6 +210,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl).setName("Advanced").setHeading();
+		this.toggleSetting("Stream responses", "Show text as it's written. Turns itself off for the session if a provider blocks it (e.g. a local server without CORS enabled).", "stream");
 		this.toggleSetting("Save chats", "Keep Story Assistant conversations in .storyloom/chats/.", "saveChats");
 		this.toggleSetting("Show context before sending", "Preview the full prompt in a modal before each request.", "showContextBeforeSending");
 		this.toggleSetting("Debug mode", "Log context sizes and requests to the developer console.", "debug");
@@ -222,7 +228,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			);
 	}
 
-	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug") {
+	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream") {
 		new Setting(this.containerEl)
 			.setName(name)
 			.setDesc(desc)

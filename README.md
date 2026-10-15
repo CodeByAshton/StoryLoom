@@ -17,7 +17,7 @@ To use Storyloom in an existing vault, copy `main.js`, `manifest.json` and `styl
 
 | Area | Features |
 |---|---|
-| **Inline edit** | Select text and press Cmd/Ctrl+K (or click **Ask AI**), then type an instruction or pick a chip. The result shows as an inline diff: **Tab** accepts, **Esc** rejects, plus Retry and a "refine" field. Accepting is a single undo step. With no selection it writes at the cursor. |
+| **Inline edit** | Select text and press Cmd/Ctrl+K (or click the **Ask AI** pill), then type an instruction or pick a chip. A floating glass panel streams the answer in, then shows a word-by-word diff. Your text never moves and the note isn't touched until you press **Tab**. **Esc** discards; there's also Retry and a "refine" field. Accepting is a single undo step. With no selection it writes at the cursor. |
 | **Writing tools** | Continue writing, Rewrite (2–3 versions), Describe (five senses), Expand, Brainstorm, Summarize chapter (writes to `summary`), Critique, Continuity check (click an issue to jump to the line). Available from the command palette and the editor's right-click menu. |
 | **Codex** | Character, location and lore notes with `## Relationships` (chapter ranges) and `## Timeline` (`- ch N \| key: value`). |
 | **State as of chapter N** | Entity names are underlined in chapters. Hovering one shows that entity's state as of the current chapter. Cmd/Ctrl+click opens the note. |
@@ -30,7 +30,7 @@ To use Storyloom in an existing vault, copy `main.js`, `manifest.json` and `styl
 - **Anthropic** (default model `claude-sonnet-5-5`). Effort and refusal-fallback options are in settings. Claude 4.7+ models reject custom `temperature`, so it's only sent to older models.
 - **OpenAI-compatible**: OpenAI, OpenRouter, Ollama (`http://localhost:11434/v1`, no key), LM Studio, or any custom base URL.
 
-All requests go through Obsidian's `requestUrl` (no CORS issues, no Node APIs). Your key is stored unencrypted in `.obsidian/plugins/storyloom/data.json`. The vault's `.gitignore` excludes that file.
+Answers stream in as they're written. Streaming uses `fetch`. If a provider blocks that from inside Obsidian (for example a local server without CORS enabled), Storyloom quietly falls back to Obsidian's `requestUrl` for the rest of the session. With Anthropic, the stable part of the context (book, codex, earlier summaries) is sent as a cached prompt block. Repeated requests while you work on one chapter then pay full price only for the chapter text. Your key is stored unencrypted in `.obsidian/plugins/storyloom/data.json`. The vault's `.gitignore` excludes that file.
 
 ## Data formats
 
@@ -54,7 +54,7 @@ All requests go through Obsidian's `requestUrl` (no CORS issues, no Node APIs). 
 
 ```
 npm run build    # type-check + bundle main.js
-npm test         # vitest: parsers, state resolver, writers, JSON extraction, LLM clients, context builder, graph model, sample vault
+npm test         # vitest: parsers, state resolver, writers, JSON, LLM clients + streaming, context builder, diff, graph model, sample vault
 npm run vault    # build and install into My Book/
 npm run dev      # watch mode
 ```
@@ -72,7 +72,7 @@ src/
   modals/              result, instruction, review, report, timeline entry
 ```
 
-Streaming isn't implemented yet. Every provider sits behind `LLMClient.complete()`, so a streaming method can be added next to it. Series support can come from pointing the Codex folder setting at a shared folder.
+Series support can come from pointing the Codex folder setting at a shared folder.
 
 ## License
 

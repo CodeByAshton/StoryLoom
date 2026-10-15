@@ -58,15 +58,31 @@ export class CodexIndex extends Events {
 		this.entities.clear();
 		this.byPath.clear();
 		this.chapters = [];
-		for (const file of this.app.vault.getMarkdownFiles()) await this.indexFile(file, false);
+		for (const file of this.app.vault.getMarkdownFiles()) await this.indexFile(file);
 		this.ready = true;
 		this.finish();
 	}
 
+	/**
+	 * Re-index one file, and only broadcast if what Storyloom derives from it changed.
+	 * Typing in a chapter autosaves every couple of seconds; the prose itself isn't indexed,
+	 * so those saves cost one fingerprint comparison instead of a full refresh of every view.
+	 */
 	private async onFileChanged(file: TFile) {
 		if (file.extension !== "md") return;
+		const before = this.fingerprint(file.path);
 		this.removePath(file.path);
-		await this.indexFile(file, true);
+		await this.indexFile(file);
+		if (this.fingerprint(file.path) !== before) this.finish();
+	}
+
+	private fingerprint(path: string): string {
+		const name = this.byPath.get(path);
+		const entity = name ? this.entities.get(name) : undefined;
+		const chapter = this.chapters.find((c) => c.path === path);
+		if (!entity && !chapter) return "";
+		const inf = (_k: string, v: unknown) => (v === Infinity ? "+inf" : v === -Infinity ? "-inf" : v);
+		return JSON.stringify([entity, chapter], inf);
 	}
 
 	private onFileRemoved(path: string) {
@@ -86,25 +102,17 @@ export class CodexIndex extends Events {
 		return changed || before !== this.chapters.length;
 	}
 
-	private async indexFile(file: TFile, finish: boolean) {
+	private async indexFile(file: TFile) {
 		const s = this.settings();
 		if (s.templatesFolder && this.inFolder(file.path, s.templatesFolder)) return;
 		const cache = this.app.metadataCache.getFileCache(file);
 		const fm = cache?.frontmatter ?? {};
-		let touched = false;
 		if (this.inFolder(file.path, s.codexFolder) && isEntityType(fm.type)) {
-			const text = await this.app.vault.cachedRead(file);
-			this.addEntity(file, fm, text);
-			touched = true;
+			this.addEntity(file, fm, await this.app.vault.cachedRead(file));
 		} else {
 			const ch = this.chapterFromMeta(file, cache);
-			if (ch) {
-				this.chapters.push(ch);
-				touched = true;
-			}
+			if (ch) this.chapters.push(ch);
 		}
-		if (finish && touched) this.finish();
-		else if (finish) this.emitChanged();
 	}
 
 	private addEntity(file: TFile, fm: Record<string, unknown>, text: string) {

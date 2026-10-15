@@ -1,4 +1,5 @@
 import { App, Modal, Setting, SuggestModal } from "obsidian";
+import { CACHE_MARK } from "../llm/types";
 
 /** Single-line text prompt. Resolves to null when cancelled. */
 export class InstructionModal extends Modal {
@@ -128,7 +129,8 @@ export function previewPrompt(app: App, system: string, user: string): Promise<b
 		body: (el) => {
 			el.createEl("p", { cls: "storyloom-muted", text: `System ${system.length.toLocaleString()} chars · user ${user.length.toLocaleString()} chars` });
 			const pre = el.createEl("pre", { cls: "storyloom-preview" });
-			pre.setText(`### SYSTEM\n${system}\n\n### USER\n${user}`);
+			const shown = system.split(CACHE_MARK).join("\n\n──────── cached above this line (Anthropic) ────────");
+			pre.setText(`### SYSTEM\n${shown}\n\n### USER\n${user}`);
 		},
 	});
 }
