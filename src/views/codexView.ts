@@ -4,9 +4,8 @@ import { resolveState, sortedTimeline } from "../codex/state";
 import { ENTITY_TYPES, type Entity, type EntityType } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEmpty } from "./empty";
-import { avatar, renderProps, stateRows, tag, type PropRow } from "./props";
+import { renderProps, stateRows, tag, type PropRow } from "./props";
 import { renderNav } from "./nav";
-import { huePalette, initials } from "./timelineModel";
 import { focusable } from "../ui";
 
 export const CODEX_VIEW = "storyloom-codex";
@@ -84,8 +83,7 @@ export class CodexView extends ItemView {
 		});
 		if (keepFocus) window.requestAnimationFrame(() => input.focus());
 		const add = bar.createEl("button", { cls: "sl-cx-new mod-cta", attr: { "aria-label": "New codex entry" } });
-		setIcon(add.createSpan({ cls: "storyloom-btn-icon" }), "plus");
-		add.createSpan({ text: "New" });
+		add.setText("New");
 		add.addEventListener("click", (ev) => {
 			const menu = new Menu();
 			for (const t of ["character", "location", "lore"] as const) {
@@ -95,9 +93,8 @@ export class CodexView extends ItemView {
 		});
 
 		const chips = root.createDiv({ cls: "sl-cx-chips" });
-		const chip = (key: EntityType | "all", label: string, count: number, icon?: string) => {
+		const chip = (key: EntityType | "all", label: string, count: number) => {
 			const c = chips.createEl("button", { cls: `sl-cx-chip${this.type === key ? " is-active" : ""}${key !== "all" ? ` storyloom-type-${key}` : ""}` });
-			if (icon) setIcon(c.createSpan({ cls: "sl-cx-chip-icon" }), icon);
 			c.createSpan({ text: label });
 			c.createSpan({ cls: "sl-cx-chip-count", text: String(count) });
 			c.addEventListener("click", () => {
@@ -108,7 +105,7 @@ export class CodexView extends ItemView {
 		chip("all", "All", all.length);
 		for (const t of ENTITY_TYPES) {
 			const n = all.filter((e) => e.type === t).length;
-			if (n || this.type === t) chip(t, TYPE_LABEL[t], n, TYPE_ICON[t]);
+			if (n || this.type === t) chip(t, TYPE_LABEL[t], n);
 		}
 
 		const body = root.createDiv({ cls: `sl-cx-body${this.selected ? " has-detail" : ""}` });
@@ -116,15 +113,6 @@ export class CodexView extends ItemView {
 		this.renderGrid(gridEl);
 		const sel = this.selected ? this.plugin.index.entities.get(this.selected) : undefined;
 		if (sel) this.renderDetail(body.createDiv({ cls: "sl-cx-detail" }), sel);
-	}
-
-	/** Same colours as the timeline: places and people each get evenly spaced hues. */
-	private hue(name: string): number {
-		const all = this.plugin.index.sortedEntities();
-		const ent = this.plugin.index.getEntity(name);
-		const type = ent?.type ?? "location";
-		const offset = type === "character" ? 25 : 205;
-		return huePalette(all.filter((e) => e.type === type).map((e) => e.name), offset)(ent?.name ?? name);
 	}
 
 	private renderGrid(grid: HTMLElement) {
@@ -156,26 +144,14 @@ export class CodexView extends ItemView {
 			const card = focusable(grid.createDiv({ cls: `sl-cx-card storyloom-type-${e.type}${this.selected === e.name ? " is-selected" : ""}` }));
 			card.style.animationDelay = `${Math.min(i, 20) * 22}ms`;
 			const head = card.createDiv({ cls: "sl-cx-card-head" });
-			const av = head.createDiv({ cls: "sl-tl-avatar", text: initials(e.name) });
-			av.style.setProperty("--hue", String(this.hue(e.name)));
 			const t = head.createDiv({ cls: "sl-cx-card-title" });
 			t.createDiv({ cls: "sl-cx-card-name", text: e.name });
 			t.createDiv({ cls: "sl-cx-card-type", text: [cap(e.type), e.role].filter(Boolean).join(" · ") });
 			if (e.aliases.length) card.createDiv({ cls: "sl-cx-card-aliases", text: `Also: ${e.aliases.join(", ")}` });
 			if (e.description) card.createDiv({ cls: "sl-cx-card-desc", text: stripWikilinks(e.description) });
 			const foot = card.createDiv({ cls: "sl-cx-card-foot" });
-			if (s.fields.location) {
-				const loc = stripWikilinks(s.fields.location);
-				const p = foot.createDiv({ cls: "sl-tl-pill is-static" });
-				p.style.setProperty("--hue", String(this.hue(loc)));
-				setIcon(p.createSpan({ cls: "sl-tl-pill-icon" }), "map-pin");
-				p.createSpan({ cls: "sl-tl-pill-text", text: loc });
-			}
-			if (s.fields.status) {
-				const st = foot.createDiv({ cls: "sl-tl-event is-status" });
-				setIcon(st.createSpan({ cls: "sl-tl-event-icon" }), "activity");
-				st.createSpan({ text: stripWikilinks(s.fields.status) });
-			}
+			if (s.fields.location) tag(foot, stripWikilinks(s.fields.location));
+			if (s.fields.status) tag(foot, stripWikilinks(s.fields.status));
 			card.addEventListener("click", () => this.select(this.selected === e.name ? null : e.name));
 			card.addEventListener("dblclick", () => void this.app.workspace.openLinkText(e.path, "", false));
 		});
@@ -192,7 +168,6 @@ export class CodexView extends ItemView {
 		open.addEventListener("click", () => void this.app.workspace.openLinkText(e.path, "", false));
 
 		const head = el.createDiv({ cls: "sl-cx-detail-head" });
-		avatar(head, e.name, this.hue(e.name), "lg");
 		head.createDiv({ cls: "sl-cx-detail-name", text: e.name });
 
 		const rows: PropRow[] = [
@@ -204,14 +179,9 @@ export class CodexView extends ItemView {
 		renderProps(el, rows);
 
 		const actions = el.createDiv({ cls: "sl-cx-actions" });
-		const act = (label: string, icon: string, fn: () => void) => {
-			const b = actions.createEl("button");
-			setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), icon);
-			b.createSpan({ text: label });
-			b.addEventListener("click", fn);
-		};
-		act("Add timeline entry", "plus", () => this.plugin.addTimelineEntry(e, this.plugin.index.lastChapter || 1));
-		act("Open note", "file-pen-line", () => void this.app.workspace.openLinkText(e.path, "", false));
+		const act = (label: string, fn: () => void) => actions.createEl("button", { text: label }).addEventListener("click", fn);
+		act("Add timeline entry", () => this.plugin.addTimelineEntry(e, this.plugin.index.lastChapter || 1));
+		act("Open note", () => void this.app.workspace.openLinkText(e.path, "", false));
 
 		if (e.description) this.section(el, "Description").setText(stripWikilinks(e.description));
 		if (e.voice) this.section(el, "Voice").setText(stripWikilinks(e.voice));

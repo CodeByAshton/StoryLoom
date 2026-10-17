@@ -103,7 +103,6 @@ export class SetupModal extends Modal {
 		for (const c of choices) {
 			if (c.hidden) continue;
 			const card = grid.createDiv({ cls: `sl-setup-choice${s.provider === c.id || (c.id === "openai" && ["openrouter", "lmstudio", "custom"].includes(s.provider)) ? " is-selected" : ""}`, attr: { "data-id": c.id, tabindex: "0", role: "button" } });
-			setIcon(card.createDiv({ cls: "sl-setup-choice-icon" }), c.icon);
 			card.createDiv({ cls: "sl-setup-choice-title", text: c.title });
 			card.createDiv({ cls: "sl-setup-choice-desc", text: c.desc });
 			card.addEventListener("click", () => void select(c.id));
@@ -155,8 +154,7 @@ export class SetupModal extends Modal {
 		}
 
 		const test = status.createEl("button", { cls: "sl-setup-test" });
-		setIcon(test.createSpan({ cls: "storyloom-btn-icon" }), "zap");
-		test.createSpan({ text: s.provider === "claudecode" ? "Check Claude Code" : "Test connection" });
+		test.setText(s.provider === "claudecode" ? "Check Claude Code" : "Test connection");
 		const out = status.createDiv({ cls: "sl-setup-result" });
 		test.addEventListener("click", async () => {
 			test.disabled = true;
@@ -165,9 +163,7 @@ export class SetupModal extends Modal {
 			const r = await this.test();
 			test.disabled = false;
 			out.className = `sl-setup-result ${r.ok ? "is-ok" : "is-error"}`;
-			out.empty();
-			setIcon(out.createSpan({ cls: "storyloom-btn-icon" }), r.ok ? "check-circle-2" : "alert-circle");
-			out.createSpan({ text: r.message });
+			out.setText(r.message);
 		});
 	}
 
@@ -205,15 +201,14 @@ export class SetupModal extends Modal {
 		input.addEventListener("input", () => (this.bookTitle = input.value.trim() || this.app.vault.getName()));
 
 		const list = body.createDiv({ cls: "sl-setup-plan" });
-		const item = (icon: string, path: string, note: string) => {
+		const item = (path: string, note: string) => {
 			const r = list.createDiv({ cls: "sl-setup-plan-item" });
-			setIcon(r.createSpan({ cls: "storyloom-btn-icon" }), icon);
 			r.createSpan({ cls: "sl-setup-plan-path", text: path });
 			r.createSpan({ cls: "storyloom-muted", text: note });
 		};
 		const notes: Record<string, string> = { [s.manuscriptFolder]: "your chapters", [`${s.codexFolder}/Characters`]: "people", [`${s.codexFolder}/Locations`]: "locations", [`${s.codexFolder}/Lore`]: "everything else", [s.templatesFolder]: "for new notes" };
-		for (const f of plan.folders) item("folder", f + "/", notes[f] ?? "");
-		for (const f of plan.files) item("file-text", f.path, f.path === s.bookPath ? "premise, style guide and voice sample" : "template");
+		for (const f of plan.folders) item(f + "/", notes[f] ?? "");
+		for (const f of plan.files) item(f.path, f.path === s.bookPath ? "premise, style guide and voice sample" : "template");
 
 		const b = this.footer(body, {
 			label: "Create",
@@ -240,9 +235,8 @@ export class SetupModal extends Modal {
 			["refresh-cw", "Sync a chapter when you finish it", "Storyloom reads it and records what changed in the codex: who moved, who learned what. Want something different? Change the chapter and sync again."],
 		];
 		const list = body.createDiv({ cls: "sl-setup-tips" });
-		for (const [icon, title, desc] of tips) {
+		for (const [, title, desc] of tips) {
 			const t = list.createDiv({ cls: "sl-setup-tip" });
-			setIcon(t.createDiv({ cls: "sl-setup-tip-icon" }), icon);
 			const txt = t.createDiv();
 			txt.createDiv({ cls: "sl-setup-tip-title", text: title });
 			txt.createDiv({ cls: "storyloom-muted", text: desc });

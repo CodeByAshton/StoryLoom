@@ -1,6 +1,6 @@
 import { StateEffect, type Extension } from "@codemirror/state";
 import { closeHoverTooltips, Decoration, EditorView, hoverTooltip, ViewPlugin, type DecorationSet, type Tooltip, type ViewUpdate } from "@codemirror/view";
-import { editorInfoField, setIcon } from "obsidian";
+import { editorInfoField } from "obsidian";
 import type StoryloomPlugin from "../main";
 import { fitInEditor } from "./fit";
 import { frontmatterEnd } from "./highlight";
@@ -77,25 +77,23 @@ function renderNoteCard(plugin: StoryloomPlugin, view: EditorView, path: string,
 	const kind = NOTE_KINDS[note.kind];
 	const dom = createDiv({ cls: `storyloom-hover sl-wn-card is-${note.kind}` });
 	const head = dom.createDiv({ cls: "sl-wn-head" });
-	setIcon(head.createSpan({ cls: "sl-wn-icon" }), kind.icon);
 	head.createSpan({ cls: "sl-wn-kind", text: kind.label });
 	dom.createDiv({ cls: "sl-wn-message", text: note.message });
 	if (note.suggestion) {
 		const fix = dom.createDiv({ cls: "sl-wn-fix" });
 		fix.createSpan({ cls: "sl-wn-old", text: note.quote });
-		setIcon(fix.createSpan({ cls: "sl-wn-arrow" }), "arrow-right");
+		fix.createSpan({ cls: "sl-wn-arrow", text: "→" });
 		fix.createSpan({ cls: "sl-wn-new", text: note.suggestion });
 	}
 	const actions = dom.createDiv({ cls: "sl-wn-actions" });
-	const button = (label: string, icon: string, primary: boolean, onClick: () => void) => {
+	const button = (label: string, primary: boolean, onClick: () => void) => {
 		const b = actions.createEl("button", { cls: `storyloom-glass-btn${primary ? " is-primary" : ""}` });
-		setIcon(b.createSpan({ cls: "storyloom-glass-icon" }), icon);
-		b.createSpan({ text: label });
+		b.setText(label);
 		b.addEventListener("mousedown", (e) => e.preventDefault());
 		b.addEventListener("click", onClick);
 	};
 	if (note.suggestion) {
-		button("Fix", "check", true, () => {
+		button("Fix", true, () => {
 			// Use the spot that was hovered; only re-find it if the text has moved since the card opened.
 			const now = view.state.doc.sliceString(hit.from, hit.to) === note.quote ? hit : located(plugin, view).find((l) => l.note === note);
 			if (now) view.dispatch({ changes: { from: now.from, to: now.to, insert: note.suggestion }, userEvent: "input.storyloom-fix" });
@@ -103,7 +101,7 @@ function renderNoteCard(plugin: StoryloomPlugin, view: EditorView, path: string,
 			view.dispatch({ effects: closeHoverTooltips });
 		});
 	}
-	button("Dismiss", "x", !note.suggestion, () => {
+	button("Dismiss", !note.suggestion, () => {
 		void plugin.removeNote(path, note);
 		view.dispatch({ effects: closeHoverTooltips });
 	});

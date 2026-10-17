@@ -128,6 +128,8 @@ export default class StoryloomPlugin extends Plugin {
 	onunload() {
 		document.getElementById("storyloom-hide-codex")?.remove();
 		for (const type of Object.keys(this.settings.entityColors)) document.body.style.removeProperty(`--storyloom-${type}`);
+		document.body.style.removeProperty("--sl-scale");
+		document.body.removeClass("sl-red-spelling");
 	}
 
 	/**
@@ -337,6 +339,8 @@ export default class StoryloomPlugin extends Plugin {
 
 	applyColors() {
 		for (const [type, color] of Object.entries(this.settings.entityColors)) document.body.style.setProperty(`--storyloom-${type}`, color);
+		document.body.style.setProperty("--sl-scale", String({ small: 0.92, default: 1, large: 1.1 }[this.settings.textSize] ?? 1));
+		document.body.toggleClass("sl-red-spelling", this.settings.redSpelling);
 	}
 
 	rememberInstruction(text: string) {

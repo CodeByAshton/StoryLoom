@@ -1,11 +1,10 @@
-import { debounce, ItemView, setIcon, TFile, type WorkspaceLeaf } from "obsidian";
+import { debounce, ItemView, TFile, type WorkspaceLeaf } from "obsidian";
 import { stripFrontmatter, stripWikilinks } from "../codex/parse";
 import type { Entity } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEntityBlock, renderProps, tag } from "./props";
 import { proseHash, wordCount } from "../util";
 import { renderEmpty } from "./empty";
-import { huePalette } from "./timelineModel";
 import { focusable } from "../ui";
 
 export const CAST_VIEW = "storyloom-cast";
@@ -87,7 +86,7 @@ export class CastView extends ItemView {
 					name: "AI review",
 					value: (c: HTMLElement) => {
 						if (!noteCount) return void c.createSpan({ cls: "sl-prop-empty", text: this.plugin.settings.chapterNotes[file?.path ?? ""] || synced ? "None" : "Sync to check" });
-						const t = focusable(tag(c, `${noteCount} to review`, "is-warn sl-clickable"));
+						const t = focusable(tag(c, `${noteCount} to review`, "is-strong sl-clickable"));
 						t.setAttr("aria-label", "Go to the next writing note");
 						t.addEventListener("click", () => {
 							const editor = this.plugin.activeEditor();
@@ -95,14 +94,14 @@ export class CastView extends ItemView {
 						});
 					},
 				}] : []),
-				{ icon: "refresh-cw", name: "Synced", value: (c: HTMLElement) => (stale ? tag(c, "Edited since last sync", "is-warn") : tag(c, synced ? "Up to date" : "Not synced yet", synced ? "is-ok" : "is-neutral")) },
+				{ icon: "refresh-cw", name: "Synced", value: (c: HTMLElement) => (stale ? tag(c, "Edited since last sync", "is-strong") : tag(c, synced ? "Up to date" : "Not synced yet")) },
 			]);
 		} else header.createDiv({ cls: "sl-cast-meta", text: "Open a chapter to see everyone as of that point in the story." });
 
 		if (chapter && file) {
 			const actions = root.createDiv({ cls: "storyloom-cast-actions" });
-			this.button(actions, "Sync chapter", "refresh-cw", () => void this.plugin.updateStoryState(file), stale);
-			this.button(actions, "Summarize", "align-left", () => void this.plugin.summarize(file));
+			this.button(actions, "Sync chapter", () => void this.plugin.updateStoryState(file), stale);
+			this.button(actions, "Summarize", () => void this.plugin.summarize(file));
 		}
 
 		const handlers = {
@@ -124,13 +123,7 @@ export class CastView extends ItemView {
 			return;
 		}
 
-		const all = index.sortedEntities();
-		const palettes = new Map<string, (n: string) => number>();
-		const hue = (e: Entity) => {
-			if (!palettes.has(e.type)) palettes.set(e.type, huePalette(all.filter((x) => x.type === e.type).map((x) => x.name), e.type === "character" ? 25 : 205));
-			return (palettes.get(e.type) as (n: string) => number)(e.name);
-		};
-		const card = (parent: HTMLElement, e: Entity) => renderEntityBlock(parent, e, asOf, { hue: hue(e), handlers });
+		const card = (parent: HTMLElement, e: Entity) => renderEntityBlock(parent, e, asOf, { handlers });
 
 		const inSection = root.createDiv({ cls: "storyloom-cast-section" });
 		const t = inSection.createDiv({ cls: "storyloom-section-title", text: chapter ? "In this chapter" : "In this note" });
@@ -152,10 +145,9 @@ export class CastView extends ItemView {
 		}
 	}
 
-	private button(parent: HTMLElement, label: string, icon: string, onClick: () => void, cta = false) {
+	private button(parent: HTMLElement, label: string, onClick: () => void, cta = false) {
 		const b = parent.createEl("button", { cls: cta ? "mod-cta" : "" });
-		setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), icon);
-		b.createSpan({ text: label });
+		b.setText(label);
 		b.addEventListener("click", onClick);
 	}
 }

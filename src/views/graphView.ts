@@ -3,7 +3,7 @@ import { ENTITY_TYPES, type Entity, type EntityType } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEmpty } from "./empty";
 import { renderNav } from "./nav";
-import { hueOf, renderEntityPeek } from "./props";
+import { renderEntityPeek } from "./props";
 import { allPairs, edgesAt, forceLayout, type GraphEdge, type Point } from "./graphModel";
 
 export const GRAPH_VIEW = "storyloom-graph";
@@ -99,11 +99,9 @@ export class GraphView extends ItemView {
 		const chips = root.createDiv({ cls: "sl-cx-chips" });
 		const counts = new Map<string, number>();
 		for (const e of this.plugin.index.sortedEntities()) counts.set(e.type, (counts.get(e.type) ?? 0) + 1);
-		const ICONS: Record<string, string> = { character: "user", location: "map-pin", lore: "scroll-text", item: "gem", faction: "flag" };
 		for (const t of ENTITY_TYPES) {
 			if (!counts.get(t)) continue;
 			const c = chips.createEl("button", { cls: `sl-cx-chip storyloom-type-${t}${this.filters.has(t) ? " is-active" : ""}` });
-			setIcon(c.createSpan({ cls: "sl-cx-chip-icon" }), ICONS[t]);
 			c.createSpan({ text: t.charAt(0).toUpperCase() + t.slice(1) + (t === "lore" ? "" : "s") });
 			c.createSpan({ cls: "sl-cx-chip-count", text: String(counts.get(t)) });
 			c.addEventListener("click", () => {
@@ -115,9 +113,8 @@ export class GraphView extends ItemView {
 		}
 
 		const toggles = chips.createDiv({ cls: "sl-gr-toggles" });
-		const toggle = (text: string, icon: string, hint: string, get: () => boolean, set: (v: boolean) => void) => {
+		const toggle = (text: string, hint: string, get: () => boolean, set: (v: boolean) => void) => {
 			const b = toggles.createEl("button", { cls: `sl-cx-chip${get() ? " is-active" : ""}`, attr: { "aria-label": hint, "aria-pressed": String(get()) } });
-			setIcon(b.createSpan({ cls: "sl-cx-chip-icon" }), icon);
 			b.createSpan({ text });
 			b.addEventListener("click", () => {
 				set(!get());
@@ -126,8 +123,8 @@ export class GraphView extends ItemView {
 				this.update();
 			});
 		};
-		toggle("Who's together", "users", "Dashed lines between characters in the same place", () => this.together, (v) => (this.together = v));
-		toggle("Where they are", "map-pin", "Dotted lines from characters to their location", () => this.presence, (v) => (this.presence = v));
+		toggle("Who's together", "Dashed lines between characters in the same place", () => this.together, (v) => (this.together = v));
+		toggle("Where they are", "Dotted lines from characters to their location", () => this.presence, (v) => (this.presence = v));
 
 		const stage = (this.stage = root.createDiv({ cls: "storyloom-graph-stage" }));
 		const scrub = stage.createDiv({ cls: "storyloom-scrubber storyloom-glass" });
@@ -258,7 +255,7 @@ export class GraphView extends ItemView {
 
 	private showTooltip(e: Entity, ev: PointerEvent) {
 		this.tooltipEl.empty();
-		renderEntityPeek(this.tooltipEl, e, this.chapter, { hue: hueOf(this.plugin.index.sortedEntities(), e) });
+		renderEntityPeek(this.tooltipEl, e, this.chapter);
 		this.tooltipEl.show();
 		const stage = this.tooltipEl.parentElement as HTMLElement;
 		const rect = stage.getBoundingClientRect();

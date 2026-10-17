@@ -39,6 +39,10 @@ export interface StoryloomSettings extends ClientSettings {
 	statusBar: boolean;
 	/** Show the proposed codex changes for approval before a chapter sync writes them. */
 	reviewStateChanges: boolean;
+	/** Size of Storyloom's own text (panels, views, cards, pop-ups), relative to the default. */
+	textSize: "small" | "default" | "large";
+	/** A faint red underline for spelling notes; every other writing note stays gray. */
+	redSpelling: boolean;
 	/** Proofread the chapter (spelling, grammar, word choice, run-ons) when it's synced. */
 	writingNotes: boolean;
 	/** Chapter path -> the notes from its last proofread. */
@@ -84,6 +88,8 @@ export const DEFAULT_SETTINGS: StoryloomSettings = {
 	statusBar: true,
 	reviewStateChanges: false,
 	writingNotes: true,
+	textSize: "default",
+	redSpelling: true,
 	chapterNotes: {},
 };
 
@@ -224,12 +230,26 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		this.textSetting("Book note", "The note with your premise, style guide and voice sample.", "bookPath");
 
 		new Setting(containerEl).setName("Appearance").setHeading();
+		new Setting(containerEl)
+			.setName("Text size")
+			.setDesc("The size of Storyloom's text in its views, panels and pop-ups. Your chapters follow Obsidian's own font size.")
+			.addDropdown((d) =>
+				d
+					.addOptions({ small: "Small", default: "Default", large: "Large" })
+					.setValue(s.textSize)
+					.onChange(async (v) => {
+						s.textSize = v as StoryloomSettings["textSize"];
+						await this.plugin.saveSettings();
+					}),
+			);
+		this.toggleSetting("Red underline for spelling", "Spelling notes get a faint red underline. Other writing notes stay gray.", "redSpelling");
 		this.toggleSetting("Underline codex names", "Underline character, location and lore names in chapters. Hover one to see it as of that chapter.", "highlightEntities");
 		this.toggleSetting("Underline outside chapters", "Also underline codex names in notes that aren't chapters.", "highlightOutsideManuscript");
 		this.toggleSetting("Status bar", "Show the current chapter, its writing notes and whether it needs syncing. Click it for chapter actions.", "statusBar");
 		this.toggleSetting("Separate ribbon buttons", "A ribbon button for each view instead of one Storyloom button with a menu. Takes effect after reloading the plugin.", "separateRibbonButtons");
+		new Setting(containerEl).setName("Graph colors").setDesc("Storyloom is black and white except where color carries information: the story graph uses these, and the timeline gives each place its own muted tone.");
 		for (const type of ENTITY_TYPES) {
-			new Setting(containerEl).setName(`${type.charAt(0).toUpperCase() + type.slice(1)} color`).addColorPicker((c) =>
+			new Setting(containerEl).setName(`${type.charAt(0).toUpperCase() + type.slice(1)}`).addColorPicker((c) =>
 				c.setValue(s.entityColors[type]).onChange(async (v) => {
 					s.entityColors[type] = v;
 					await this.plugin.saveSettings();
@@ -289,7 +309,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			);
 	}
 
-	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate" | "hideCodexFolder" | "separateRibbonButtons" | "statusBar" | "reviewStateChanges" | "writingNotes") {
+	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate" | "hideCodexFolder" | "separateRibbonButtons" | "statusBar" | "reviewStateChanges" | "writingNotes" | "redSpelling") {
 		new Setting(this.containerEl)
 			.setName(name)
 			.setDesc(desc)

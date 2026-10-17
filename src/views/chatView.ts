@@ -101,7 +101,6 @@ export class ChatView extends ItemView {
 
 	private renderEmpty() {
 		const empty = this.listEl.createDiv({ cls: "storyloom-chat-empty" });
-		setIcon(empty.createDiv({ cls: "sl-empty-icon" }), "message-circle");
 		empty.createDiv({ cls: "sl-empty-title", text: "Ask about your book" });
 		empty.createDiv({ cls: "sl-empty-body", text: "The assistant knows your codex, chapter summaries and the chapter you're in. Type @ to bring a character or chapter into the conversation." });
 		const chips = empty.createDiv({ cls: "storyloom-chat-chips" });
@@ -148,7 +147,6 @@ export class ChatView extends ItemView {
 		this.suggestEl.empty();
 		this.suggestions.forEach((s, i) => {
 			const row = this.suggestEl.createDiv({ cls: `storyloom-suggest-item${i === this.suggestIdx ? " is-selected" : ""}` });
-			setIcon(row.createSpan({ cls: "storyloom-btn-icon" }), s.kind === "entity" ? "user" : "book-open");
 			row.createSpan({ text: s.label });
 			row.addEventListener("mousedown", (e) => {
 				e.preventDefault();

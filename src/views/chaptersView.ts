@@ -1,12 +1,12 @@
-import { debounce, ItemView, setIcon, TFile, type WorkspaceLeaf } from "obsidian";
-import { stripFrontmatter } from "../codex/parse";
+import { debounce, ItemView, TFile, type WorkspaceLeaf } from "obsidian";
+import { stripFrontmatter, stripWikilinks } from "../codex/parse";
 import type { ChapterInfo } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEmpty } from "./empty";
 import { plural, renderMeta, renderNav } from "./nav";
 import { proseHash, wordCount } from "../util";
 import { normalizeStatus, STATUSES, type ChapterStatus } from "./chaptersModel";
-import { huePalette, initials } from "./timelineModel";
+import { tag } from "./props";
 import { focusable } from "../ui";
 
 export const CHAPTERS_VIEW = "storyloom-chapters";
@@ -14,7 +14,6 @@ export const CHAPTERS_VIEW = "storyloom-chapters";
 type Mode = "outline" | "board";
 
 const STATUS_LABEL: Record<ChapterStatus, string> = { draft: "Draft", revised: "Revised", final: "Final" };
-const STATUS_ICON: Record<ChapterStatus, string> = { draft: "pencil", revised: "pen-line", final: "check-circle-2" };
 
 interface Scan {
 	mtime: number;
@@ -91,7 +90,6 @@ export class ChaptersView extends ItemView {
 		const seg = bar.createDiv({ cls: "sl-tl-segmented" });
 		for (const m of ["outline", "board"] as Mode[]) {
 			const b = seg.createEl("button", { cls: m === this.mode ? "is-active" : "" });
-			setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), m === "outline" ? "list-ordered" : "columns-3");
 			b.createSpan({ text: m === "outline" ? "Outline" : "Board" });
 			b.addEventListener("click", () => {
 				this.mode = m;
@@ -121,7 +119,6 @@ export class ChaptersView extends ItemView {
 
 	private renderOutline(body: HTMLElement, chapters: ChapterInfo[], scans: Map<string, Scan>) {
 		const hint = body.createDiv({ cls: "sl-ch-hint" });
-		setIcon(hint.createSpan({ cls: "storyloom-btn-icon" }), "move");
 		hint.createSpan({ text: "Drag cards to reorder (or focus one and press Alt+← / →). Chapter numbers and codex timelines update to match." });
 		const grid = body.createDiv({ cls: "sl-ch-grid" });
 		const maxWords = Math.max(1, ...[...scans.values()].map((s) => s.words));
@@ -166,8 +163,7 @@ export class ChaptersView extends ItemView {
 			});
 		});
 		const add = focusable(grid.createDiv({ cls: "sl-ch-card is-new" }), "New chapter");
-		setIcon(add.createSpan({ cls: "sl-ch-new-icon" }), "plus");
-		add.createSpan({ text: "New chapter" });
+		add.setText("New chapter");
 		add.addEventListener("click", () => void this.plugin.newChapter());
 	}
 
@@ -180,7 +176,6 @@ export class ChaptersView extends ItemView {
 			const col = board.createDiv({ cls: `sl-ch-col is-${status}` });
 			const items = chapters.filter((c) => normalizeStatus(c.status) === status);
 			const head = col.createDiv({ cls: "sl-ch-col-head" });
-			setIcon(head.createSpan({ cls: "sl-ch-col-icon" }), STATUS_ICON[status]);
 			head.createSpan({ text: STATUS_LABEL[status] });
 			head.createSpan({ cls: "sl-ch-col-count", text: String(items.length) });
 			const words = items.reduce((a, c) => a + (scans.get(c.path)?.words ?? 0), 0);
@@ -231,26 +226,15 @@ export class ChaptersView extends ItemView {
 		head.createDiv({ cls: "sl-ch-num", text: String(c.chapter) });
 		const t = head.createDiv({ cls: "sl-ch-card-titles" });
 		t.createDiv({ cls: "sl-ch-card-title", text: c.title });
-		const pill = t.createDiv({ cls: `sl-ch-status is-${status}` });
-		setIcon(pill.createSpan({ cls: "sl-ch-status-icon" }), STATUS_ICON[status]);
-		pill.createSpan({ text: STATUS_LABEL[status] });
+		tag(t, STATUS_LABEL[status], `sl-ch-status is-${status}`);
 		const synced = this.plugin.settings.stateSynced[c.path];
 		if (synced && synced !== s.hash) head.createDiv({ cls: "sl-ch-stale", attr: { "aria-label": "Edited since it was last synced" } });
 
-		const characters = this.plugin.index.sortedEntities().filter((e) => e.type === "character").map((e) => e.name);
-		const hue = huePalette(characters, 25);
-		if (c.pov) {
-			const pov = card.createDiv({ cls: "sl-ch-pov" });
-			const av = pov.createDiv({ cls: "sl-tl-avatar is-small", text: initials(c.pov) });
-			av.style.setProperty("--hue", String(hue(c.pov)));
-			pov.createSpan({ text: `${c.pov}'s point of view` });
-		}
+		if (c.pov) card.createDiv({ cls: "sl-ch-pov", text: `${stripWikilinks(c.pov)}'s point of view` });
 
 		if (c.summary?.trim()) card.createDiv({ cls: "sl-ch-summary", text: c.summary });
 		else {
-			const sum = card.createEl("button", { cls: "sl-ch-summarize" });
-			setIcon(sum.createSpan({ cls: "storyloom-btn-icon" }), "sparkles");
-			sum.createSpan({ text: "Summarize" });
+			const sum = card.createEl("button", { cls: "sl-ch-summarize", text: "Summarize" });
 			sum.addEventListener("click", (ev) => {
 				ev.stopPropagation();
 				const f = this.plugin.index.fileFor(c.path);
@@ -259,12 +243,8 @@ export class ChaptersView extends ItemView {
 		}
 
 		const foot = card.createDiv({ cls: "sl-ch-foot" });
-		const cast = foot.createDiv({ cls: "sl-tl-faces" });
-		for (const n of s.cast.slice(0, 5)) {
-			const a = cast.createDiv({ cls: "sl-tl-avatar is-small", text: initials(n), attr: { "aria-label": n } });
-			a.style.setProperty("--hue", String(hue(n)));
-		}
-		if (s.cast.length > 5) cast.createDiv({ cls: "sl-tl-avatar is-small is-more", text: `+${s.cast.length - 5}` });
+		const names = s.cast.slice(0, 3).join(", ") + (s.cast.length > 3 ? ` +${s.cast.length - 3}` : "");
+		foot.createDiv({ cls: "sl-ch-cast", text: s.cast.length ? `With ${names}` : "" });
 		const w = foot.createDiv({ cls: "sl-ch-words" });
 		w.createSpan({ text: plural(s.words, "word") });
 		w.createDiv({ cls: "sl-tl-meter" }).createDiv({ cls: "sl-tl-meter-fill" }).style.width = `${Math.max(4, (s.words / maxWords) * 100)}%`;

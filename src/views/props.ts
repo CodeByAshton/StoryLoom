@@ -2,7 +2,7 @@ import { setIcon } from "obsidian";
 import { stripWikilinks } from "../codex/parse";
 import { resolveState } from "../codex/state";
 import type { Entity } from "../codex/types";
-import { huePalette, initials } from "./timelineModel";
+import { initials } from "./timelineModel";
 import { focusable } from "../ui";
 
 /**
@@ -24,9 +24,7 @@ export function renderProps(parent: HTMLElement, rows: PropRow[]): HTMLElement {
 	const list = parent.createDiv({ cls: "sl-props" });
 	for (const r of rows) {
 		const row = list.createDiv({ cls: "sl-prop" });
-		const name = row.createDiv({ cls: "sl-prop-name" });
-		setIcon(name.createSpan({ cls: "sl-prop-icon" }), r.icon);
-		name.createSpan({ text: r.name });
+		row.createDiv({ cls: "sl-prop-name", text: r.name });
 		const val = row.createDiv({ cls: "sl-prop-value" });
 		r.value(val);
 		if (r.title) row.setAttr("title", r.title);
@@ -69,7 +67,7 @@ export function stateRows(e: Entity, asOf: number, handlers: EntityRowHandlers =
 			title: since(k),
 			value: (cell) => {
 				if (!v) cell.createSpan({ cls: "sl-prop-empty", text: "Empty" });
-				else if (k === "status") tag(cell, v, "is-neutral");
+				else if (k === "status") tag(cell, v);
 				else cell.setText(v);
 			},
 		});
@@ -103,18 +101,17 @@ export function stateRows(e: Entity, asOf: number, handlers: EntityRowHandlers =
 }
 
 /** One entity in a side panel: avatar, name and type tag, then its state rows. */
-export function renderEntityBlock(parent: HTMLElement, e: Entity, asOf: number, opts: { hue: number; handlers?: EntityRowHandlers }): HTMLElement {
+export function renderEntityBlock(parent: HTMLElement, e: Entity, asOf: number, opts: { handlers?: EntityRowHandlers } = {}): HTMLElement {
 	const h = opts.handlers ?? {};
 	const block = parent.createDiv({ cls: `sl-ent storyloom-type-${e.type}` });
 	const head = block.createDiv({ cls: "sl-ent-head" });
-	avatar(head, e.name, opts.hue);
 	const name = head.createSpan({ cls: "sl-ent-name", text: e.name });
 	if (h.openNote) {
 		name.addClass("is-link");
 		focusable(name);
 		name.addEventListener("click", () => h.openNote?.(e));
 	}
-	tag(head, e.role || cap(e.type), "is-type");
+	tag(head, e.role || cap(e.type));
 	const tools = head.createDiv({ cls: "sl-ent-tools" });
 	if (h.addTimeline) {
 		const b = tools.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Add timeline entry" } });
@@ -132,28 +129,22 @@ export function renderEntityBlock(parent: HTMLElement, e: Entity, asOf: number, 
 	return block;
 }
 
-/** Hues the timeline, Cast and Codex use: people and places each get evenly spaced colours. */
-export function hueOf(all: Entity[], e: Entity): number {
-	return huePalette(all.filter((x) => x.type === e.type).map((x) => x.name), e.type === "character" ? 25 : 205)(e.name);
-}
-
 /**
  * The floating card shown on hover (editor, timeline, graph): the same rows as the Cast panel, plus
  * "as of chapter N", the latest note, a short description and actions.
  */
-export function renderEntityPeek(parent: HTMLElement, e: Entity, asOf: number, opts: { hue: number; handlers?: EntityRowHandlers }): HTMLElement {
+export function renderEntityPeek(parent: HTMLElement, e: Entity, asOf: number, opts: { handlers?: EntityRowHandlers } = {}): HTMLElement {
 	const h = opts.handlers ?? {};
 	const s = resolveState(e, asOf);
 	const block = parent.createDiv({ cls: `sl-ent is-peek storyloom-type-${e.type}` });
 	const head = block.createDiv({ cls: "sl-ent-head" });
-	avatar(head, e.name, opts.hue);
 	const name = head.createSpan({ cls: "sl-ent-name", text: e.name });
 	if (h.openNote) {
 		name.addClass("is-link");
 		focusable(name);
 		name.addEventListener("click", () => h.openNote?.(e));
 	}
-	tag(head, e.role || cap(e.type), "is-type");
+	tag(head, e.role || cap(e.type));
 	block.createDiv({ cls: "sl-ent-meta", text: Number.isFinite(asOf) ? `As of chapter ${asOf}` : "Latest" });
 	const rows = stateRows(e, asOf, h);
 	if (s.notes.length) rows.push({ icon: FIELD_ICONS.note, name: "Latest", value: (c) => { c.addClass("is-text"); c.setText(`Ch ${s.notes[0].chapter}: ${stripWikilinks(s.notes[0].text)}`); } });
@@ -162,18 +153,16 @@ export function renderEntityPeek(parent: HTMLElement, e: Entity, asOf: number, o
 	if (e.description) block.createDiv({ cls: "sl-ent-desc", text: stripWikilinks(e.description).split("\n").filter((l) => l.trim()).join(" ") });
 	if (h.openNote || h.addTimeline) {
 		const bar = block.createDiv({ cls: "sl-ent-actions" });
-		const button = (label: string, icon: string, fn: () => void) => {
-			const b = bar.createEl("button", { cls: "storyloom-card-btn" });
-			setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), icon);
-			b.createSpan({ text: label });
+		const button = (label: string, fn: () => void) => {
+			const b = bar.createEl("button", { cls: "storyloom-card-btn", text: label });
 			b.addEventListener("mousedown", (ev) => ev.preventDefault());
 			b.addEventListener("click", (ev) => {
 				ev.stopPropagation();
 				fn();
 			});
 		};
-		if (h.openNote) button("Open note", "file-text", () => h.openNote?.(e));
-		if (h.addTimeline) button("Add timeline entry", "plus", () => h.addTimeline?.(e));
+		if (h.openNote) button("Open note", () => h.openNote?.(e));
+		if (h.addTimeline) button("Add timeline entry", () => h.addTimeline?.(e));
 	}
 	return block;
 }

@@ -1,7 +1,7 @@
 import { hoverTooltip, type Tooltip } from "@codemirror/view";
 import { editorInfoField } from "obsidian";
 import type StoryloomPlugin from "../main";
-import { hueOf, renderEntityPeek } from "../views/props";
+import { renderEntityPeek } from "../views/props";
 import { frontmatterEnd, shouldHighlight } from "./highlight";
 import { noteAt } from "./writingNotes";
 import { fitInEditor } from "./fit";
@@ -31,7 +31,6 @@ export function entityHover(plugin: StoryloomPlugin) {
 					create: () => {
 						const dom = createDiv({ cls: "storyloom-hover" });
 						renderEntityPeek(dom, entity, asOf, {
-							hue: hueOf(plugin.index.sortedEntities(), entity),
 							handlers: {
 								openNote: (e) => void plugin.app.workspace.openLinkText(e.path, file?.path ?? "", false),
 								addTimeline: (e) => plugin.addTimelineEntry(e, asOf),

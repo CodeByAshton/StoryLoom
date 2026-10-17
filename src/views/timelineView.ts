@@ -5,7 +5,7 @@ import type StoryloomPlugin from "../main";
 import { renderEmpty } from "./empty";
 import { plural, renderMeta, renderNav } from "./nav";
 import { wordCount } from "../util";
-import { hueOf, renderEntityPeek } from "./props";
+import { renderEntityPeek } from "./props";
 import { huePalette, initials, laneEvents, locationRuns, presentAt } from "./timelineModel";
 import { focusable } from "../ui";
 
@@ -92,7 +92,6 @@ export class TimelineView extends ItemView {
 		const seg = bar.createDiv({ cls: "sl-tl-segmented" });
 		for (const m of ["characters", "locations"] as Mode[]) {
 			const b = seg.createEl("button", { cls: m === this.mode ? "is-active" : "" });
-			setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), m === "characters" ? "users" : "map-pin");
 			b.createSpan({ text: m === "characters" ? "Characters" : "Locations" });
 			b.addEventListener("click", () => {
 				this.mode = m;
@@ -160,8 +159,6 @@ export class TimelineView extends ItemView {
 			// Name
 			const name = focusable(grid.createDiv({ cls: `sl-tl-name storyloom-type-${e.type}` }));
 			name.style.gridRow = String(row);
-			const av = name.createDiv({ cls: "sl-tl-avatar", text: initials(e.name) });
-			av.style.setProperty("--hue", String(hueFor(e.name)));
 			const nm = name.createDiv({ cls: "sl-tl-name-text" });
 			nm.createDiv({ cls: "sl-tl-name-main", text: e.name });
 			if (e.role) nm.createDiv({ cls: "sl-tl-name-role", text: e.role });
@@ -186,7 +183,6 @@ export class TimelineView extends ItemView {
 					pill.style.gridRow = String(row);
 					pill.style.setProperty("--hue", String(hueFor(run.location)));
 					pill.style.animationDelay = `${80 + r * 60 + run.start * 25}ms`;
-					setIcon(pill.createSpan({ cls: "sl-tl-pill-icon" }), "map-pin");
 					pill.createSpan({ cls: "sl-tl-pill-text", text: run.location });
 					pill.setAttr("aria-label", `${e.name}: ${run.location}, chapters ${numbers[run.start]}–${numbers[run.end]}`);
 				}
@@ -207,8 +203,9 @@ export class TimelineView extends ItemView {
 				if (this.mode === "locations" && ev.kind !== "status") continue;
 				const wrap = cells[ev.index].querySelector(".sl-tl-events") ?? cells[ev.index].createDiv({ cls: "sl-tl-events" });
 				const chip = (wrap as HTMLElement).createDiv({ cls: `sl-tl-event is-${ev.kind}`, attr: { "aria-label": ev.text } });
-				setIcon(chip.createSpan({ cls: "sl-tl-event-icon" }), EVENT_ICONS[ev.kind] ?? "dot");
+				// Status reads as text; "knows" and "note" are small markers (the text is in the hover card).
 				if (ev.kind === "status") chip.createSpan({ text: ev.text });
+				else setIcon(chip.createSpan({ cls: "sl-tl-event-icon" }), EVENT_ICONS[ev.kind] ?? "dot");
 			}
 		});
 		this.markNow();
@@ -223,7 +220,7 @@ export class TimelineView extends ItemView {
 
 	private showTip(e: Entity, chapter: number, anchor: HTMLElement) {
 		this.tip.empty();
-		renderEntityPeek(this.tip, e, chapter, { hue: hueOf(this.plugin.index.sortedEntities(), e) });
+		renderEntityPeek(this.tip, e, chapter);
 		this.tip.show();
 		const root = this.contentEl.getBoundingClientRect();
 		const a = anchor.getBoundingClientRect();
