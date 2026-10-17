@@ -175,6 +175,12 @@ const cx = await page.evaluate(() => {
 	return { hidden: getComputedStyle(g).display === "none", gridRight: Math.round(gr.right), detailLeft: Math.round(dr.left), width: Math.round(document.querySelector(".sl-cx").getBoundingClientRect().width) };
 });
 ok(cx.hidden || cx.gridRight <= cx.detailLeft + 1, `codex detail doesn't overlap the cards ${JSON.stringify(cx)}`);
+await page.locator(".sl-cx-detail .sl-cx-close").click().catch(() => {});
+await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-cast"));
+await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-codex"));
+await sleep(800);
+const clipped = await page.evaluate(() => [...document.querySelectorAll(".sl-cx-card")].filter((c) => c.scrollHeight > c.offsetHeight + 1).length);
+ok(clipped === 0, `codex cards are never cut off in a narrow pane (${clipped} clipped)`);
 await page.evaluate(() => window.app.workspace.openLinkText("Manuscript/03 - The Harbor.md", "", false));
 await sleep(800);
 await page.evaluate(() => { const leaf = window.app.workspace.getLeavesOfType("markdown")[0]; window.app.workspace.setActiveLeaf(leaf, { focus: true }); const e = leaf.view.editor; e.focus(); e.setSelection({ line: 4, ch: 0 }, { line: 4, ch: 40 }); });

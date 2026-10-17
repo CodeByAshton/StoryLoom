@@ -1,13 +1,126 @@
-/* Storyloom — uses Obsidian's CSS variables so light and dark themes both work.
-   The only hard-coded colors are the per-type entity colors, set on <body> from settings. */
+/* Storyloom — built on Obsidian's CSS variables, so light, dark and custom themes all work.
+
+   Two materials:
+   - Flat, Notion-style panels (Cast, Codex, Chapters, Timeline, Chat): washes mixed from the text
+     colour, hairlines, property rows, 3px-corner tags, solid avatars.
+   - Glass, only for things that float: inline edit, Ask AI pill, hover cards, the graph scrubber,
+     menus and dialogs.
+
+   The only fixed colours are the per-type entity defaults (overridden from settings), the glass
+   sheen/shadows, and the white initials on avatars. */
+
+/* =====================================================================
+   Tokens
+   ===================================================================== */
 
 body {
+	/* Entity colours (main.ts sets these inline from settings) */
 	--storyloom-character: #d9822b;
 	--storyloom-location: #2f9e8f;
 	--storyloom-lore: #8a63d2;
 	--storyloom-item: #c4a000;
 	--storyloom-faction: #d0466b;
+
+	/* Washes and hairlines, mixed from the text colour */
+	--sl-wash: color-mix(in srgb, var(--text-normal) 5.5%, transparent);
+	--sl-wash-strong: color-mix(in srgb, var(--text-normal) 8%, transparent);
+	--sl-hairline: color-mix(in srgb, var(--text-normal) 9.5%, transparent);
+	--sl-hairline-strong: color-mix(in srgb, var(--text-normal) 16%, transparent);
+	--sl-tint: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+	--sl-tint-strong: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+	--sl-accent: var(--interactive-accent);
+	--sl-add-bg: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	--sl-del: color-mix(in srgb, var(--text-error) 75%, var(--text-muted));
+	--sl-r-md: 12px;
+	--sl-r-lg: 16px;
+
+	/* Cards in the main views */
+	--sl-card-bg: var(--background-primary);
+	--sl-card-bg-hover: var(--background-primary);
+	--sl-card-shadow: 0 0 0 1px var(--sl-hairline), 0 1px 2px rgba(0, 0, 0, 0.04);
+	--sl-card-shadow-hover: 0 0 0 1px var(--sl-hairline), 0 10px 28px -12px rgba(15, 23, 42, 0.28);
+
+	/* Segmented controls and panel buttons */
+	--sl-seg-active: var(--background-primary);
+	--sl-seg-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+	--sl-btn-ring: inset 0 0 0 1px var(--sl-hairline-strong), 0 1px 2px rgba(15, 15, 15, 0.06);
+
+	/* Tags */
+	--sl-tag-tint: 20%;
+	--sl-tag-fg-tint: 32%;
+	--sl-tag-neutral: var(--text-faint);
+
+	/* Avatars: white initials stay >= 4.5:1 on every hue (lightness dips for yellows and greens) */
+	--sl-avatar-s: 40%;
+	--sl-avatar-l: 40%;
+	--sl-avatar-swing: 10%;
+
+	/* Glass. Backdrop blur stays at 14px: larger radii silently stop rendering on some machines (no GPU). */
+	--sl-glass-bg: color-mix(in srgb, var(--background-primary) 66%, transparent);
+	--sl-hover-bg: var(--sl-glass-bg);
+	--sl-glass-inner: color-mix(in srgb, var(--background-primary) 55%, transparent);
+	--sl-glass-inner-hover: color-mix(in srgb, var(--background-primary) 85%, transparent);
+	--sl-glass-border: color-mix(in srgb, var(--background-primary) 80%, transparent);
+	--sl-glass-edge: color-mix(in srgb, var(--text-normal) 10%, transparent);
+	--sl-glass-sheen: linear-gradient(140deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.08) 38%, rgba(255, 255, 255, 0) 60%);
+	--sl-glass-shadow: 0 18px 50px -12px rgba(30, 41, 80, 0.28), 0 4px 14px rgba(30, 41, 80, 0.08);
+	--sl-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+
+	/* Motion */
+	--sl-spring: cubic-bezier(0.2, 0.9, 0.25, 1.12);
+	--sl-ease: cubic-bezier(0.2, 0.9, 0.25, 1);
 }
+
+body.theme-dark {
+	--sl-add-bg: color-mix(in srgb, var(--interactive-accent) 28%, transparent);
+
+	--sl-card-bg: color-mix(in srgb, var(--text-normal) 4%, var(--background-primary));
+	--sl-card-bg-hover: color-mix(in srgb, var(--text-normal) 6.5%, var(--background-primary));
+	--sl-card-shadow: 0 0 0 1px var(--sl-hairline);
+	--sl-card-shadow-hover: 0 0 0 1px var(--sl-hairline-strong);
+
+	--sl-seg-active: color-mix(in srgb, var(--text-normal) 16%, var(--background-primary));
+	--sl-seg-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+	--sl-btn-ring: inset 0 0 0 1px var(--sl-hairline-strong), 0 1px 2px rgba(0, 0, 0, 0.3);
+
+	--sl-tag-tint: 42%;
+	--sl-tag-fg-tint: 0%;
+	--sl-tag-neutral: var(--text-muted);
+
+	--sl-avatar-s: 34%;
+	--sl-avatar-l: 38%;
+	--sl-avatar-swing: 9%;
+
+	--sl-glass-bg: color-mix(in srgb, var(--background-secondary) 62%, transparent);
+	--sl-hover-bg: color-mix(in srgb, var(--background-secondary) 86%, transparent);
+	--sl-glass-inner: color-mix(in srgb, var(--text-normal) 6%, transparent);
+	--sl-glass-inner-hover: color-mix(in srgb, var(--text-normal) 12%, transparent);
+	--sl-glass-border: color-mix(in srgb, var(--text-normal) 13%, transparent);
+	--sl-glass-edge: rgba(0, 0, 0, 0.5);
+	--sl-glass-sheen: linear-gradient(140deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0) 60%);
+	--sl-glass-shadow: 0 22px 60px -12px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.35);
+	--sl-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* =====================================================================
+   Keyframes. No `filter` in these: a filter on the same element switches off its backdrop blur.
+   ===================================================================== */
+
+@keyframes sl-pop { from { opacity: 0; transform: translateY(-6px) scale(0.965); } to { opacity: 1; transform: none; } }
+@keyframes sl-pop-up { from { opacity: 0; transform: translateY(6px) scale(0.9); } to { opacity: 1; transform: none; } }
+@keyframes sl-fade-out { to { opacity: 0; transform: translateY(-4px) scale(0.97); } }
+@keyframes sl-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes sl-chip-in { from { opacity: 0; transform: translateY(4px) scale(0.94); } to { opacity: 1; transform: none; } }
+@keyframes sl-pill-in { from { opacity: 0; transform: scaleX(0.6); } to { opacity: 1; transform: none; } }
+@keyframes sl-detail-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes sl-rise { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes sl-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@keyframes sl-caret { to { visibility: hidden; } }
+@keyframes sl-spin { to { transform: rotate(360deg); } }
+
+/* =====================================================================
+   Base
+   ===================================================================== */
 
 .storyloom-type-character { --sl-color: var(--storyloom-character); }
 .storyloom-type-location { --sl-color: var(--storyloom-location); }
@@ -16,14 +129,18 @@ body {
 .storyloom-type-faction { --sl-color: var(--storyloom-faction); }
 
 .storyloom-muted { color: var(--text-muted); font-size: var(--font-ui-small); }
-.storyloom-empty { color: var(--text-muted); padding: var(--size-4-4); font-size: var(--font-ui-small); }
 .storyloom-btn-icon { display: inline-flex; align-items: center; }
 .storyloom-btn-icon svg { width: 14px; height: 14px; }
 button .storyloom-btn-icon + span { margin-left: 6px; }
 .storyloom-wide-input { width: 100%; }
+.sl-clickable { cursor: pointer; }
+.sl-clickable:hover { filter: brightness(1.05); text-decoration: underline; }
 
-/* ---------- Entity highlighting ---------- */
+/* =====================================================================
+   Editor
+   ===================================================================== */
 
+/* ---- Entity highlighting ---- */
 .storyloom-entity {
 	text-decoration: underline;
 	text-decoration-color: color-mix(in srgb, var(--sl-color) 70%, transparent);
@@ -32,131 +149,7 @@ button .storyloom-btn-icon + span { margin-left: 6px; }
 	cursor: help;
 }
 
-/* ---------- Cards (hover, cast, graph) ---------- */
-
-.storyloom-hover {
-	width: 320px;
-	max-width: 90vw;
-	background: var(--sl-glass-bg);
-	-webkit-backdrop-filter: blur(14px) saturate(175%);
-	backdrop-filter: blur(14px) saturate(175%);
-	border: 1px solid var(--sl-glass-border);
-	border-radius: 18px;
-	box-shadow: var(--sl-glass-highlight), 0 0 0 0.5px var(--sl-glass-edge), var(--sl-glass-shadow);
-	padding: 14px 14px 12px;
-	font-size: var(--font-ui-small);
-	animation: sl-pop 260ms var(--sl-spring) backwards;
-}
-.storyloom-hover .storyloom-card { border-left: none; padding-left: 0; }
-.storyloom-hover .storyloom-card-name::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--sl-color); margin-right: 7px; vertical-align: 1px; }
-.storyloom-hover .storyloom-card-btn { border-radius: 999px; background: var(--sl-glass-inner); border: 1px solid var(--sl-glass-border); box-shadow: var(--sl-glass-highlight); }
-
-.storyloom-card { border-left: 3px solid var(--sl-color); padding-left: var(--size-4-2); }
-.storyloom-card + .storyloom-card { margin-top: var(--size-4-2); }
-.storyloom-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--size-4-2); }
-.storyloom-card-name { font-weight: var(--font-semibold); color: var(--text-normal); }
-.storyloom-card-name.is-link, .storyloom-card-rel-target.is-link { cursor: pointer; }
-.storyloom-card-name.is-link:hover, .storyloom-card-rel-target.is-link:hover { color: var(--text-accent); }
-.storyloom-card-type { color: var(--text-faint); font-size: var(--font-smallest); white-space: nowrap; }
-.storyloom-card-asof { color: var(--text-muted); font-size: var(--font-smallest); margin: 2px 0 6px; }
-.storyloom-card-fields { display: grid; grid-template-columns: max-content 1fr; gap: 2px var(--size-4-3); margin: 4px 0; }
-.storyloom-card-label { text-transform: uppercase; font-size: 0.72em; letter-spacing: 0.06em; color: var(--text-muted); white-space: nowrap; padding-top: 0.2em; }
-.storyloom-card-value { color: var(--text-normal); }
-.storyloom-since { color: var(--text-faint); font-size: var(--font-smallest); margin-left: 6px; }
-.storyloom-card-rel, .storyloom-card-note { margin-top: 4px; display: flex; gap: var(--size-4-2); align-items: baseline; }
-.storyloom-card-rel-list { color: var(--text-normal); }
-.storyloom-card-desc { color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
-.storyloom-card-empty { color: var(--text-faint); font-style: italic; margin: 4px 0; }
-.storyloom-card-actions { display: flex; gap: var(--size-4-2); margin-top: var(--size-4-2); }
-.storyloom-card-btn { font-size: var(--font-smallest); padding: 2px 8px; height: auto; }
-.storyloom-card.is-compact { padding-top: 2px; padding-bottom: 2px; }
-.storyloom-card.is-compact .storyloom-card-fields { margin: 2px 0 0; }
-
-/* ---------- Cast panel ---------- */
-
-.storyloom-cast { padding: var(--size-4-3); }
-.storyloom-cast-title { font-weight: var(--font-semibold); font-size: var(--font-ui-medium); }
-.storyloom-cast-actions { display: flex; flex-wrap: wrap; gap: var(--size-4-2); margin: var(--size-4-3) 0; }
-.storyloom-cast-actions button { font-size: var(--font-ui-small); }
-.storyloom-cast-section { margin-top: var(--size-4-3); font-size: var(--font-ui-small); }
-.storyloom-section-title { text-transform: uppercase; font-size: 0.72em; letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: var(--size-4-2); cursor: default; }
-details.storyloom-cast-section > summary { cursor: pointer; }
-
-/* ---------- Modals ---------- */
-
-.storyloom-result-modal { width: min(760px, 92vw); }
-.storyloom-result-body { max-height: 60vh; overflow-y: auto; }
-.storyloom-result-live { white-space: pre-wrap; font-family: var(--font-text); font-size: var(--font-text-size); line-height: 1.5; padding: var(--size-4-2); max-height: 60vh; overflow-y: auto; }
-.storyloom-result-live::after { content: ""; display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: -0.2em; background: var(--interactive-accent); animation: sl-caret 1s steps(2, start) infinite; }
-.storyloom-result-item + .storyloom-result-item { margin-top: var(--size-4-3); }
-.storyloom-result-label { text-transform: uppercase; font-size: 0.72em; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
-.storyloom-result-text { width: 100%; resize: vertical; font-family: var(--font-text); font-size: var(--font-text-size); line-height: 1.5; padding: var(--size-4-2); }
-.storyloom-result-item-actions { display: flex; gap: var(--size-4-2); justify-content: flex-end; margin-top: 4px; }
-.storyloom-result-footer { display: flex; justify-content: space-between; gap: var(--size-4-2); margin-top: var(--size-4-4); flex-wrap: wrap; }
-.storyloom-footer-left, .storyloom-footer-right { display: flex; gap: var(--size-4-2); flex-wrap: wrap; }
-.storyloom-loading { display: flex; align-items: center; gap: var(--size-4-2); color: var(--text-muted); padding: var(--size-4-2) 0; }
-.storyloom-spinner {
-	width: 14px; height: 14px; border-radius: 50%;
-	border: 2px solid var(--background-modifier-border);
-	border-top-color: var(--interactive-accent);
-	animation: storyloom-spin 0.8s linear infinite;
-}
-@keyframes storyloom-spin { to { transform: rotate(360deg); } }
-.storyloom-error { display: flex; gap: var(--size-4-2); align-items: flex-start; color: var(--text-error); padding: var(--size-4-2); background: color-mix(in srgb, var(--text-error) 8%, transparent); border-radius: var(--radius-s); }
-.storyloom-preview { max-height: 60vh; overflow: auto; white-space: pre-wrap; font-size: var(--font-smallest); background: var(--background-secondary); padding: var(--size-4-2); border-radius: var(--radius-s); }
-.storyloom-report { max-height: 65vh; overflow-y: auto; }
-.storyloom-issue { padding: var(--size-4-2) var(--size-4-3); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-s); cursor: pointer; margin-bottom: var(--size-4-2); }
-.storyloom-issue:hover { background: var(--background-modifier-hover); }
-.storyloom-issue blockquote { margin: 4px 0; padding-left: var(--size-4-2); border-left: 2px solid var(--background-modifier-border); color: var(--text-muted); font-style: italic; }
-.storyloom-issues { max-height: 60vh; overflow-y: auto; }
-.storyloom-badge { display: inline-block; font-size: var(--font-smallest); padding: 0 6px; border-radius: var(--radius-s); background: var(--background-modifier-hover); color: var(--text-muted); margin-left: 4px; }
-.storyloom-sev-high { background: color-mix(in srgb, var(--text-error) 18%, transparent); color: var(--text-error); }
-.storyloom-sev-medium { background: color-mix(in srgb, var(--text-warning) 18%, transparent); color: var(--text-warning); }
-
-.storyloom-review-modal { width: min(820px, 94vw); }
-.storyloom-review-group { border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); padding: var(--size-4-2) var(--size-4-3); margin-bottom: var(--size-4-3); }
-.storyloom-review-entity { font-weight: var(--font-semibold); margin-bottom: var(--size-4-2); }
-.storyloom-review-row { display: flex; align-items: center; gap: var(--size-4-2); margin: 4px 0; }
-.storyloom-review-key.is-names { text-transform: none; font-size: inherit; letter-spacing: 0; color: var(--text-normal); }
-.storyloom-review-key { min-width: 90px; color: var(--text-muted); text-transform: uppercase; font-size: 0.72em; letter-spacing: 0.06em; }
-.storyloom-review-value { flex: 1; min-width: 0; }
-.storyloom-review-name { width: 180px; }
-.storyloom-review-prev { color: var(--text-faint); font-size: var(--font-smallest); white-space: nowrap; }
-.storyloom-wordcount { width: 100%; }
-.storyloom-num { text-align: right; font-variant-numeric: tabular-nums; }
-.storyloom-total td { font-weight: var(--font-semibold); border-top: 1px solid var(--background-modifier-border); }
-.storyloom-file-list { max-height: 30vh; overflow-y: auto; font-size: var(--font-ui-small); color: var(--text-muted); }
-
-/* ---------- Glass material (inline edit, Ask AI pill, hover cards) ---------- */
-
-/* Backdrop blur is kept at 14px: larger radii silently stop rendering on some machines (no GPU). */
-body {
-	--sl-glass-bg: rgba(255, 255, 255, 0.66);
-	--sl-glass-inner: rgba(255, 255, 255, 0.55);
-	--sl-glass-inner-hover: rgba(255, 255, 255, 0.85);
-	--sl-glass-border: rgba(255, 255, 255, 0.8);
-	--sl-glass-edge: rgba(15, 23, 42, 0.1);
-	--sl-glass-sheen: linear-gradient(140deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.08) 38%, rgba(255, 255, 255, 0) 60%);
-	--sl-glass-shadow: 0 18px 50px -12px rgba(30, 41, 80, 0.28), 0 4px 14px rgba(30, 41, 80, 0.08);
-	--sl-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(255, 255, 255, 0.25);
-	--sl-accent: var(--interactive-accent);
-	--sl-add-bg: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
-	--sl-del: color-mix(in srgb, var(--text-error) 75%, var(--text-muted));
-	--sl-spring: cubic-bezier(0.2, 0.9, 0.25, 1.12);
-	--sl-ease: cubic-bezier(0.2, 0.9, 0.25, 1);
-}
-body.theme-dark {
-	--sl-glass-bg: rgba(36, 37, 44, 0.62);
-	--sl-glass-inner: rgba(255, 255, 255, 0.06);
-	--sl-glass-inner-hover: rgba(255, 255, 255, 0.12);
-	--sl-glass-border: rgba(255, 255, 255, 0.13);
-	--sl-glass-edge: rgba(0, 0, 0, 0.5);
-	--sl-glass-sheen: linear-gradient(140deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0) 60%);
-	--sl-glass-shadow: 0 22px 60px -12px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.35);
-	--sl-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
-	--sl-add-bg: color-mix(in srgb, var(--interactive-accent) 28%, transparent);
-}
-
+/* ---- Glass material ---- */
 .storyloom-glass {
 	position: relative;
 	background: var(--sl-glass-bg);
@@ -178,33 +171,15 @@ body.theme-dark {
 	pointer-events: none;
 	z-index: -1;
 }
-.cm-tooltip.storyloom-glass, .cm-tooltip.storyloom-hover {
+/* CodeMirror puts .cm-tooltip (and its own theme background) on the inline-edit panel itself. */
+.cm-tooltip.storyloom-glass {
 	background: var(--sl-glass-bg) !important;
 	border: 1px solid var(--sl-glass-border) !important;
 }
+/* CodeMirror's hover wrapper around a glass card: no background, border or shadow of its own. */
+.cm-tooltip.storyloom-hover-host, .cm-tooltip:has(> .storyloom-hover) { background: transparent !important; border: none !important; box-shadow: none !important; border-radius: 18px; padding: 0; }
 
-/* No `filter` in these: a filter on the same element switches off its backdrop blur. */
-@keyframes sl-pop {
-	from { opacity: 0; transform: translateY(-6px) scale(0.965); }
-	to { opacity: 1; transform: none; }
-}
-@keyframes sl-pop-up {
-	from { opacity: 0; transform: translateY(6px) scale(0.9); }
-	to { opacity: 1; transform: none; }
-}
-@keyframes sl-fade-out {
-	to { opacity: 0; transform: translateY(-4px) scale(0.97); }
-}
-@keyframes sl-chip-in {
-	from { opacity: 0; transform: translateY(4px) scale(0.94); }
-	to { opacity: 1; transform: none; }
-}
-@keyframes sl-shimmer {
-	from { background-position: 120% 0; }
-	to { background-position: -120% 0; }
-}
-
-/* The floating panel */
+/* ---- Inline edit: the floating panel ---- */
 .storyloom-glass-panel {
 	width: min(560px, calc(100vw - 48px));
 	margin-top: 10px;
@@ -236,8 +211,9 @@ body.theme-dark {
 	padding: 0 6px;
 	font-size: var(--font-ui-medium);
 	color: var(--text-normal);
+	transition: box-shadow 140ms ease;
 }
-.storyloom-glass input.storyloom-glass-input:focus { box-shadow: none; outline: none; }
+.storyloom-glass input.storyloom-glass-input:focus { outline: none; box-shadow: 0 0 0 1px var(--interactive-accent), 0 0 0 3px var(--sl-tint); }
 .storyloom-glass input.storyloom-glass-input::placeholder { color: var(--text-faint); }
 .storyloom-glass input.storyloom-glass-input.is-refine {
 	height: 30px;
@@ -247,6 +223,7 @@ body.theme-dark {
 	padding: 0 10px;
 }
 
+/* Glass buttons and chips. !important: these must win over Obsidian's and themes' button styles. */
 .storyloom-glass-btn {
 	display: inline-flex;
 	align-items: center;
@@ -272,7 +249,7 @@ body.theme-dark {
 	color: var(--text-on-accent);
 	box-shadow: 0 6px 16px -6px var(--sl-accent), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
 }
-.storyloom-glass-btn.is-primary:hover { filter: brightness(1.08); background: var(--sl-accent) !important; }
+.storyloom-glass-btn.is-primary:hover { filter: brightness(1.08); }
 .storyloom-glass-btn svg { width: 14px; height: 14px; }
 .storyloom-glass-kbd { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.6; padding: 1px 5px; border-radius: 5px; border: 1px solid currentColor; line-height: 1.2; }
 
@@ -320,7 +297,6 @@ body.theme-dark {
 	border-radius: 1px;
 	animation: sl-caret 1s steps(2, start) infinite;
 }
-@keyframes sl-caret { to { visibility: hidden; } }
 .storyloom-diff-add { background: var(--sl-add-bg); border-radius: 4px; padding: 1px 1px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .storyloom-diff-add.is-soft { background: none; }
 .storyloom-diff-del { margin-right: 3px; color: var(--sl-del); text-decoration: line-through; text-decoration-thickness: 1px; opacity: 0.75; }
@@ -359,7 +335,7 @@ body.theme-dark {
 }
 .storyloom-glass-mark.is-pending { background: color-mix(in srgb, var(--interactive-accent) 9%, transparent); opacity: 0.6; }
 
-/* Ask AI pill */
+/* ---- Ask AI pill ---- */
 .storyloom-ask-pill { padding: 3px; border-radius: 999px; margin-bottom: 8px; animation: sl-pop-up 300ms var(--sl-spring) backwards; }
 .storyloom-ask-pill-btn {
 	display: inline-flex;
@@ -380,213 +356,193 @@ body.theme-dark {
 .storyloom-ask-pill-btn:hover { background: var(--sl-glass-inner-hover) !important; }
 .storyloom-ask-pill-btn:active { transform: scale(0.95); }
 
-@media (prefers-reduced-motion: reduce) {
-	.storyloom-glass-panel, .storyloom-ask-pill, .storyloom-glass-chip, .storyloom-hover { animation: none !important; }
-	.storyloom-glass-mark.is-shimmer, .storyloom-glass-skeleton-line { animation: none; }
-}
-
-/* ---------- Shared view chrome ---------- */
-
-.storyloom-view-toolbar { display: flex; align-items: center; gap: var(--size-4-3); flex-wrap: wrap; padding: var(--size-4-2) var(--size-4-3); border-bottom: 1px solid var(--background-modifier-border); }
-.storyloom-view-title { font-weight: var(--font-semibold); }
-.storyloom-segmented { display: inline-flex; margin-left: auto; border: 1px solid var(--background-modifier-border); border-radius: var(--radius-s); overflow: hidden; }
-.storyloom-segmented button { border-radius: 0; box-shadow: none; background: transparent; font-size: var(--font-ui-small); height: auto; padding: 3px 10px; }
-.storyloom-segmented button.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
-.storyloom-dot-type { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--sl-color); margin-right: 6px; flex-shrink: 0; }
-
-/* ---------- Graph ---------- */
-
-.storyloom-graph { display: flex; flex-direction: column; padding: 0 !important; }
-.storyloom-graph-filters { display: flex; flex-wrap: wrap; gap: var(--size-4-3); font-size: var(--font-ui-small); color: var(--text-muted); }
-.storyloom-filter { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-.storyloom-scrubber { display: flex; align-items: center; gap: var(--size-4-2); padding: var(--size-4-2) var(--size-4-3); border-bottom: 1px solid var(--background-modifier-border); }
-.storyloom-scrubber button { height: auto; padding: 4px 6px; }
-.storyloom-slider { flex: 1; max-width: 420px; }
-.storyloom-scrub-label { font-size: var(--font-ui-small); color: var(--text-normal); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.storyloom-graph-stage { position: relative; flex: 1; min-height: 300px; overflow: hidden; background: var(--background-primary); }
-.storyloom-graph-stage svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
-.storyloom-graph-stage svg:active { cursor: grabbing; }
-.storyloom-graph-tooltip { position: absolute; pointer-events: none; z-index: 5; }
-.storyloom-graph-empty { fill: var(--text-faint); font-size: 14px; }
-
-.storyloom-node { cursor: pointer; transition: opacity 200ms ease; }
-.storyloom-node circle, .storyloom-node rect, .storyloom-node polygon {
-	fill: color-mix(in srgb, var(--sl-color) 35%, var(--background-primary));
-	stroke: var(--sl-color);
-	stroke-width: 1.5;
-}
-.storyloom-node:hover circle, .storyloom-node:hover rect, .storyloom-node:hover polygon { fill: color-mix(in srgb, var(--sl-color) 60%, var(--background-primary)); }
-.storyloom-node text { fill: var(--text-normal); font-size: 15px; font-family: var(--font-interface); pointer-events: none; paint-order: stroke; stroke: var(--background-primary); stroke-width: 3px; }
-.storyloom-node.is-dormant { opacity: 0.35; }
-
-.storyloom-edge { transition: opacity 200ms ease; opacity: 1; }
-.storyloom-edge.is-entering, .storyloom-edge.is-leaving { opacity: 0; }
-.storyloom-edge path { fill: none; stroke: var(--text-faint); stroke-width: 1.2; }
-.storyloom-edge.is-together path { stroke-dasharray: 5 4; stroke: var(--text-muted); }
-.storyloom-edge.is-at path { stroke-dasharray: 1 4; stroke-linecap: round; stroke-width: 1.5; stroke: color-mix(in srgb, var(--storyloom-location) 60%, transparent); }
-.storyloom-edge text { fill: var(--text-muted); font-size: 12.5px; font-family: var(--font-interface); paint-order: stroke; stroke: var(--background-primary); stroke-width: 3px; pointer-events: none; }
-
-/* ---------- Chat ---------- */
-
-.storyloom-chat { display: flex; flex-direction: column; padding: 0 !important; }
-.storyloom-chat-head { display: flex; justify-content: space-between; align-items: center; padding: var(--size-4-2) var(--size-4-3); border-bottom: 1px solid var(--background-modifier-border); }
-.storyloom-chat-list { flex: 1; overflow-y: auto; padding: var(--size-4-3); display: flex; flex-direction: column; gap: var(--size-4-3); }
-.storyloom-chat-empty { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; color: var(--text-muted); font-size: var(--font-ui-small); }
-.storyloom-chat-msg { font-size: var(--font-ui-small); line-height: 1.5; border-radius: var(--radius-m); padding: var(--size-4-2) var(--size-4-3); max-width: 100%; }
-.storyloom-chat-msg.is-user { align-self: flex-end; background: var(--background-modifier-hover); white-space: pre-wrap; }
-.storyloom-chat-msg.is-assistant { align-self: stretch; background: var(--background-secondary); }
-.storyloom-chat-msg .markdown-rendered > *:first-child { margin-top: 0; }
-.storyloom-chat-msg .markdown-rendered > *:last-child { margin-bottom: 0; }
-.storyloom-chat-actions { display: flex; gap: 2px; justify-content: flex-end; margin-top: 4px; }
-.storyloom-chat-composer { position: relative; display: flex; align-items: flex-end; gap: var(--size-4-2); padding: var(--size-4-3) var(--size-4-3) calc(var(--size-4-3) + 28px); border-top: 1px solid var(--background-modifier-border); }
-.storyloom-chat-send { flex-shrink: 0; height: auto; padding: 8px 10px; }
-.storyloom-chat-input { flex: 1; min-width: 0; resize: vertical; font-size: var(--font-ui-small); }
-.storyloom-chat-suggest { position: absolute; bottom: 100%; left: var(--size-4-3); right: var(--size-4-3); background: var(--background-primary); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); box-shadow: var(--shadow-s); z-index: 10; max-height: 240px; overflow-y: auto; }
-.storyloom-suggest-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; font-size: var(--font-ui-small); }
-.storyloom-suggest-item.is-selected, .storyloom-suggest-item:hover { background: var(--background-modifier-hover); }
-
-.storyloom-settings-btn { margin-top: var(--size-4-2); }
-.storyloom-notice-btn { display: block; margin-top: 6px; }
-.storyloom-chat-msg.is-streaming { white-space: pre-wrap; }
-.storyloom-timeline-modal .setting-item { padding: 6px 0; }
-.storyloom-timeline-preview { font-family: var(--font-monospace); font-size: var(--font-smallest); padding: 8px 10px; margin: 6px 0 4px; border-radius: var(--radius-s); background: var(--background-secondary); color: var(--text-normal); white-space: pre-wrap; word-break: break-word; }
-.storyloom-timeline-preview.is-empty { color: var(--text-faint); font-family: var(--font-interface); }
-.storyloom-stale { display: flex; align-items: center; gap: 6px; margin-top: var(--size-4-2); font-size: var(--font-ui-small); color: var(--text-accent); }
-
-/* ---------- Glass modals and pickers (every Storyloom pop-up) ---------- */
-
-.modal-container.storyloom-glass-container .modal-bg {
-	background: rgba(10, 12, 20, 0.22) !important;
-	-webkit-backdrop-filter: blur(3px);
-	backdrop-filter: blur(3px);
-}
-body.theme-dark .modal-container.storyloom-glass-container .modal-bg { background: rgba(0, 0, 0, 0.42) !important; }
-
-.modal.storyloom-glass-modal,
-.prompt.storyloom-glass-modal {
-	background: var(--sl-glass-bg) !important;
+/* ---- Hover card (editor, timeline tooltip, graph tooltip, writing notes) ---- */
+.storyloom-hover {
+	width: 320px;
+	max-width: 90vw;
+	background: var(--sl-hover-bg);
 	-webkit-backdrop-filter: blur(14px) saturate(175%);
 	backdrop-filter: blur(14px) saturate(175%);
-	border: 1px solid var(--sl-glass-border) !important;
-	border-radius: 22px !important;
-	box-shadow: var(--sl-glass-highlight), 0 0 0 0.5px var(--sl-glass-edge), var(--sl-glass-shadow) !important;
-	animation: sl-pop 300ms var(--sl-spring) backwards;
+	border: 1px solid var(--sl-glass-border);
+	border-radius: 18px;
+	box-shadow: var(--sl-glass-highlight), 0 0 0 0.5px var(--sl-glass-edge), var(--sl-glass-shadow);
+	padding: 14px 14px 12px;
+	font-size: var(--font-ui-small);
+	animation: sl-pop 260ms var(--sl-spring) backwards;
+}
+
+/* The entity peek inside it: the Cast block, compact */
+.sl-ent.is-peek { padding: 0; border-top: none; }
+.sl-ent.is-peek .sl-prop-name { height: 28px; }
+.sl-ent.is-peek .sl-prop-value { min-height: 28px; padding-top: 4px; padding-bottom: 4px; }
+.sl-ent-meta { margin: 2px 0 0 28px; font-size: 12px; color: var(--text-muted); }
+.sl-ent-desc {
+	margin-top: 6px;
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--text-muted);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
 	overflow: hidden;
 }
-.storyloom-glass-modal .modal-title { font-weight: var(--font-semibold); letter-spacing: -0.01em; }
-.storyloom-glass-modal .modal-close-button { border-radius: 999px; }
-
-/* Fields */
-.storyloom-glass-modal input[type="text"],
-.storyloom-glass-modal input[type="number"],
-.storyloom-glass-modal input[type="password"],
-.storyloom-glass-modal textarea,
-.storyloom-glass-modal select,
-.storyloom-glass-modal .prompt-input {
-	background: var(--sl-glass-inner) !important;
-	border: 1px solid var(--sl-glass-border) !important;
-	border-radius: 12px !important;
-	box-shadow: none !important;
-	transition: border-color 140ms ease, background 140ms ease;
-}
-.storyloom-glass-modal input:focus,
-.storyloom-glass-modal textarea:focus,
-.storyloom-glass-modal .prompt-input:focus {
-	border-color: color-mix(in srgb, var(--sl-accent) 55%, var(--sl-glass-border)) !important;
-	background: var(--sl-glass-inner-hover) !important;
-}
-
-/* Buttons: pills, accent for the main action */
-.storyloom-glass-modal button:not(.clickable-icon):not(.modal-close-button):not(.mod-cta):not(.mod-warning) {
-	border-radius: 999px !important;
-	border: 1px solid var(--sl-glass-border) !important;
-	background: var(--sl-glass-inner) !important;
-	box-shadow: var(--sl-glass-highlight) !important;
-	transition: transform 160ms var(--sl-spring), background 140ms ease;
-}
-.storyloom-glass-modal button:not(.clickable-icon):not(.modal-close-button):not(.mod-cta):not(.mod-warning):hover { background: var(--sl-glass-inner-hover) !important; }
-.storyloom-glass-modal button:not(.clickable-icon):active { transform: scale(0.96); }
-.storyloom-glass-modal button.mod-cta {
-	border-radius: 999px !important;
-	transition: transform 160ms var(--sl-spring), filter 140ms ease;
-	background: var(--sl-accent) !important;
-	border-color: transparent !important;
-	color: var(--text-on-accent) !important;
-	box-shadow: 0 6px 16px -6px var(--sl-accent), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
-}
-.storyloom-glass-modal button.mod-cta:hover { filter: brightness(1.08); background: var(--sl-accent) !important; }
-.storyloom-glass-modal button.mod-warning {
-	border-radius: 999px !important;
-	background: var(--background-modifier-error) !important;
-	border-color: transparent !important;
-	color: var(--text-on-accent) !important;
-}
-.storyloom-glass-modal .setting-item { border-top: none; }
-
-/* Inner cards */
-.storyloom-glass-modal .storyloom-review-group,
-.storyloom-glass-modal .storyloom-issue,
-.storyloom-glass-modal .storyloom-preview,
-.storyloom-glass-modal .storyloom-timeline-preview,
-.storyloom-glass-modal .storyloom-result-live {
+.sl-ent-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.storyloom-hover .storyloom-card-btn {
+	display: inline-flex;
+	align-items: center;
+	height: auto;
+	padding: 2px 8px;
+	font-size: var(--font-smallest);
+	border-radius: 999px;
 	background: var(--sl-glass-inner);
 	border: 1px solid var(--sl-glass-border);
-	border-radius: 16px;
 	box-shadow: var(--sl-glass-highlight);
+	color: var(--text-normal);
+	cursor: pointer;
+	transition: background 140ms ease;
 }
-.storyloom-glass-modal .storyloom-issue:hover { background: var(--sl-glass-inner-hover); }
-.storyloom-glass-modal .storyloom-result-text { line-height: 1.6; padding: 12px 14px; }
-.storyloom-glass-modal .storyloom-error { border-radius: 14px; }
-.storyloom-glass-modal .storyloom-result-label { padding-left: 4px; }
+.storyloom-hover .storyloom-card-btn:hover { background: var(--sl-glass-inner-hover); }
 
-/* Pickers (SuggestModal) */
-.prompt.storyloom-glass-modal .suggestion-item { border-radius: 12px; margin: 2px 6px; }
-.prompt.storyloom-glass-modal .suggestion-item.is-selected { background: var(--sl-glass-inner-hover); }
-
-/* Chat @-mention dropdown */
-.storyloom-chat-suggest {
-	background: var(--sl-glass-bg) !important;
-	-webkit-backdrop-filter: blur(14px) saturate(175%);
-	backdrop-filter: blur(14px) saturate(175%);
-	border: 1px solid var(--sl-glass-border) !important;
-	border-radius: 16px !important;
-	box-shadow: var(--sl-glass-highlight), var(--sl-glass-shadow) !important;
-	padding: 4px;
-	animation: sl-pop-up 240ms var(--sl-spring) backwards;
+/* ---- Writing notes (proofreading from Sync) ---- */
+.sl-wn {
+	--sl-wn: var(--color-orange);
+	text-decoration: underline wavy;
+	text-decoration-color: color-mix(in srgb, var(--sl-wn) 80%, transparent);
+	text-decoration-thickness: 1.5px;
+	text-underline-offset: 3px;
+	text-decoration-skip-ink: none;
+	cursor: help;
+	border-radius: 2px;
+	transition: background 120ms ease;
 }
-.storyloom-suggest-item { border-radius: 10px; }
+.sl-wn:hover { background: color-mix(in srgb, var(--sl-wn) 12%, transparent); }
 
-@media (prefers-reduced-motion: reduce) {
-	.modal.storyloom-glass-modal, .prompt.storyloom-glass-modal, .storyloom-chat-suggest { animation: none !important; }
+.sl-wn-card { --sl-wn: var(--color-orange); width: 300px; padding: 12px 12px 10px; }
+/* One colour per kind, shared by the underline and its card (word choice uses the orange default). */
+.sl-wn-spelling, .sl-wn-card.is-spelling { --sl-wn: var(--color-red); }
+.sl-wn-grammar, .sl-wn-punctuation, .sl-wn-card.is-grammar, .sl-wn-card.is-punctuation { --sl-wn: var(--color-blue); }
+.sl-wn-run-on, .sl-wn-clarity, .sl-wn-card.is-run-on, .sl-wn-card.is-clarity { --sl-wn: var(--color-purple); }
+.sl-wn-repetition, .sl-wn-card.is-repetition { --sl-wn: var(--color-cyan); }
+
+.sl-wn-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: var(--font-semibold); color: var(--text-normal); }
+.sl-wn-icon { display: inline-flex; color: var(--sl-wn); }
+.sl-wn-icon svg { width: 14px; height: 14px; }
+.sl-wn-message { margin-top: 6px; font-size: 13px; line-height: 1.45; color: var(--text-normal); }
+.sl-wn-fix { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; padding: 6px 8px; border-radius: 8px; background: var(--sl-glass-inner); box-shadow: inset 0 0 0 1px var(--sl-hairline); font-size: 13px; line-height: 1.4; }
+.sl-wn-old { color: var(--text-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--color-red) 70%, transparent); }
+.sl-wn-new { color: var(--text-normal); background: color-mix(in srgb, var(--color-green) 16%, transparent); border-radius: 3px; padding: 0 2px; }
+.sl-wn-arrow { display: inline-flex; color: var(--text-faint); }
+.sl-wn-arrow svg { width: 12px; height: 12px; }
+.sl-wn-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+.sl-wn-actions .storyloom-glass-btn { height: 26px; }
+
+/* ---- Chapter header actions ---- */
+/* Sync: a small dot when the chapter changed since its last sync. */
+.view-action.sl-header-sync { position: relative; }
+.view-action.sl-header-sync.is-stale::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--interactive-accent); box-shadow: 0 0 0 2px var(--background-primary); }
+/* AI review switch: accent when on, faint when off. */
+.view-action.sl-header-review { color: var(--text-faint); }
+.view-action.sl-header-review.is-active { color: var(--text-accent); }
+
+/* ---- Status bar ---- */
+.sl-status { display: inline-flex; align-items: center; gap: 5px; }
+.sl-status-icon { display: inline-flex; opacity: 0.7; }
+.sl-status-icon svg { width: 12px; height: 12px; }
+.sl-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 22%, transparent); }
+.sl-status-title { color: var(--text-muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sl-status-notes { padding: 0 6px; border-radius: 999px; font-size: 11px; color: var(--text-normal); background: color-mix(in srgb, var(--color-orange) 24%, transparent); }
+
+/* =====================================================================
+   Shared view chrome
+   ===================================================================== */
+
+.sl-tl, .sl-ch, .sl-cx, .storyloom-graph { container-type: inline-size; }
+.storyloom-view-title { font-weight: var(--font-semibold); }
+
+/* ---- Toolbar: one quiet row (tabs · summary · controls) ---- */
+.sl-tl-toolbar, .sl-cx-toolbar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px 12px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--sl-hairline);
+}
+.sl-meta { flex: 1 1 140px; min-width: 0; color: var(--text-muted); font-size: var(--font-ui-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Segmented controls (view tabs, Outline/Board, Characters/Locations) ---- */
+.sl-nav, .sl-tl-segmented { display: inline-flex; padding: 2px; border-radius: 9px; background: var(--sl-wash); }
+.sl-nav { flex-shrink: 0; }
+.sl-tl-segmented { margin-left: auto; }
+.sl-nav-tab, .sl-tl-segmented button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 11px;
+	border: none !important;
+	border-radius: 7px !important;
+	background: transparent !important;
+	box-shadow: none !important;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	transition: background 180ms var(--sl-ease), color 180ms ease, box-shadow 180ms ease;
+}
+.sl-nav-tab:hover, .sl-tl-segmented button:hover { color: var(--text-normal); }
+.sl-nav-tab.is-active, .sl-tl-segmented button.is-active { background: var(--sl-seg-active) !important; color: var(--text-normal); box-shadow: var(--sl-seg-shadow) !important; }
+.sl-nav-icon { display: inline-flex; }
+.sl-nav-icon svg, .sl-tl-segmented .storyloom-btn-icon svg { width: 14px; height: 14px; }
+@container (max-width: 860px) {
+	.sl-nav-label { display: none; }
+	.sl-nav-tab { padding: 0 10px; }
 }
 
-/* ---------- Avatars and location pills (timeline, codex) ---------- */
+/* ---- Chips: tinted, borderless ---- */
+.sl-cx-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--sl-hairline); }
+.sl-cx-chip, .storyloom-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 11px;
+	border: none !important;
+	border-radius: 999px !important;
+	background: var(--sl-wash) !important;
+	box-shadow: none !important;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	transition: background 140ms ease, color 140ms ease;
+}
+.sl-cx-chip:hover, .storyloom-chip:hover { background: var(--sl-wash-strong) !important; color: var(--text-normal); }
+.sl-cx-chip.is-active { background: var(--sl-tint) !important; color: var(--text-accent); }
+.sl-cx-chip-icon { display: inline-flex; color: var(--sl-color, currentColor); }
+.sl-cx-chip.is-active .sl-cx-chip-icon { color: inherit; }
+.sl-cx-chip-icon svg { width: 13px; height: 13px; }
+.sl-cx-chip-count { font-size: var(--font-smallest); opacity: 0.7; font-variant-numeric: tabular-nums; }
 
-.sl-tl-avatar {
-	--hue: 220;
+/* ---- Avatars: one flat mid-tone circle with white initials everywhere ---- */
+.sl-avatar, .sl-tl-avatar {
 	flex-shrink: 0;
-	width: 32px;
-	height: 32px;
-	border-radius: 50%;
-	display: grid;
 	place-items: center;
-	font-size: 12px;
+	border-radius: 50%;
+	color: #fff;
 	font-weight: var(--font-semibold);
-	letter-spacing: 0.02em;
-	color: hsl(var(--hue) 45% 28%);
-	background: linear-gradient(145deg, hsl(var(--hue) 70% 88%), hsl(var(--hue) 55% 76%));
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 6px -2px hsl(var(--hue) 50% 40% / 0.5);
+	letter-spacing: 0.01em;
+	background: hsl(var(--hue, 220) var(--sl-avatar-s) 33%);
 }
-body.theme-dark .sl-tl-avatar {
-	color: hsl(var(--hue) 70% 88%);
-	background: linear-gradient(145deg, hsl(var(--hue) 40% 38%), hsl(var(--hue) 45% 26%));
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 2px 6px -2px rgba(0, 0, 0, 0.6);
+@supports (width: calc(1px * cos(0deg))) {
+	.sl-avatar, .sl-tl-avatar { background: hsl(var(--hue, 220) var(--sl-avatar-s) calc(var(--sl-avatar-l) + var(--sl-avatar-swing) * cos((var(--hue, 220) - 292) * 1deg))); }
 }
+.sl-avatar { display: inline-grid; }
+.sl-avatar.is-sm { width: 20px; height: 20px; font-size: 9px; }
+.sl-avatar.is-lg { width: 52px; height: 52px; font-size: 18px; }
+.sl-tl-avatar { --hue: 220; display: grid; width: 32px; height: 32px; font-size: 12px; }
 .sl-tl-avatar.is-small { width: 24px; height: 24px; font-size: 10px; margin-left: -6px; border: 2px solid var(--background-primary); }
 .sl-tl-avatar.is-small:first-child { margin-left: 0; }
-.sl-tl-avatar.is-more { --hue: 220; filter: saturate(0); }
-.sl-tl-avatar.is-large { width: 52px; height: 52px; font-size: 18px; }
+.sl-tl-avatar.is-more { background: var(--sl-wash-strong); color: var(--text-muted); }
 
+/* ---- Location pills and event chips (timeline, codex) ---- */
 .sl-tl-pill {
 	--hue: 200;
 	display: flex;
@@ -636,39 +592,99 @@ body.theme-dark .sl-tl-pill {
 .sl-tl-event-icon svg { width: 11px; height: 11px; }
 .sl-tl-event.is-status { color: var(--text-normal); }
 .sl-tl-event.is-status .sl-tl-event-icon { color: var(--text-accent); }
-.sl-tl-event.is-knows .sl-tl-event-icon { color: var(--color-yellow, #c9a000); }
+.sl-tl-event.is-knows .sl-tl-event-icon { color: var(--color-yellow); }
 .sl-tl-event.is-knows, .sl-tl-event.is-note { width: 20px; padding: 0; justify-content: center; }
 
-/* ---------- Story timeline (swimlanes) ---------- */
+/* ---- Property rows (icon · name · value) ---- */
+.sl-props { display: flex; flex-direction: column; margin: 4px -6px; }
+.sl-prop { display: grid; grid-template-columns: minmax(88px, 36%) minmax(0, 1fr); align-items: start; border-radius: 6px; transition: background 120ms ease; }
+.sl-prop:hover { background: var(--sl-wash); }
+.sl-prop-name { display: flex; align-items: center; gap: 7px; min-width: 0; height: 30px; padding: 0 6px; color: var(--text-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl-prop-icon { display: inline-flex; flex-shrink: 0; color: var(--text-faint); }
+.sl-prop-icon svg { width: 14px; height: 14px; }
+.sl-prop-value { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; min-height: 30px; padding: 5px 6px; font-size: 13px; line-height: 20px; color: var(--text-normal); }
+.sl-prop-value.is-text { display: block; }
+.sl-prop-line + .sl-prop-line { margin-top: 2px; }
+.sl-prop-link { cursor: pointer; border-bottom: 1px solid var(--sl-hairline-strong); }
+.sl-prop-link:hover { color: var(--text-accent); border-color: currentColor; }
+.sl-prop-muted { color: var(--text-muted); }
+.sl-prop-empty { color: var(--text-faint); }
+
+/* ---- Tags (Notion select options) ---- */
+.sl-tag {
+	--sl-tag-bg: color-mix(in srgb, var(--sl-color, var(--sl-tag-neutral)) var(--sl-tag-tint), var(--background-primary));
+	--sl-tag-fg: color-mix(in srgb, var(--sl-color, var(--sl-tag-neutral)) var(--sl-tag-fg-tint), var(--text-normal));
+	display: inline-flex;
+	align-items: center;
+	height: 20px;
+	max-width: 100%;
+	padding: 0 6px;
+	border-radius: 3px;
+	background: var(--sl-tag-bg);
+	color: var(--sl-tag-fg);
+	font-size: 12.5px;
+	line-height: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.sl-tag.is-neutral { --sl-tag-bg: color-mix(in srgb, var(--text-normal) 14%, var(--background-primary)); --sl-tag-fg: var(--text-normal); }
+.sl-tag.is-ok { --sl-color: var(--color-green); }
+.sl-tag.is-warn { --sl-color: var(--color-orange); }
+.sl-prop-value .sl-tag { height: auto; min-height: 20px; padding: 2px 6px; line-height: 1.3; white-space: normal; overflow: visible; }
+
+/* ---- Entity blocks (Cast, and the hover peek) ---- */
+.sl-ent { padding: 10px 0 8px; border-top: 1px solid var(--sl-hairline); }
+.storyloom-section-title + .sl-ent, summary + .sl-ent { border-top: none; }
+.sl-ent-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.sl-ent-name { flex-shrink: 0; max-width: 68%; min-width: 0; font-size: 14px; font-weight: var(--font-semibold); color: var(--text-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl-ent-name.is-link { cursor: pointer; }
+.sl-ent-name.is-link:hover { text-decoration: underline; text-decoration-color: var(--sl-hairline-strong); text-underline-offset: 3px; }
+.sl-ent-head .sl-tag { flex-shrink: 1; min-width: 0; }
+.sl-ent-tools { display: flex; margin-left: auto; opacity: 0; transition: opacity 120ms ease; }
+.sl-ent:hover .sl-ent-tools, .sl-ent:focus-within .sl-ent-tools { opacity: 1; }
+@media (hover: none) { .sl-ent-tools { opacity: 1; } }
+.sl-ent-tools .clickable-icon { width: 24px; height: 24px; padding: 4px; }
+.sl-ent .sl-props { margin-top: 4px; }
+.sl-ent-none { padding: 4px 0 0 28px; font-size: 13px; color: var(--text-muted); }
+
+/* ---- Buttons in side panels: Notion's white button (Cast actions, Codex detail actions) ---- */
+.storyloom-cast .storyloom-cast-actions button, .sl-cx-detail .sl-cx-actions button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 6px;
+	min-width: 0;
+	height: 28px;
+	padding: 0 10px;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	box-shadow: var(--sl-btn-ring);
+	color: var(--text-normal);
+	font-size: 13px;
+	font-weight: var(--font-medium);
+	transition: background 120ms ease;
+}
+.storyloom-cast .storyloom-cast-actions button:hover, .sl-cx-detail .sl-cx-actions button:hover { background: var(--sl-wash); }
+.storyloom-cast .storyloom-cast-actions button.mod-cta { background: var(--interactive-accent); color: var(--text-on-accent); box-shadow: none; }
+.storyloom-cast .storyloom-cast-actions button.mod-cta:hover { opacity: 0.9; }
+.storyloom-cast-actions button .storyloom-btn-icon svg, .sl-cx-actions button .storyloom-btn-icon svg { width: 14px; height: 14px; }
+
+/* ---- Empty states ---- */
+.sl-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; max-width: 420px; margin: 48px auto; padding: 0 24px; animation: sl-fade-up 260ms var(--sl-ease) both; }
+.sl-empty-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 18px; margin-bottom: 8px; color: var(--text-accent); background: color-mix(in srgb, var(--interactive-accent) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 22%, transparent); }
+.sl-empty-icon svg { width: 26px; height: 26px; }
+.sl-empty-title { font-size: var(--font-ui-medium); font-weight: var(--font-semibold); color: var(--text-normal); }
+.sl-empty-body { color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.5; }
+.sl-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; }
+.sl-empty-actions button { display: inline-flex; align-items: center; gap: 6px; }
+
+/* =====================================================================
+   Story timeline (swimlanes)
+   ===================================================================== */
 
 .sl-tl { position: relative; display: flex; flex-direction: column; padding: 0 !important; overflow: hidden; }
-.sl-tl-toolbar, .sl-cx-toolbar {
-	display: flex;
-	align-items: center;
-	gap: var(--size-4-4);
-	padding: 14px 20px;
-	border-bottom: 1px solid var(--background-modifier-border);
-	background: linear-gradient(180deg, var(--background-primary), var(--background-secondary));
-	flex-wrap: wrap;
-}
-.sl-tl-title, .sl-cx-title { display: flex; align-items: center; gap: 8px; font-size: var(--font-ui-larger); font-weight: var(--font-semibold); letter-spacing: -0.01em; }
-.sl-tl-title-icon, .sl-cx-title-icon { display: inline-flex; color: var(--text-accent); }
-.sl-tl-stats { display: flex; gap: var(--size-4-4); }
-.sl-tl-stat { display: flex; flex-direction: column; line-height: 1.1; }
-.sl-tl-stat-n { font-weight: var(--font-semibold); font-variant-numeric: tabular-nums; }
-.sl-tl-stat-l { font-size: var(--font-smallest); color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
-.sl-tl-segmented {
-	margin-left: auto;
-	display: inline-flex;
-	padding: 3px;
-	gap: 2px;
-	border-radius: 999px;
-	background: var(--background-modifier-hover);
-	border: 1px solid var(--background-modifier-border);
-}
-.sl-tl-segmented button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 14px; border-radius: 999px !important; background: transparent !important; box-shadow: none !important; border: none !important; color: var(--text-muted); font-size: var(--font-ui-small); transition: background 160ms ease, color 160ms ease; }
-.sl-tl-segmented button.is-active { background: var(--background-primary) !important; color: var(--text-normal); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12) !important; }
-
 .sl-tl-scroller { flex: 1; overflow: auto; }
 .sl-tl-grid { display: grid; grid-auto-rows: minmax(76px, auto); width: 100%; }
 .sl-tl-cell, .sl-tl-head { min-width: 0; }
@@ -680,14 +696,14 @@ body.theme-dark .sl-tl-pill {
 	background: var(--background-secondary);
 	border-bottom: 1px solid var(--background-modifier-border);
 }
-.sl-tl-corner { left: 0; z-index: 5; display: flex; align-items: flex-end; padding: 12px 16px; font-size: var(--font-smallest); text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); }
+.sl-tl-corner { left: 0; z-index: 5; display: flex; align-items: flex-end; padding: 12px 16px; font-size: var(--font-ui-smaller); color: var(--text-muted); }
 .sl-tl-head { padding: 12px 14px 10px; cursor: pointer; animation: sl-chip-in 320ms var(--sl-spring) backwards; border-left: 1px solid var(--background-modifier-border-hover, transparent); }
 .sl-tl-head:hover .sl-tl-head-title { color: var(--text-accent); }
-.sl-tl-head-num { font-size: var(--font-smallest); text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); }
+.sl-tl-head-num { font-size: var(--font-ui-smaller); color: var(--text-muted); }
 .sl-tl-head-title { font-weight: var(--font-semibold); margin: 2px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 120ms ease; }
 .sl-tl-meter { height: 4px; border-radius: 999px; background: var(--background-modifier-border); overflow: hidden; }
 .sl-tl-meter-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, color-mix(in srgb, var(--interactive-accent) 60%, transparent), var(--interactive-accent)); }
-.sl-tl-head-words { margin-top: 4px; font-size: var(--font-smallest); color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.sl-tl-head-words { margin-top: 4px; font-size: var(--font-smallest); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .sl-tl-head.is-now { background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-secondary)); }
 .sl-tl-head.is-now .sl-tl-head-num { color: var(--text-accent); }
 
@@ -707,7 +723,7 @@ body.theme-dark .sl-tl-pill {
 .sl-tl-name:hover .sl-tl-name-main { color: var(--text-accent); }
 .sl-tl-name-text { min-width: 0; }
 .sl-tl-name-main { font-weight: var(--font-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 120ms ease; }
-.sl-tl-name-role { font-size: var(--font-smallest); color: var(--text-faint); }
+.sl-tl-name-role { font-size: var(--font-smallest); color: var(--text-muted); }
 
 .sl-tl-cell {
 	position: relative;
@@ -736,103 +752,95 @@ body.theme-dark .sl-tl-pill {
 	animation: sl-pill-in 520ms var(--sl-spring) backwards;
 	transform-origin: left center;
 }
-@keyframes sl-pill-in {
-	from { opacity: 0; transform: scaleX(0.6); }
-	to { opacity: 1; transform: none; }
-}
 .sl-tl-tip { position: absolute; z-index: 20; pointer-events: none; animation: sl-pop 220ms var(--sl-spring) backwards; }
 
-/* ---------- Codex view ---------- */
+/* =====================================================================
+   Codex
+   ===================================================================== */
 
 .sl-cx { display: flex; flex-direction: column; padding: 0 !important; overflow: hidden; }
+
+/* ---- Search and New ---- */
 .sl-cx-searchbox {
 	flex: 1;
-	min-width: 180px;
+	min-width: 120px;
 	max-width: 460px;
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	height: 34px;
+	height: 30px;
 	padding: 0 12px;
-	border-radius: 999px;
-	background: var(--background-modifier-form-field);
-	border: 1px solid var(--background-modifier-border);
-	transition: border-color 140ms ease, box-shadow 140ms ease;
+	border-radius: 9px;
+	background: var(--sl-wash);
+	transition: background 140ms ease, box-shadow 140ms ease;
 }
-.sl-cx-searchbox:focus-within { border-color: var(--interactive-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 18%, transparent); }
+.sl-cx-searchbox:focus-within { background: var(--background-primary); box-shadow: 0 0 0 3px var(--sl-tint-strong), 0 0 0 1px var(--interactive-accent); }
 .sl-cx-search-icon { display: inline-flex; color: var(--text-faint); }
 .sl-cx-search-icon svg { width: 15px; height: 15px; }
 .sl-cx-searchbox input.sl-cx-search { flex: 1; border: none !important; background: transparent !important; box-shadow: none !important; padding: 0; height: 100%; }
-.sl-cx-new { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px !important; height: 34px; padding: 0 16px; }
+.sl-cx-new { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 9px; }
+@container (max-width: 560px) {
+	.sl-cx-new > span:not(.storyloom-btn-icon) { display: none; }
+	.sl-cx-new { width: 30px; padding: 0; justify-content: center; }
+}
 
-.sl-cx-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 20px; border-bottom: 1px solid var(--background-modifier-border); }
-.sl-cx-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px !important; background: var(--background-primary) !important; border: 1px solid var(--background-modifier-border) !important; box-shadow: none !important; color: var(--text-muted); font-size: var(--font-ui-small); transition: background 140ms ease, color 140ms ease, transform 160ms var(--sl-spring); }
-.sl-cx-chip:hover { color: var(--text-normal); transform: translateY(-1px); }
-.sl-cx-chip.is-active { color: var(--text-on-accent); background: var(--interactive-accent) !important; border-color: transparent !important; }
-.sl-cx-chip-icon { display: inline-flex; color: var(--sl-color, currentColor); }
-.sl-cx-chip.is-active .sl-cx-chip-icon { color: inherit; }
-.sl-cx-chip-icon svg { width: 13px; height: 13px; }
-.sl-cx-chip-count { font-size: var(--font-smallest); opacity: 0.7; font-variant-numeric: tabular-nums; }
-
+/* ---- Grid and cards (shared with Chapters) ---- */
 .sl-cx-body { flex: 1; display: grid; grid-template-columns: 1fr; min-height: 0; }
 .sl-cx-body.has-detail { grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); }
-.sl-cx-grid { overflow-y: auto; padding: 18px 20px 28px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; align-content: start; }
-.sl-cx-empty { grid-column: 1 / -1; padding: 40px 0; text-align: center; color: var(--text-muted); }
+/* Rows take their content height: cards clip their overflow, which would otherwise let rows shrink to fit the pane. */
+.sl-cx-grid { overflow-y: auto; padding: 18px 20px 28px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); grid-auto-rows: max-content; gap: 14px; align-content: start; }
+.sl-cx-grid > .sl-empty { grid-column: 1 / -1; }
 
-.sl-cx-card {
+.sl-cx-card, .sl-ch-card {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
 	padding: 14px 14px 12px;
-	border-radius: 18px;
-	background: var(--background-primary);
-	border: 1px solid var(--background-modifier-border);
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -16px rgba(20, 30, 60, 0.35);
-	cursor: pointer;
-	overflow: hidden;
+	border-radius: var(--sl-r-lg);
+	background: var(--sl-card-bg);
+	box-shadow: var(--sl-card-shadow);
 	animation: sl-chip-in 320ms var(--sl-spring) backwards;
-	transition: transform 180ms var(--sl-spring), box-shadow 180ms ease, border-color 180ms ease;
 }
+.sl-cx-card > *, .sl-ch-card > * { flex-shrink: 0; }
+.sl-cx-card:hover, .sl-ch-card:hover { background: var(--sl-card-bg-hover); box-shadow: var(--sl-card-shadow-hover); }
+/* After :hover so the ring stays while hovered, and theme-independent so it shows in dark mode too. */
+.sl-cx-card.is-selected, .sl-ch-card.is-now { box-shadow: 0 0 0 2px var(--interactive-accent), 0 8px 24px -12px color-mix(in srgb, var(--interactive-accent) 45%, transparent); }
+
+.sl-cx-card { gap: 8px; cursor: pointer; overflow: hidden; transition: background 180ms ease, box-shadow 180ms ease; }
 .sl-cx-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--sl-color); opacity: 0.85; }
-.sl-cx-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 14px 30px -14px rgba(20, 30, 60, 0.45); }
-.sl-cx-card.is-selected { border-color: var(--interactive-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 20%, transparent), 0 14px 30px -14px rgba(20, 30, 60, 0.45); }
-.sl-cx-card > * { flex-shrink: 0; }
 .sl-cx-card-head { display: flex; align-items: center; gap: 10px; }
 .sl-cx-card-title { min-width: 0; }
 .sl-cx-card-name { font-weight: var(--font-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sl-cx-card-type { font-size: var(--font-smallest); color: var(--text-faint); }
+.sl-cx-card-type { font-size: var(--font-smallest); color: var(--text-muted); }
 .sl-cx-card-aliases { font-size: var(--font-smallest); color: var(--text-muted); }
 .sl-cx-card-desc { font-size: var(--font-ui-small); color: var(--text-muted); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .sl-cx-card-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
 
+/* ---- Detail: a side peek when there's room, a full sheet when there isn't ---- */
 .sl-cx-detail {
 	overflow-y: auto;
-	padding: 20px;
-	border-left: 1px solid var(--background-modifier-border);
-	background: linear-gradient(180deg, var(--background-secondary), var(--background-primary));
+	padding: 8px 28px 36px;
+	border-left: 1px solid var(--sl-hairline);
+	background: var(--background-primary);
 	animation: sl-detail-in 320ms var(--sl-spring) backwards;
 }
-@keyframes sl-detail-in {
-	from { opacity: 0; transform: translateX(16px); }
-	to { opacity: 1; transform: none; }
-}
-.sl-cx-detail-head { display: flex; align-items: center; gap: 14px; }
-.sl-cx-detail-title { flex: 1; min-width: 0; }
-.sl-cx-detail-name { font-size: var(--font-ui-larger); font-weight: var(--font-bold); letter-spacing: -0.01em; }
+.sl-peek-bar { display: flex; gap: 2px; margin: 0 -14px 10px; }
+.sl-peek-bar .clickable-icon { width: 28px; height: 28px; color: var(--text-muted); }
 .sl-cx-close { align-self: flex-start; }
-.sl-cx-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 6px; }
-.sl-cx-actions button { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px !important; height: 30px; padding: 0 14px; }
-.sl-cx-section { margin-top: 18px; }
-.sl-cx-section-title { font-size: var(--font-smallest); text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); margin-bottom: 6px; }
+.sl-cx-detail-head { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin: 6px 0 12px; }
+.sl-cx-detail-name { font-size: 30px; font-weight: var(--font-bold); line-height: 1.15; letter-spacing: -0.02em; }
+.sl-cx-detail .sl-props { margin-bottom: 12px; }
+.sl-cx-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.sl-cx-section { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--sl-hairline); font-size: 14px; line-height: 1.6; }
+.sl-cx-section-title { margin-bottom: 6px; font-size: 12px; font-weight: var(--font-medium); color: var(--text-muted); }
 .sl-cx-section-body { font-size: var(--font-ui-small); line-height: 1.5; color: var(--text-normal); }
-.sl-cx-rel { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--background-modifier-border); }
-.sl-cx-rel:last-child { border-bottom: none; }
+.sl-cx-rel { display: flex; align-items: baseline; gap: 8px; padding: 5px 6px; margin: 0 -6px; border-radius: 6px; }
+.sl-cx-rel:hover { background: var(--sl-wash); }
 .sl-cx-rel-target { font-weight: var(--font-medium); }
 .sl-cx-rel-target.is-link { cursor: pointer; }
 .sl-cx-rel-target.is-link:hover { color: var(--text-accent); }
 .sl-cx-rel-label { color: var(--text-muted); flex: 1; }
-.sl-cx-rel-range { font-size: var(--font-smallest); color: var(--text-faint); white-space: nowrap; }
+.sl-cx-rel-range { font-size: var(--font-smallest); color: var(--text-muted); white-space: nowrap; }
 
 .sl-cx-timeline { position: relative; padding-left: 4px; }
 .sl-cx-timeline::before { content: ""; position: absolute; left: 30px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--interactive-accent), color-mix(in srgb, var(--interactive-accent) 15%, transparent)); }
@@ -858,41 +866,24 @@ body.theme-dark .sl-tl-pill {
 .sl-cx-tl-field { font-size: var(--font-smallest); padding: 2px 8px; border-radius: 999px; background: var(--background-modifier-hover); color: var(--text-normal); }
 .sl-cx-tl-note { margin-top: 4px; font-size: var(--font-ui-small); color: var(--text-muted); font-style: italic; }
 
-@media (max-width: 760px) {
+@container (max-width: 720px) {
 	.sl-cx-body.has-detail { grid-template-columns: 1fr; }
 	.sl-cx-body.has-detail .sl-cx-grid { display: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-	.sl-tl-head, .sl-tl-grid > .sl-tl-pill, .sl-cx-card, .sl-cx-detail, .sl-tl-tip { animation: none !important; }
+	.sl-cx-detail { border-left: none; }
 }
 
-/* ---------- Chapters (outline + board) ---------- */
+/* =====================================================================
+   Chapters (outline + board)
+   ===================================================================== */
 
 .sl-ch { display: flex; flex-direction: column; padding: 0 !important; overflow: hidden; }
 .sl-ch-body { flex: 1; overflow: auto; }
-.sl-ch-hint { display: flex; align-items: center; gap: 8px; padding: 12px 20px 0; font-size: var(--font-ui-small); color: var(--text-faint); }
+.sl-ch-hint { display: flex; align-items: center; gap: 8px; padding: 12px 16px 0; font-size: var(--font-ui-small); color: var(--text-muted); }
 .sl-ch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 14px 20px 28px; align-content: start; }
 
-.sl-ch-card {
-	--st: var(--text-faint);
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	padding: 14px 14px 12px;
-	border-radius: 18px;
-	background: var(--background-primary);
-	border: 1px solid var(--background-modifier-border);
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -16px rgba(20, 30, 60, 0.35);
-	cursor: grab;
-	animation: sl-chip-in 320ms var(--sl-spring) backwards;
-	transition: transform 180ms var(--sl-spring), box-shadow 180ms ease, opacity 160ms ease, border-color 160ms ease;
-}
-.sl-ch-card > * { flex-shrink: 0; }
-.sl-ch-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 14px 30px -14px rgba(20, 30, 60, 0.45); }
+.sl-ch-card { --st: var(--text-faint); gap: 10px; cursor: grab; transition: background 180ms ease, box-shadow 180ms ease, opacity 160ms ease, transform 180ms var(--sl-spring); }
 .sl-ch-card:active { cursor: grabbing; }
 .sl-ch-card.is-dragging { opacity: 0.35; transform: scale(0.97); }
-.sl-ch-card.is-now { border-color: var(--interactive-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 18%, transparent), 0 14px 30px -14px rgba(20, 30, 60, 0.45); }
 .sl-ch-card.is-drop-before::before, .sl-ch-card.is-drop-after::after {
 	content: "";
 	position: absolute;
@@ -905,9 +896,8 @@ body.theme-dark .sl-tl-pill {
 }
 .sl-ch-card.is-drop-before::before { left: -11px; }
 .sl-ch-card.is-drop-after::after { right: -11px; }
-.sl-ch-card.is-draft { --st: var(--text-faint); }
-.sl-ch-card.is-revised { --st: var(--color-blue, #3b82f6); }
-.sl-ch-card.is-final { --st: var(--color-green, #22a06b); }
+.sl-ch-card.is-revised, .sl-ch-col.is-revised { --st: var(--color-blue); }
+.sl-ch-card.is-final, .sl-ch-col.is-final { --st: var(--color-green); }
 
 .sl-ch-card-head { display: flex; align-items: flex-start; gap: 12px; }
 .sl-ch-num {
@@ -920,9 +910,8 @@ body.theme-dark .sl-tl-pill {
 	font-size: var(--font-ui-medium);
 	font-weight: var(--font-bold);
 	font-variant-numeric: tabular-nums;
-	color: var(--text-on-accent);
-	background: linear-gradient(145deg, color-mix(in srgb, var(--interactive-accent) 80%, white), var(--interactive-accent));
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 14px -8px var(--interactive-accent);
+	color: var(--text-accent);
+	background: var(--sl-tint);
 }
 .sl-ch-card-titles { flex: 1; min-width: 0; }
 .sl-ch-card-title { font-weight: var(--font-semibold); font-size: var(--font-ui-medium); line-height: 1.25; }
@@ -937,108 +926,312 @@ body.theme-dark .sl-tl-pill {
 .sl-ch-summarize { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border-radius: 999px !important; font-size: var(--font-smallest); color: var(--text-accent); background: color-mix(in srgb, var(--interactive-accent) 10%, transparent) !important; border: 1px dashed color-mix(in srgb, var(--interactive-accent) 45%, transparent) !important; box-shadow: none !important; }
 .sl-ch-foot { display: flex; align-items: center; gap: 12px; margin-top: auto; }
 .sl-ch-foot .sl-tl-faces { margin: 0; padding: 0; }
-.sl-ch-words { flex: 1; min-width: 70px; text-align: right; font-size: var(--font-smallest); color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.sl-ch-words { flex: 1; min-width: 70px; text-align: right; font-size: var(--font-smallest); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .sl-ch-words .sl-tl-meter { margin-top: 4px; }
 
+/* The "new chapter" placeholder: after the card's :hover so it never gets a fill or ring, in either theme. */
 .sl-ch-card.is-new {
-	cursor: pointer;
+	flex-direction: row;
 	align-items: center;
 	justify-content: center;
 	min-height: 150px;
+	cursor: pointer;
 	color: var(--text-muted);
 	background: transparent;
-	border: 2px dashed var(--background-modifier-border);
+	border: 1.5px dashed var(--sl-hairline);
 	box-shadow: none;
-	flex-direction: row;
 }
 .sl-ch-card.is-new:hover { color: var(--text-accent); border-color: color-mix(in srgb, var(--interactive-accent) 50%, transparent); }
 .sl-ch-new-icon { display: inline-flex; }
 
 .sl-ch-board { display: grid; grid-template-columns: repeat(3, minmax(210px, 1fr)); gap: 16px; padding: 18px 20px 28px; min-height: 100%; }
-.sl-ch-col { --st: var(--text-faint); display: flex; flex-direction: column; border-radius: 20px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
-.sl-ch-col.is-revised { --st: var(--color-blue, #3b82f6); }
-.sl-ch-col.is-final { --st: var(--color-green, #22a06b); }
-.sl-ch-col.is-over { border-color: var(--st); background: color-mix(in srgb, var(--st) 7%, var(--background-secondary)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--st) 18%, transparent); }
+.sl-ch-col { --st: var(--text-faint); display: flex; flex-direction: column; border-radius: var(--sl-r-lg); background: var(--sl-wash); transition: background 160ms ease, box-shadow 160ms ease; }
+.sl-ch-col.is-over { background: color-mix(in srgb, var(--st) 9%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--st) 50%, transparent); }
 .sl-ch-col-head { display: flex; align-items: center; gap: 8px; padding: 14px 16px 10px; font-weight: var(--font-semibold); }
 .sl-ch-col-icon { display: inline-flex; color: var(--st); }
 .sl-ch-col-count { padding: 0 8px; border-radius: 999px; font-size: var(--font-smallest); color: var(--st); background: color-mix(in srgb, var(--st) 14%, transparent); }
-.sl-ch-col-words { margin-left: auto; font-weight: normal; font-size: var(--font-smallest); color: var(--text-faint); }
+.sl-ch-col-words { margin-left: auto; font-weight: normal; font-size: var(--font-smallest); color: var(--text-muted); }
 .sl-ch-col-list { display: flex; flex-direction: column; gap: 12px; padding: 4px 12px 14px; flex: 1; }
-.sl-ch-col-empty { padding: 26px 0; text-align: center; color: var(--text-faint); font-size: var(--font-ui-small); border: 2px dashed var(--background-modifier-border); border-radius: 14px; }
+.sl-ch-col-empty { padding: 26px 0; text-align: center; color: var(--text-muted); font-size: var(--font-ui-small); border: 1.5px dashed var(--sl-hairline); border-radius: 14px; }
 
-@media (prefers-reduced-motion: reduce) { .sl-ch-card { animation: none !important; } }
+/* =====================================================================
+   Story graph
+   ===================================================================== */
 
-/* ---------- Shared view tabs ---------- */
-
-.sl-nav { display: inline-flex; padding: 3px; gap: 2px; border-radius: 12px; background: var(--background-modifier-hover); border: 1px solid var(--background-modifier-border); }
-.sl-nav-tab { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 9px !important; background: transparent !important; border: none !important; box-shadow: none !important; color: var(--text-muted); font-size: var(--font-ui-small); font-weight: var(--font-medium); transition: background 160ms ease, color 160ms ease; }
-.sl-nav-tab:hover { color: var(--text-normal); background: var(--background-modifier-hover) !important; }
-.sl-nav-tab.is-active { color: var(--text-normal); background: var(--background-primary) !important; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), 0 0 0 0.5px var(--background-modifier-border) !important; }
-.sl-nav-tab.is-active .sl-nav-icon { color: var(--text-accent); }
-.sl-nav-icon { display: inline-flex; }
-.sl-nav-icon svg { width: 15px; height: 15px; }
-.sl-nav { flex-shrink: 0; }
-@container (max-width: 860px) { .sl-nav-label { display: none; } .sl-nav-tab { padding: 0 10px; } }
-.sl-tl, .sl-ch, .sl-cx, .storyloom-graph { container-type: inline-size; }
-
-/* ---------- Story graph ---------- */
-
+.storyloom-graph { display: flex; flex-direction: column; padding: 0 !important; }
+.storyloom-graph .sl-cx-chips { align-items: center; padding: 10px 20px; }
+.storyloom-graph .sl-cx-chip.is-active[class*="storyloom-type-"] { background: color-mix(in srgb, var(--sl-color) 15%, transparent) !important; color: var(--text-normal); }
+.storyloom-graph .sl-cx-chip.is-active .sl-cx-chip-icon { color: var(--sl-color, currentColor); }
 .sl-gr-toggles { display: flex; gap: 6px; margin-left: auto; }
-.storyloom-graph .sl-cx-chips { padding: 10px 20px; }
+
+.storyloom-graph-stage { position: relative; flex: 1; min-height: 300px; overflow: hidden; background: var(--background-primary); }
+.storyloom-graph-stage svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.storyloom-graph-stage svg:active { cursor: grabbing; }
+.storyloom-graph-stage > .sl-empty { position: absolute; inset: 0; margin: auto; height: max-content; }
+.storyloom-graph-tooltip { position: absolute; pointer-events: none; z-index: 5; }
+
+/* The chapter scrubber: a glass pill floating over the stage */
 .storyloom-scrubber.storyloom-glass {
 	position: absolute;
 	left: 50%;
 	bottom: 18px;
 	transform: translateX(-50%);
 	z-index: 4;
+	display: flex;
+	align-items: center;
+	gap: 10px;
 	width: min(560px, calc(100% - 32px));
 	padding: 6px 14px 6px 6px;
 	border-radius: 999px;
-	gap: 10px;
-	border-bottom: 1px solid var(--sl-glass-border);
 	animation: sl-rise 320ms var(--sl-spring) both;
 }
-.storyloom-scrubber.storyloom-glass .storyloom-glass-btn { flex-shrink: 0; border-radius: 999px !important; }
-.storyloom-scrubber.storyloom-glass .storyloom-slider { flex: 1; max-width: none; accent-color: var(--sl-accent); }
-.storyloom-scrubber.storyloom-glass .storyloom-scrub-label { flex: 0 1 190px; font-weight: var(--font-medium); }
-@keyframes sl-rise { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.storyloom-scrubber .storyloom-slider { flex: 1; accent-color: var(--sl-accent); }
+.storyloom-scrub-label { flex: 0 1 190px; min-width: 0; font-size: var(--font-ui-small); font-weight: var(--font-medium); color: var(--text-normal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ---------- Empty states ---------- */
+.storyloom-node { cursor: pointer; transition: opacity 200ms ease; }
+.storyloom-node circle, .storyloom-node rect, .storyloom-node polygon {
+	fill: color-mix(in srgb, var(--sl-color) 35%, var(--background-primary));
+	stroke: var(--sl-color);
+	stroke-width: 1.5;
+}
+.storyloom-node:hover circle, .storyloom-node:hover rect, .storyloom-node:hover polygon { fill: color-mix(in srgb, var(--sl-color) 60%, var(--background-primary)); }
+.storyloom-node text { fill: var(--text-normal); font-size: 15px; font-family: var(--font-interface); pointer-events: none; paint-order: stroke; stroke: var(--background-primary); stroke-width: 3px; }
+.storyloom-node.is-dormant { opacity: 0.35; }
 
-.sl-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; max-width: 420px; margin: 48px auto; padding: 0 24px; animation: sl-fade-up 260ms var(--sl-ease) both; }
-.storyloom-graph-stage > .sl-empty { position: absolute; inset: 0; margin: auto; height: max-content; }
-.sl-cx-grid > .sl-empty { grid-column: 1 / -1; }
-.sl-empty-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 18px; margin-bottom: 8px; color: var(--text-accent); background: color-mix(in srgb, var(--interactive-accent) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 22%, transparent); }
-.sl-empty-icon svg { width: 26px; height: 26px; }
-.sl-empty-title { font-size: var(--font-ui-medium); font-weight: var(--font-semibold); color: var(--text-normal); }
-.sl-empty-body { color: var(--text-muted); font-size: var(--font-ui-small); line-height: 1.5; }
-.sl-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; }
-.sl-empty-actions button { display: inline-flex; align-items: center; gap: 6px; }
-@keyframes sl-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.storyloom-edge { transition: opacity 200ms ease; opacity: 1; }
+.storyloom-edge.is-entering, .storyloom-edge.is-leaving { opacity: 0; }
+.storyloom-edge path { fill: none; stroke: var(--text-faint); stroke-width: 1.2; }
+.storyloom-edge.is-together path { stroke-dasharray: 5 4; stroke: var(--text-muted); }
+.storyloom-edge.is-at path { stroke-dasharray: 1 4; stroke-linecap: round; stroke-width: 1.5; stroke: color-mix(in srgb, var(--storyloom-location) 60%, transparent); }
+.storyloom-edge text { fill: var(--text-muted); font-size: 12.5px; font-family: var(--font-interface); paint-order: stroke; stroke: var(--background-primary); stroke-width: 3px; pointer-events: none; }
 
-/* ---------- Status bar ---------- */
+/* =====================================================================
+   Cast panel
+   ===================================================================== */
 
-.sl-status { display: inline-flex; align-items: center; gap: 5px; }
-.sl-status-icon { display: inline-flex; opacity: 0.7; }
-.sl-status-icon svg { width: 12px; height: 12px; }
-.sl-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 22%, transparent); }
+.storyloom-cast { padding: 18px 16px 28px; }
+.sl-cast-eyebrow { color: var(--text-muted); font-size: 12px; font-weight: var(--font-medium); }
+.storyloom-cast-title { font-size: 22px; font-weight: var(--font-bold); line-height: 1.2; letter-spacing: -0.015em; margin: 4px 0 8px; }
+.sl-cast-meta { margin-top: 4px; font-size: 13px; color: var(--text-muted); }
+.storyloom-cast-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+.storyloom-cast-section { margin-top: 18px; font-size: 13px; }
+.storyloom-section-title { display: flex; align-items: center; margin: 0 0 2px; padding: 0; font-size: 12px; font-weight: var(--font-medium); color: var(--text-muted); cursor: default; }
+.sl-count { margin-left: 6px; font-weight: 400; color: var(--text-muted); }
+details.storyloom-cast-section > summary { list-style: none; cursor: pointer; border-radius: 6px; padding: 4px 6px; margin: 0 -6px 2px; }
+details.storyloom-cast-section > summary::-webkit-details-marker { display: none; }
+details.storyloom-cast-section > summary::before { content: ""; width: 0; height: 0; margin-right: 7px; border-left: 4.5px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; transition: transform 160ms ease; }
+details.storyloom-cast-section[open] > summary::before { transform: rotate(90deg); }
+details.storyloom-cast-section > summary:hover { background: var(--sl-wash); color: var(--text-muted); }
 
-/* ---------- Cast panel (cards) ---------- */
+/* =====================================================================
+   Story assistant (chat)
+   ===================================================================== */
 
-.storyloom-cast-header { padding: 4px 2px 2px; }
-.sl-cast-eyebrow { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-accent); font-weight: var(--font-semibold); }
-.storyloom-cast .storyloom-cast-title { font-size: var(--font-ui-large); line-height: 1.25; margin-top: 2px; }
-.sl-cast-meta { color: var(--text-faint); font-size: var(--font-smallest); margin-top: 4px; }
-.storyloom-cast .storyloom-cast-actions button { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; }
-.storyloom-cast .storyloom-card { border-left: none; padding: 9px 11px; border-radius: 12px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); transition: border-color 140ms ease, transform 160ms var(--sl-spring); }
-.storyloom-cast .storyloom-card:hover { border-color: color-mix(in srgb, var(--sl-color) 45%, var(--background-modifier-border)); }
-.storyloom-cast .storyloom-card + .storyloom-card { margin-top: 6px; }
-.storyloom-card.has-avatar .storyloom-card-head { justify-content: flex-start; align-items: center; }
-.storyloom-card.has-avatar .storyloom-card-head .sl-tl-avatar { margin-left: 0; border: none; cursor: pointer; flex-shrink: 0; }
-.storyloom-card.has-avatar .storyloom-card-type { margin-left: auto; }
-.storyloom-card.has-avatar .storyloom-card-fields, .storyloom-card.has-avatar .storyloom-card-rel { margin-left: 32px; }
+.storyloom-chat { display: flex; flex-direction: column; padding: 0 !important; }
+.storyloom-chat-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; }
+.storyloom-chat-list { flex: 1; overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 12px; }
+.storyloom-chat-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: auto 0; padding: 24px 8px; text-align: center; color: var(--text-muted); font-size: var(--font-ui-small); }
+.storyloom-chat-empty .sl-empty-icon { width: 48px; height: 48px; border-radius: 15px; margin-bottom: 6px; }
+.storyloom-chat-chips { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 12px; }
+.storyloom-chat-chips .storyloom-chip { height: auto; min-height: 28px; padding: 5px 12px; white-space: normal; }
 
-/* ---------- Setup guide ---------- */
+/* Notion AI-style: a grey bubble for you, plain text for the answer */
+.storyloom-chat-msg { font-size: var(--font-ui-small); line-height: 1.5; border-radius: 18px; padding: 8px 12px; max-width: 100%; }
+.storyloom-chat-msg.is-user { align-self: flex-end; max-width: 85%; white-space: pre-wrap; background: var(--sl-wash-strong); color: var(--text-normal); border-radius: 16px; }
+.storyloom-chat-msg.is-assistant { align-self: stretch; background: none; padding: 2px; }
+.storyloom-chat-msg.is-streaming { white-space: pre-wrap; }
+.storyloom-chat-msg .markdown-rendered > *:first-child { margin-top: 0; }
+.storyloom-chat-msg .markdown-rendered > *:last-child { margin-bottom: 0; }
+.storyloom-chat-actions { display: flex; gap: 2px; justify-content: flex-end; margin-top: 4px; }
+
+.storyloom-chat-composer { position: relative; display: flex; align-items: flex-end; gap: var(--size-4-2); padding: 10px 12px 34px; }
+.storyloom-chat-field { position: relative; flex: 1; display: flex; align-items: flex-end; border-radius: 20px; background: var(--sl-wash); box-shadow: inset 0 0 0 1px var(--sl-hairline); transition: box-shadow 160ms ease, background 160ms ease; }
+.storyloom-chat-field:focus-within { background: var(--background-primary); box-shadow: inset 0 0 0 1px var(--interactive-accent), 0 0 0 3px var(--sl-tint); }
+.storyloom-chat-field .storyloom-chat-input { flex: 1; min-width: 0; resize: none; min-height: 38px; max-height: 160px; padding: 9px 4px 9px 14px; border: none !important; background: transparent !important; box-shadow: none !important; font-size: var(--font-ui-small); line-height: 1.4; }
+/* The send button carries .mod-cta, so these must beat Obsidian's button.mod-cta:hover. */
+.storyloom-chat-field .storyloom-chat-send { flex-shrink: 0; width: 28px; height: 28px; margin: 5px; padding: 0; border-radius: 50% !important; display: grid; place-items: center; background: var(--sl-wash-strong) !important; color: var(--text-faint); box-shadow: none !important; transition: background 160ms ease, color 160ms ease; }
+.storyloom-chat-field.has-text .storyloom-chat-send { background: var(--interactive-accent) !important; color: var(--text-on-accent); }
+.storyloom-chat-send svg { width: 16px; height: 16px; }
+
+/* @-mention dropdown (glass) */
+.storyloom-chat-suggest {
+	position: absolute;
+	bottom: 100%;
+	left: var(--size-4-3);
+	right: var(--size-4-3);
+	z-index: 10;
+	max-height: 240px;
+	overflow-y: auto;
+	padding: 4px;
+	background: var(--sl-glass-bg);
+	-webkit-backdrop-filter: blur(14px) saturate(175%);
+	backdrop-filter: blur(14px) saturate(175%);
+	border: 1px solid var(--sl-glass-border);
+	border-radius: 16px;
+	box-shadow: var(--sl-glass-highlight), var(--sl-glass-shadow);
+	animation: sl-pop-up 240ms var(--sl-spring) backwards;
+}
+.storyloom-suggest-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; cursor: pointer; font-size: var(--font-ui-small); }
+.storyloom-suggest-item.is-selected, .storyloom-suggest-item:hover { background: var(--background-modifier-hover); }
+
+.storyloom-settings-btn { margin-top: var(--size-4-2); }
+.storyloom-notice-btn { display: block; margin-top: 6px; }
+
+/* =====================================================================
+   Modals: content
+   ===================================================================== */
+
+.storyloom-result-modal { width: min(760px, 92vw); }
+.storyloom-result-body { max-height: 60vh; overflow-y: auto; }
+.storyloom-result-live { white-space: pre-wrap; font-family: var(--font-text); font-size: var(--font-text-size); line-height: 1.5; padding: var(--size-4-2); max-height: 60vh; overflow-y: auto; }
+.storyloom-result-live::after { content: ""; display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: -0.2em; background: var(--interactive-accent); animation: sl-caret 1s steps(2, start) infinite; }
+.storyloom-result-item + .storyloom-result-item { margin-top: var(--size-4-3); }
+.storyloom-result-label { font-size: var(--font-ui-smaller); color: var(--text-muted); margin-bottom: 4px; }
+.storyloom-result-text { width: 100%; resize: vertical; font-family: var(--font-text); font-size: var(--font-text-size); line-height: 1.5; padding: var(--size-4-2); }
+.storyloom-result-item-actions { display: flex; gap: var(--size-4-2); justify-content: flex-end; margin-top: 4px; }
+.storyloom-result-footer { display: flex; justify-content: space-between; gap: var(--size-4-2); margin-top: var(--size-4-4); flex-wrap: wrap; }
+.storyloom-footer-left, .storyloom-footer-right { display: flex; gap: var(--size-4-2); flex-wrap: wrap; }
+.storyloom-loading { display: flex; align-items: center; gap: var(--size-4-2); color: var(--text-muted); padding: var(--size-4-2) 0; }
+.storyloom-spinner {
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	border: 2px solid var(--background-modifier-border);
+	border-top-color: var(--interactive-accent);
+	animation: sl-spin 0.8s linear infinite;
+}
+.storyloom-error { display: flex; gap: var(--size-4-2); align-items: flex-start; color: var(--text-error); padding: var(--size-4-2); background: color-mix(in srgb, var(--text-error) 8%, transparent); border-radius: var(--radius-s); }
+.storyloom-preview { max-height: 60vh; overflow: auto; white-space: pre-wrap; font-size: var(--font-smallest); background: var(--background-secondary); padding: var(--size-4-2); border-radius: var(--radius-s); }
+.storyloom-report { max-height: 65vh; overflow-y: auto; }
+.storyloom-issue { padding: var(--size-4-2) var(--size-4-3); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-s); cursor: pointer; margin-bottom: var(--size-4-2); }
+.storyloom-issue:hover { background: var(--background-modifier-hover); }
+.storyloom-issue blockquote { margin: 4px 0; padding-left: var(--size-4-2); border-left: 2px solid var(--background-modifier-border); color: var(--text-muted); font-style: italic; }
+.storyloom-issues { max-height: 60vh; overflow-y: auto; }
+.storyloom-badge { display: inline-block; font-size: var(--font-smallest); padding: 0 6px; border-radius: var(--radius-s); background: var(--background-modifier-hover); color: var(--text-muted); margin-left: 4px; }
+.storyloom-sev-high { background: color-mix(in srgb, var(--text-error) 18%, transparent); color: var(--text-error); }
+.storyloom-sev-medium { background: color-mix(in srgb, var(--text-warning) 18%, transparent); color: var(--text-warning); }
+
+.storyloom-review-modal { width: min(820px, 94vw); }
+.storyloom-review-group { padding: var(--size-4-2) var(--size-4-3); margin-bottom: var(--size-4-3); border-radius: var(--sl-r-md); background: var(--sl-glass-inner); box-shadow: var(--sl-glass-highlight); }
+.storyloom-review-entity { font-weight: var(--font-semibold); margin-bottom: var(--size-4-2); }
+.storyloom-review-row { display: flex; align-items: center; gap: var(--size-4-2); margin: 4px 0; }
+.storyloom-review-key { min-width: 90px; color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.storyloom-review-key.is-names { font-size: inherit; color: var(--text-normal); }
+.storyloom-review-value { flex: 1; min-width: 0; }
+.storyloom-review-name { width: 180px; }
+.storyloom-review-prev { color: var(--text-muted); font-size: var(--font-smallest); white-space: nowrap; }
+/* Long review modals keep Cancel/Apply in view. */
+.storyloom-review-modal .modal-content > .setting-item:last-child { position: sticky; bottom: -1px; z-index: 2; margin-top: 8px; padding: 12px 0 2px; border-top: 1px solid var(--sl-hairline); }
+.storyloom-wordcount { width: 100%; }
+.storyloom-num { text-align: right; font-variant-numeric: tabular-nums; }
+.storyloom-total td { font-weight: var(--font-semibold); border-top: 1px solid var(--background-modifier-border); }
+.storyloom-file-list { max-height: 30vh; overflow-y: auto; font-size: var(--font-ui-small); color: var(--text-muted); }
+
+.storyloom-timeline-modal .setting-item { padding: 6px 0; }
+.storyloom-timeline-preview { font-family: var(--font-monospace); font-size: var(--font-smallest); padding: 8px 10px; margin: 6px 0 4px; border-radius: var(--radius-s); background: var(--background-secondary); color: var(--text-normal); white-space: pre-wrap; word-break: break-word; }
+.storyloom-timeline-preview.is-empty { color: var(--text-faint); font-family: var(--font-interface); }
+
+/* =====================================================================
+   Modals: the glass shell (every Storyloom pop-up). The !important here
+   wins over Obsidian's and themes' modal, field and button styles.
+   ===================================================================== */
+
+.modal-container.storyloom-glass-container .modal-bg {
+	background: var(--background-modifier-cover);
+	-webkit-backdrop-filter: blur(3px);
+	backdrop-filter: blur(3px);
+}
+
+.modal.storyloom-glass-modal,
+.prompt.storyloom-glass-modal {
+	background: var(--sl-glass-bg) !important;
+	-webkit-backdrop-filter: blur(14px) saturate(175%);
+	backdrop-filter: blur(14px) saturate(175%);
+	border: 1px solid var(--sl-glass-border) !important;
+	border-radius: 22px !important;
+	box-shadow: var(--sl-glass-highlight), 0 0 0 0.5px var(--sl-glass-edge), var(--sl-glass-shadow) !important;
+	animation: sl-pop 300ms var(--sl-spring) backwards;
+	overflow: hidden;
+}
+/* Long modals scroll inside the glass panel. */
+.modal.storyloom-glass-modal { display: flex; flex-direction: column; max-height: min(88vh, 900px); }
+.modal.storyloom-glass-modal > .modal-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-right: -8px; padding-right: 8px; }
+.modal.storyloom-glass-modal .modal-title { font-size: var(--font-ui-large); font-weight: var(--font-semibold); letter-spacing: -0.01em; }
+.storyloom-glass-modal .modal-close-button { border-radius: 999px; }
+.storyloom-glass-modal .setting-item { border-top: none; }
+
+/* Fields */
+.storyloom-glass-modal input[type="text"],
+.storyloom-glass-modal input[type="number"],
+.storyloom-glass-modal input[type="password"],
+.storyloom-glass-modal textarea,
+.storyloom-glass-modal select,
+.storyloom-glass-modal .prompt-input {
+	background: var(--sl-glass-inner) !important;
+	border: 1px solid var(--sl-glass-border) !important;
+	border-radius: 12px !important;
+	box-shadow: none !important;
+	transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+.storyloom-glass-modal input:focus,
+.storyloom-glass-modal textarea:focus,
+.storyloom-glass-modal select:focus,
+.storyloom-glass-modal .prompt-input:focus {
+	border-color: var(--interactive-accent) !important;
+	background: var(--sl-glass-inner-hover) !important;
+	box-shadow: 0 0 0 3px var(--sl-tint-strong) !important;
+}
+/* Suggestion lists on inputs: no native ▼ glyph (suggestions still appear as you type). */
+.storyloom-glass-modal input[list]::-webkit-calendar-picker-indicator { display: none !important; }
+
+/* Buttons: pills, accent for the main action */
+.storyloom-glass-modal button:not(.clickable-icon):not(.modal-close-button):not(.mod-cta):not(.mod-warning) {
+	border-radius: 999px !important;
+	border: 1px solid var(--sl-glass-border) !important;
+	background: var(--sl-glass-inner) !important;
+	box-shadow: var(--sl-glass-highlight) !important;
+	transition: transform 160ms var(--sl-spring), background 140ms ease;
+}
+.storyloom-glass-modal button:not(.clickable-icon):not(.modal-close-button):not(.mod-cta):not(.mod-warning):hover { background: var(--sl-glass-inner-hover) !important; }
+.storyloom-glass-modal button:not(.clickable-icon):active { transform: scale(0.96); }
+.storyloom-glass-modal button.mod-cta {
+	border-radius: 999px !important;
+	transition: transform 160ms var(--sl-spring), filter 140ms ease;
+	background: var(--sl-accent) !important;
+	border-color: transparent !important;
+	color: var(--text-on-accent) !important;
+	box-shadow: 0 6px 16px -6px var(--sl-accent), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+.storyloom-glass-modal button.mod-cta:hover { filter: brightness(1.08); }
+.storyloom-glass-modal button.mod-warning {
+	border-radius: 999px !important;
+	background: var(--background-modifier-error) !important;
+	border-color: transparent !important;
+	color: var(--text-on-accent) !important;
+}
+
+/* Inner cards */
+.storyloom-glass-modal .storyloom-issue,
+.storyloom-glass-modal .storyloom-preview,
+.storyloom-glass-modal .storyloom-timeline-preview,
+.storyloom-glass-modal .storyloom-result-live {
+	background: var(--sl-glass-inner);
+	border: 1px solid var(--sl-glass-border);
+	border-radius: 16px;
+	box-shadow: var(--sl-glass-highlight);
+}
+.storyloom-glass-modal .storyloom-issue:hover { background: var(--sl-glass-inner-hover); }
+.storyloom-glass-modal .storyloom-result-text { line-height: 1.6; padding: 12px 14px; }
+.storyloom-glass-modal .storyloom-error { border-radius: 14px; }
+.storyloom-glass-modal .storyloom-result-label { padding-left: 4px; }
+
+/* Pickers (SuggestModal) */
+.prompt.storyloom-glass-modal .suggestion-item { border-radius: 12px; margin: 2px 6px; }
+.prompt.storyloom-glass-modal .suggestion-item.is-selected { background: var(--sl-glass-inner-hover); }
+
+/* =====================================================================
+   Setup guide
+   ===================================================================== */
 
 .modal.sl-setup { width: min(640px, calc(100vw - 32px)); }
 .sl-setup-steps { display: flex; gap: 8px; justify-content: center; margin: 4px 0 18px; }
@@ -1054,7 +1247,6 @@ body.theme-dark .sl-tl-pill {
 .sl-setup-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 .sl-setup-choice { position: relative; padding: 14px 14px 12px 54px; border-radius: 14px; cursor: pointer; background: var(--sl-glass-inner); border: 1px solid var(--sl-glass-border); box-shadow: var(--sl-glass-highlight); transition: background 140ms ease, box-shadow 160ms ease, transform 160ms var(--sl-spring); }
 .sl-setup-choice:hover { background: var(--sl-glass-inner-hover); transform: translateY(-1px); }
-.sl-setup-choice:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
 .sl-setup-choice.is-selected { box-shadow: var(--sl-glass-highlight), 0 0 0 2px var(--interactive-accent); }
 .sl-setup-choice-icon { position: absolute; left: 14px; top: 14px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; color: var(--text-accent); background: color-mix(in srgb, var(--interactive-accent) 14%, transparent); }
 .sl-setup-choice.is-selected .sl-setup-choice-icon { background: var(--interactive-accent); color: var(--text-on-accent); }
@@ -1074,7 +1266,6 @@ body.theme-dark .sl-tl-pill {
 .sl-setup-result.is-ok { color: var(--color-green); }
 .sl-setup-result.is-error { color: var(--text-error); }
 .sl-setup-result.is-pending::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: sl-spin 700ms linear infinite; }
-@keyframes sl-spin { to { transform: rotate(360deg); } }
 .sl-setup-plan { margin-top: 14px; padding: 6px; border-radius: 12px; background: var(--sl-glass-inner); border: 1px solid var(--sl-glass-border); }
 .sl-setup-plan-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-size: var(--font-ui-small); }
 .sl-setup-plan-item .storyloom-btn-icon { color: var(--text-accent); }
@@ -1088,371 +1279,45 @@ body.theme-dark .sl-tl-pill {
 .sl-setup-tip .storyloom-muted { font-size: var(--font-ui-small); line-height: 1.45; }
 .sl-setup-footer { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
 .sl-setup-spacer { flex: 1; }
+/* !important: must beat the glass-modal pill button above. */
 .sl-setup-skip { background: transparent !important; box-shadow: none !important; border: none !important; color: var(--text-muted); }
 .sl-setup-skip:hover { color: var(--text-normal); }
-.storyloom-graph .sl-cx-chips { align-items: center; }
-.storyloom-graph .sl-cx-chip.is-active.storyloom-type-character, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-location, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-lore, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-item, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-faction { background: color-mix(in srgb, var(--sl-color) 16%, var(--background-primary)) !important; color: var(--text-normal); border-color: color-mix(in srgb, var(--sl-color) 45%, transparent) !important; }
-.storyloom-graph .sl-cx-chip.is-active .sl-cx-chip-icon { color: var(--sl-color, currentColor); }
-.sl-gr-toggles .sl-cx-chip.is-active { background: var(--background-modifier-hover) !important; color: var(--text-normal); border-color: var(--background-modifier-border-hover) !important; }
-.sl-gr-toggles .sl-cx-chip.is-active .sl-cx-chip-icon { color: var(--text-accent); }
-.sl-gr-toggles .sl-cx-chip:not(.is-active) { opacity: 0.7; }
-.sl-status-title { color: var(--text-faint); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* CodeMirror's hover wrapper around the glass card: no background, border or shadow of its own. */
-.cm-tooltip.storyloom-hover-host, .cm-tooltip:has(> .storyloom-hover) { background: transparent !important; border: none !important; box-shadow: none !important; border-radius: 18px; padding: 0; }
-.theme-dark .storyloom-hover { background: rgba(36, 37, 44, 0.86); }
-.theme-dark .cm-tooltip.storyloom-hover { background: rgba(36, 37, 44, 0.86) !important; }
-
-/* Long modals scroll inside the glass panel; review modals keep Cancel/Apply in view. */
-.modal.storyloom-glass-modal { display: flex; flex-direction: column; max-height: min(88vh, 900px); }
-.modal.storyloom-glass-modal > .modal-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-right: -8px; padding-right: 8px; }
-.storyloom-review-modal .modal-content > .setting-item:last-child {
-	position: sticky;
-	bottom: -1px;
-	z-index: 2;
-	margin-top: 4px;
-	padding: 12px 0 2px;
-	background: linear-gradient(180deg, transparent, var(--sl-glass-bg) 30%);
-	-webkit-backdrop-filter: blur(8px);
-	backdrop-filter: blur(8px);
-}
 
 /* =====================================================================
-   Design system pass: one set of materials, controls and type, closer to
-   native macOS / iOS. Later rules here intentionally override earlier ones.
+   Accessibility
    ===================================================================== */
 
-body {
-	--sl-r-sm: 8px;
-	--sl-r-md: 12px;
-	--sl-r-lg: 16px;
-	--sl-fill: color-mix(in srgb, var(--text-normal) 5%, transparent);
-	--sl-fill-hover: color-mix(in srgb, var(--text-normal) 8%, transparent);
-	--sl-hairline: color-mix(in srgb, var(--text-normal) 10%, transparent);
-	--sl-tint: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
-	--sl-tint-strong: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
-	--sl-card-shadow: 0 0 0 1px var(--sl-hairline), 0 1px 2px rgba(0, 0, 0, 0.04);
-	--sl-card-shadow-hover: 0 0 0 1px var(--sl-hairline), 0 10px 28px -12px rgba(15, 23, 42, 0.28);
-	--sl-seg-active: var(--background-primary);
-	--sl-seg-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+/* Focus rings on every Storyloom control. An outline, so the box-shadow overrides above can't remove it. */
+:is(
+	.sl-nav-tab, .sl-tl-segmented button, .sl-cx-chip, .storyloom-chip, .sl-cx-new, .sl-empty-actions button,
+	.storyloom-glass-btn, .storyloom-glass-chip, .storyloom-ask-pill-btn, .storyloom-card-btn,
+	.storyloom-cast-actions button, .sl-cx-actions button, .sl-ch-summarize, .storyloom-chat-send,
+	.storyloom-glass-modal button, .sl-setup-test, .sl-setup-skip, .sl-setup-choice,
+	details.storyloom-cast-section > summary,
+	[class*="sl-"][tabindex], [class*="storyloom-"][tabindex]
+):focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
 }
-body.theme-dark {
-	--sl-card-shadow: 0 0 0 1px var(--sl-hairline);
-	--sl-card-shadow-hover: 0 0 0 1px color-mix(in srgb, var(--text-normal) 16%, transparent), 0 12px 30px -12px rgba(0, 0, 0, 0.6);
-	--sl-seg-active: color-mix(in srgb, var(--text-normal) 16%, var(--background-primary));
-	--sl-seg-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-}
+/* Inside scrolling grids and lists the ring goes inward, so neighbours and scroll edges don't clip it. */
+:is(.sl-tl-head, .sl-tl-name, .sl-tl-cell, .storyloom-issue)[tabindex]:focus-visible { outline-offset: -2px; }
 
-/* ---- Toolbar: one quiet row (tabs · summary · controls) ---- */
-.sl-tl-toolbar, .sl-cx-toolbar {
-	gap: 10px 12px;
-	padding: 10px 16px;
-	background: none;
-	border-bottom: 1px solid var(--sl-hairline);
-}
-.sl-meta { flex: 1 1 140px; min-width: 0; color: var(--text-muted); font-size: var(--font-ui-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* ---- Segmented controls (view tabs, Outline/Board, Characters/Locations) ---- */
-.sl-nav, .sl-tl-segmented {
-	padding: 2px;
-	gap: 0;
-	border: none;
-	border-radius: 9px;
-	background: var(--sl-fill);
-}
-.sl-nav-tab, .sl-tl-segmented button {
-	height: 26px;
-	padding: 0 11px;
-	border-radius: 7px !important;
-	font-size: var(--font-ui-small);
-	font-weight: var(--font-medium);
-	color: var(--text-muted);
-	transition: background 180ms var(--sl-ease), color 180ms ease, box-shadow 180ms ease;
-}
-.sl-nav-tab:hover, .sl-tl-segmented button:hover { background: transparent !important; color: var(--text-normal); }
-.sl-nav-tab.is-active, .sl-tl-segmented button.is-active { background: var(--sl-seg-active) !important; color: var(--text-normal); box-shadow: var(--sl-seg-shadow) !important; }
-.sl-nav-tab.is-active .sl-nav-icon { color: var(--text-normal); }
-.sl-nav-icon svg, .sl-tl-segmented .storyloom-btn-icon svg { width: 14px; height: 14px; }
-
-/* ---- Chips: tinted, borderless ---- */
-.sl-cx-chips { gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--sl-hairline); }
-.sl-cx-chip, .storyloom-chip {
-	height: 26px;
-	padding: 0 11px;
-	border: none !important;
-	border-radius: 999px !important;
-	background: var(--sl-fill) !important;
-	box-shadow: none !important;
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
-}
-.sl-cx-chip:hover, .storyloom-chip:hover { background: var(--sl-fill-hover) !important; color: var(--text-normal); transform: none; }
-.sl-cx-chip.is-active { background: var(--sl-tint) !important; color: var(--text-accent); }
-.sl-cx-chip.is-active .sl-cx-chip-icon { color: inherit; }
-.storyloom-graph .sl-cx-chip.is-active.storyloom-type-character, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-location, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-lore, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-item, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-faction { background: color-mix(in srgb, var(--sl-color) 15%, transparent) !important; border: none !important; }
-.sl-gr-toggles .sl-cx-chip.is-active { background: var(--sl-tint) !important; color: var(--text-accent); border: none !important; }
-.sl-gr-toggles .sl-cx-chip.is-active .sl-cx-chip-icon { color: inherit; }
-.sl-gr-toggles .sl-cx-chip:not(.is-active) { opacity: 1; }
-
-/* ---- Search field ---- */
-.sl-cx-searchbox { height: 30px; border: none; border-radius: 9px; background: var(--sl-fill); }
-.sl-cx-searchbox:focus-within { border: none; background: var(--background-primary); box-shadow: 0 0 0 3px var(--sl-tint-strong), 0 0 0 1px var(--interactive-accent); }
-.sl-cx-new { height: 30px; padding: 0 12px; border-radius: 9px !important; }
-
-/* ---- Type: sentence case, no letter-spaced capitals ---- */
-.storyloom-card-label, .storyloom-section-title, .storyloom-result-label, .storyloom-review-key, .sl-tl-corner, .sl-tl-head-num, .sl-cx-section-title, .sl-cast-eyebrow {
-	text-transform: none;
-	letter-spacing: 0;
-	font-size: var(--font-ui-smaller);
-}
-.storyloom-card-label { color: var(--text-faint); padding-top: 0.15em; }
-.storyloom-section-title, .sl-cx-section-title { font-weight: var(--font-semibold); color: var(--text-muted); }
-.storyloom-review-key { color: var(--text-muted); }
-.sl-tl-corner, .sl-tl-head-num { color: var(--text-faint); }
-.sl-cast-eyebrow { font-weight: var(--font-semibold); }
-
-/* ---- Cards: hairline instead of borders, soft lift on hover ---- */
-.sl-ch-card, .sl-cx-card {
-	border: none;
-	border-radius: var(--sl-r-lg);
-	box-shadow: var(--sl-card-shadow);
-}
-.sl-ch-card:hover, .sl-cx-card:hover { transform: translateY(-1px); box-shadow: var(--sl-card-shadow-hover); }
-.sl-ch-card.is-now, .sl-cx-card.is-selected { box-shadow: 0 0 0 2px var(--interactive-accent), 0 8px 24px -12px color-mix(in srgb, var(--interactive-accent) 45%, transparent); }
-.sl-ch-num { background: var(--sl-tint) !important; color: var(--text-accent) !important; box-shadow: none !important; }
-.sl-ch-card.is-new { box-shadow: none; border: 1.5px dashed var(--sl-hairline); }
-.sl-ch-col { border: none; border-radius: var(--sl-r-lg); background: var(--sl-fill); }
-.sl-ch-col.is-over { background: color-mix(in srgb, var(--st) 9%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--st) 50%, transparent); }
-.sl-ch-col-empty { border: 1.5px dashed var(--sl-hairline); }
-.sl-ch-hint { padding: 12px 16px 0; }
-
-/* ---- Codex detail: a side panel when there's room, a full sheet when there isn't ---- */
-.sl-cx-detail { border-left: 1px solid var(--sl-hairline); background: var(--background-primary); }
-@container (max-width: 720px) {
-	.sl-cx-body.has-detail { grid-template-columns: 1fr; }
-	.sl-cx-body.has-detail .sl-cx-grid { display: none; }
-	.sl-cx-detail { border-left: none; }
-}
-
-/* ---- Cast panel: grouped list ---- */
-.storyloom-cast { padding: 12px; }
-.storyloom-cast .storyloom-cast-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 4px; }
-.storyloom-cast .storyloom-cast-actions button { justify-content: center; height: 30px; padding: 0 8px; border-radius: 9px; font-size: var(--font-ui-smaller); background: var(--sl-fill); border: none; box-shadow: none; }
-.storyloom-cast .storyloom-cast-actions button:hover { background: var(--sl-fill-hover); }
-.storyloom-cast .storyloom-cast-actions button.mod-cta { background: var(--interactive-accent); color: var(--text-on-accent); }
-.storyloom-cast .storyloom-card { border: none; border-radius: var(--sl-r-md); background: var(--sl-fill); padding: 10px 12px; }
-.storyloom-cast .storyloom-card:hover { background: var(--sl-fill-hover); border: none; }
-.storyloom-cast .storyloom-card + .storyloom-card { margin-top: 6px; }
-.storyloom-cast .storyloom-card-fields { grid-template-columns: 64px 1fr; gap: 3px 10px; margin-top: 6px; }
-.storyloom-cast .storyloom-since { display: none; }
-.storyloom-cast .storyloom-card-rel { display: grid; grid-template-columns: 64px 1fr; gap: 10px; margin-top: 3px; }
-.storyloom-cast .storyloom-card-type { font-size: var(--font-ui-smaller); }
-.storyloom-card.has-avatar .storyloom-card-fields, .storyloom-card.has-avatar .storyloom-card-rel { margin-left: 0; }
-.storyloom-cast-section { margin-top: 16px; }
-.storyloom-stale { padding: 6px 10px; border-radius: 9px; background: var(--sl-tint); font-weight: var(--font-medium); }
-
-/* ---- Story assistant ---- */
-.storyloom-chat-head { padding: 10px 12px; border-bottom: 1px solid var(--sl-hairline); }
-.storyloom-chat-head .storyloom-view-title { font-weight: var(--font-semibold); }
-.storyloom-chat-list { padding: 14px 12px; gap: 12px; }
-.storyloom-chat-empty { align-items: center; text-align: center; margin: auto 0; padding: 24px 8px; gap: 6px; }
-.storyloom-chat-empty .sl-empty-icon { width: 48px; height: 48px; border-radius: 15px; margin-bottom: 6px; }
-.storyloom-chat-chips { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 12px; }
-.storyloom-chat-chips .storyloom-chip { height: auto; min-height: 28px; padding: 5px 12px; white-space: normal; }
-.storyloom-chat-msg { border-radius: 18px; padding: 8px 12px; }
-.storyloom-chat-msg.is-user { max-width: 85%; background: var(--interactive-accent); color: var(--text-on-accent); border-bottom-right-radius: 6px; }
-.storyloom-chat-msg.is-assistant { background: none; padding: 2px 2px; }
-.storyloom-chat-composer { padding: 10px 12px calc(10px + 24px); border-top: none; }
-.storyloom-chat-field { position: relative; flex: 1; display: flex; align-items: flex-end; border-radius: 20px; background: var(--sl-fill); box-shadow: inset 0 0 0 1px var(--sl-hairline); transition: box-shadow 160ms ease, background 160ms ease; }
-.storyloom-chat-field:focus-within { background: var(--background-primary); box-shadow: inset 0 0 0 1px var(--interactive-accent), 0 0 0 3px var(--sl-tint); }
-.storyloom-chat-field .storyloom-chat-input { flex: 1; resize: none; min-height: 38px; max-height: 160px; padding: 9px 4px 9px 14px; border: none !important; background: transparent !important; box-shadow: none !important; line-height: 1.4; }
-.storyloom-chat-field .storyloom-chat-send { width: 28px; height: 28px; margin: 5px; padding: 0; border-radius: 50% !important; display: grid; place-items: center; opacity: 0.4; transform: scale(0.9); transition: opacity 160ms ease, transform 200ms var(--sl-spring); }
-.storyloom-chat-field.has-text .storyloom-chat-send { opacity: 1; transform: none; }
-.storyloom-chat-send svg { width: 16px; height: 16px; }
-
-/* ---- Modals ---- */
-.storyloom-review-group { border: none !important; border-radius: var(--sl-r-md) !important; background: var(--sl-glass-inner); box-shadow: inset 0 0 0 1px var(--sl-hairline); }
-.storyloom-review-modal .modal-content > .setting-item:last-child { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-top: 1px solid var(--sl-hairline); margin-top: 8px; padding-top: 12px; }
-.modal.storyloom-glass-modal .modal-title { font-size: var(--font-ui-large); }
-
-/* ---- Focus rings on every Storyloom control ---- */
-:is(.sl-nav-tab, .sl-tl-segmented button, .sl-cx-chip, .storyloom-chip, .sl-empty-actions button, .storyloom-glass-btn, .storyloom-glass-chip, .sl-setup-test):focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px var(--interactive-accent) !important; }
-
-/* ---- Respect "reduce motion" everywhere ---- */
+/* Respect "reduce motion" everywhere: entrances finish at once, loops stop. */
 @media (prefers-reduced-motion: reduce) {
-	[class*="sl-"], [class*="storyloom-"], [class*="sl-"]::before, [class*="sl-"]::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
+	[class*="sl-"], [class*="storyloom-"],
+	[class*="sl-"]::before, [class*="sl-"]::after,
+	[class*="storyloom-"]::before, [class*="storyloom-"]::after {
+		animation-duration: 1ms !important;
+		animation-delay: 0ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 1ms !important;
+	}
+	.storyloom-glass-mark.is-shimmer, .storyloom-glass-skeleton-line,
+	.storyloom-spinner, .sl-setup-result.is-pending::before,
+	.storyloom-result-live::after, .storyloom-glass-result.is-streaming::after { animation: none !important; }
 }
-.storyloom-cast .storyloom-card-fields, .storyloom-cast .storyloom-card-rel { grid-template-columns: 84px minmax(0, 1fr); }
-.storyloom-cast .storyloom-cast-actions { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-.storyloom-cast .storyloom-cast-actions button { min-width: 0; }
-.sl-cx-searchbox { min-width: 120px; }
-@container (max-width: 560px) {
-	.sl-cx-new > span:not(.storyloom-btn-icon) { display: none; }
-	.sl-cx-new { width: 30px; padding: 0; justify-content: center; }
-}
 
-/* =====================================================================
-   Side panels in the Notion idiom: flat, typographic, no boxes or glass.
-   Property rows (icon · name · value), 3px-corner tags, solid avatars,
-   hover washes mixed from the text colour, hairlines. Glass is kept for
-   things that float (inline edit, hover cards, scrubber, menus, dialogs).
-   ===================================================================== */
-body {
-	--sl-wash: color-mix(in srgb, var(--text-normal) 5.5%, transparent);
-	--sl-wash-strong: color-mix(in srgb, var(--text-normal) 8%, transparent);
-	--sl-hairline: color-mix(in srgb, var(--text-normal) 9.5%, transparent);
-	--sl-hairline-strong: color-mix(in srgb, var(--text-normal) 16%, transparent);
-	--sl-btn-ring: inset 0 0 0 1px var(--sl-hairline-strong), 0 1px 2px rgba(15, 15, 15, 0.06);
-}
-body.theme-dark { --sl-btn-ring: inset 0 0 0 1px var(--sl-hairline-strong), 0 1px 2px rgba(0, 0, 0, 0.3); }
-
-/* ---- Property rows ---- */
-.sl-props { display: flex; flex-direction: column; margin: 4px -6px; }
-.sl-prop { display: grid; grid-template-columns: minmax(88px, 36%) minmax(0, 1fr); align-items: start; border-radius: 6px; transition: background 120ms ease; }
-.sl-prop:hover { background: var(--sl-wash); }
-.sl-prop-name { display: flex; align-items: center; gap: 7px; min-width: 0; height: 30px; padding: 0 6px; color: var(--text-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sl-prop-icon { display: inline-flex; flex-shrink: 0; color: var(--text-faint); }
-.sl-prop-icon svg { width: 14px; height: 14px; }
-.sl-prop-value { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; min-height: 30px; padding: 5px 6px; font-size: 13px; line-height: 20px; color: var(--text-normal); }
-.sl-prop-value.is-text { display: block; }
-.sl-prop-line + .sl-prop-line { margin-top: 2px; }
-.sl-prop-link { cursor: pointer; border-bottom: 1px solid var(--sl-hairline-strong); }
-.sl-prop-link:hover { color: var(--text-accent); border-color: currentColor; }
-.sl-prop-muted { color: var(--text-muted); }
-.sl-prop-empty { color: var(--text-faint); }
-
-/* ---- Tags (Notion select options) ---- */
-.sl-tag {
-	--sl-tag-bg: color-mix(in srgb, var(--sl-color, #9b9a97) 20%, #ffffff);
-	--sl-tag-fg: color-mix(in srgb, var(--sl-color, #9b9a97) 32%, #1f1e1c);
-	display: inline-flex; align-items: center; height: 20px; max-width: 100%; padding: 0 6px; border-radius: 3px;
-	background: var(--sl-tag-bg); color: var(--sl-tag-fg);
-	font-size: 12.5px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.sl-tag.is-neutral { --sl-tag-bg: #e3e2e0; --sl-tag-fg: #32302c; }
-.sl-tag.is-ok { --sl-color: #448361; }
-.sl-tag.is-warn { --sl-color: #d9730d; }
-body.theme-dark .sl-tag { --sl-tag-bg: color-mix(in srgb, var(--sl-color, #9b9a97) 42%, #252525); --sl-tag-fg: rgba(255, 255, 255, 0.88); }
-body.theme-dark .sl-tag.is-neutral { --sl-tag-bg: #373737; --sl-tag-fg: rgba(255, 255, 255, 0.85); }
-
-/* ---- Solid avatars ---- */
-.sl-avatar { display: inline-grid; place-items: center; flex-shrink: 0; border-radius: 50%; background: hsl(var(--hue, 220) 40% 52%); color: #fff; font-weight: 600; letter-spacing: 0.01em; }
-body.theme-dark .sl-avatar { background: hsl(var(--hue, 220) 34% 42%); }
-.sl-avatar.is-sm { width: 20px; height: 20px; font-size: 9px; }
-.sl-avatar.is-md { width: 28px; height: 28px; font-size: 11px; }
-.sl-avatar.is-lg { width: 52px; height: 52px; font-size: 18px; }
-
-/* ---- Buttons in panels: Notion's white button ---- */
-.storyloom-cast-actions button, .sl-cx-actions button {
-	display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
-	border: none !important; border-radius: 6px !important; background: transparent !important;
-	box-shadow: var(--sl-btn-ring) !important; color: var(--text-normal); font-size: 13px; font-weight: 500;
-	transition: background 120ms ease;
-}
-.storyloom-cast-actions button:hover, .sl-cx-actions button:hover { background: var(--sl-wash) !important; }
-.storyloom-cast-actions button.mod-cta { background: var(--interactive-accent) !important; color: var(--text-on-accent); box-shadow: none !important; }
-.storyloom-cast-actions button.mod-cta:hover { opacity: 0.9; }
-.storyloom-cast-actions button .storyloom-btn-icon svg, .sl-cx-actions button .storyloom-btn-icon svg { width: 14px; height: 14px; }
-
-/* ---- Cast panel ---- */
-.storyloom-cast { padding: 18px 16px 28px; }
-.storyloom-cast-header { padding: 0; }
-.storyloom-cast .sl-cast-eyebrow { color: var(--text-muted); font-size: 12px; font-weight: 500; }
-.storyloom-cast .storyloom-cast-title { font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -0.015em; margin: 4px 0 8px; }
-.storyloom-cast .sl-cast-meta { font-size: 13px; color: var(--text-muted); }
-.storyloom-cast .storyloom-cast-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
-.storyloom-cast .storyloom-cast-actions button { justify-content: flex-start; min-width: 0; width: auto; }
-.storyloom-cast-section { margin-top: 18px; font-size: 13px; }
-.storyloom-cast .storyloom-section-title { display: flex; align-items: center; margin: 0 0 2px; padding: 0; font-size: 12px; font-weight: 500; color: var(--text-faint); }
-.sl-count { margin-left: 6px; font-weight: 400; color: var(--text-faint); opacity: 0.8; }
-details.storyloom-cast-section > summary { list-style: none; cursor: pointer; border-radius: 6px; padding: 4px 6px; margin: 0 -6px 2px; }
-details.storyloom-cast-section > summary::-webkit-details-marker { display: none; }
-details.storyloom-cast-section > summary::before { content: ""; width: 0; height: 0; margin-right: 7px; border-left: 4.5px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; transition: transform 160ms ease; }
-details.storyloom-cast-section[open] > summary::before { transform: rotate(90deg); }
-details.storyloom-cast-section > summary:hover { background: var(--sl-wash); color: var(--text-muted); }
-
-/* ---- Entity blocks (Cast) ---- */
-.sl-ent { padding: 10px 0 8px; border-top: 1px solid var(--sl-hairline); }
-.storyloom-section-title + .sl-ent, summary + .sl-ent { border-top: none; }
-.sl-ent-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
-.sl-ent-name { min-width: 0; font-size: 14px; font-weight: 600; color: var(--text-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sl-ent-name.is-link { cursor: pointer; }
-.sl-ent-name.is-link:hover { text-decoration: underline; text-decoration-color: var(--sl-hairline-strong); text-underline-offset: 3px; }
-.sl-ent-head .sl-tag { flex-shrink: 1; min-width: 0; }
-.sl-ent-tools { display: flex; gap: 0; margin-left: auto; opacity: 0; transition: opacity 120ms ease; }
-.sl-ent:hover .sl-ent-tools, .sl-ent:focus-within .sl-ent-tools { opacity: 1; }
-.sl-ent-tools .clickable-icon { width: 24px; height: 24px; padding: 4px; }
-.sl-ent .sl-props { margin-top: 4px; }
-.sl-ent-none { padding: 4px 0 0 28px; font-size: 13px; color: var(--text-faint); }
-
-/* ---- Codex detail as a side peek ---- */
-.sl-cx-detail { padding: 8px 28px 36px; background: var(--background-primary); border-left: 1px solid var(--sl-hairline); }
-.sl-peek-bar { display: flex; gap: 2px; margin: 0 -14px 10px; }
-.sl-peek-bar .clickable-icon { width: 28px; height: 28px; color: var(--text-muted); }
-.sl-cx-detail .sl-cx-detail-head { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin: 6px 0 12px; }
-.sl-cx-detail .sl-cx-detail-name { font-size: 30px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
-.sl-cx-detail .sl-props { margin-bottom: 12px; }
-.sl-cx-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
-.sl-cx-detail .sl-cx-section { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--sl-hairline); font-size: 14px; line-height: 1.6; }
-.sl-cx-detail .sl-cx-section-title { margin-bottom: 6px; font-size: 12px; font-weight: 500; color: var(--text-faint); }
-.sl-cx-rel { border-radius: 6px; padding: 5px 6px; margin: 0 -6px; border: none; }
-.sl-cx-rel:hover { background: var(--sl-wash); }
-
-/* ---- Story assistant: Notion AI-style grey bubble for you, plain text for the answer ---- */
-.storyloom-chat-msg.is-user { background: var(--sl-wash-strong); color: var(--text-normal); border-radius: 16px; border-bottom-right-radius: 16px; }
-.storyloom-chat-field .storyloom-chat-send { opacity: 1; transform: none; background: var(--sl-wash-strong) !important; color: var(--text-faint); box-shadow: none !important; }
-.storyloom-chat-field.has-text .storyloom-chat-send { background: var(--interactive-accent) !important; color: var(--text-on-accent); }
-.storyloom-chat-head { border-bottom: none; }
-
-/* ---- Cards in the main views: Notion board cards (lifted fill, no shadow in dark) ---- */
-body.theme-dark .sl-ch-card, body.theme-dark .sl-cx-card { background: color-mix(in srgb, var(--text-normal) 4%, var(--background-primary)); box-shadow: 0 0 0 1px var(--sl-hairline); }
-body.theme-dark .sl-ch-card:hover, body.theme-dark .sl-cx-card:hover { background: color-mix(in srgb, var(--text-normal) 6.5%, var(--background-primary)); box-shadow: 0 0 0 1px var(--sl-hairline-strong); transform: none; }
-.sl-ch-card:hover, .sl-cx-card:hover { transform: none; }
-.sl-prop-value .sl-tag { height: auto; min-height: 20px; padding: 2px 6px; line-height: 1.3; white-space: normal; overflow: visible; }
-.sl-ent-name { flex-shrink: 0; max-width: 68%; }
-.sl-ent-head .sl-tag { flex-shrink: 1; }
-/* One avatar style everywhere: a flat mid-tone circle with white initials (Notion). */
-.sl-tl-avatar { color: #fff; background: hsl(var(--hue) 40% 52%); box-shadow: none; letter-spacing: 0.01em; }
-body.theme-dark .sl-tl-avatar { color: #fff; background: hsl(var(--hue) 34% 42%); box-shadow: none; }
-.sl-tl-avatar.is-more { background: var(--sl-wash-strong); color: var(--text-muted); filter: none; }
-
-/* Sync button in a chapter's header: a small dot when the chapter changed since its last sync. */
-.view-action.sl-header-sync { position: relative; }
-.view-action.sl-header-sync.is-stale::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--interactive-accent); box-shadow: 0 0 0 2px var(--background-primary); }
-
-/* ---------- Writing notes (proofreading from Sync) ---------- */
-.sl-wn { text-decoration: underline wavy; text-decoration-thickness: 1.5px; text-underline-offset: 3px; text-decoration-skip-ink: none; cursor: help; border-radius: 2px; transition: background 120ms ease; }
-.sl-wn:hover { background: color-mix(in srgb, var(--sl-wn) 12%, transparent); }
-.sl-wn { --sl-wn: #e0a03a; text-decoration-color: color-mix(in srgb, var(--sl-wn) 80%, transparent); }
-.sl-wn-spelling { --sl-wn: #e5484d; }
-.sl-wn-grammar, .sl-wn-punctuation { --sl-wn: #3b82f6; }
-.sl-wn-word-choice { --sl-wn: #e0a03a; }
-.sl-wn-run-on, .sl-wn-clarity { --sl-wn: #8b5cf6; }
-.sl-wn-repetition { --sl-wn: #14b8a6; }
-
-.sl-wn-card { width: 300px; padding: 12px 12px 10px; }
-.sl-wn-card.is-spelling { --sl-wn: #e5484d; }
-.sl-wn-card.is-grammar, .sl-wn-card.is-punctuation { --sl-wn: #3b82f6; }
-.sl-wn-card.is-word-choice { --sl-wn: #e0a03a; }
-.sl-wn-card.is-run-on, .sl-wn-card.is-clarity { --sl-wn: #8b5cf6; }
-.sl-wn-card.is-repetition { --sl-wn: #14b8a6; }
-.sl-wn-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--sl-wn); }
-.sl-wn-icon { display: inline-flex; }
-.sl-wn-icon svg { width: 14px; height: 14px; }
-.sl-wn-message { margin-top: 6px; font-size: 13px; line-height: 1.45; color: var(--text-normal); }
-.sl-wn-fix { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; padding: 6px 8px; border-radius: 8px; background: var(--sl-glass-inner); box-shadow: inset 0 0 0 1px var(--sl-hairline); font-size: 13px; line-height: 1.4; }
-.sl-wn-old { color: var(--text-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, #e5484d 70%, transparent); }
-.sl-wn-new { color: var(--text-normal); background: color-mix(in srgb, #22a06b 16%, transparent); border-radius: 3px; padding: 0 2px; }
-.sl-wn-arrow { display: inline-flex; color: var(--text-faint); }
-.sl-wn-arrow svg { width: 12px; height: 12px; }
-.sl-wn-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
-.sl-wn-actions .storyloom-glass-btn { height: 26px; }
-.cm-tooltip:has(> .sl-wn-card) { background: transparent !important; border: none !important; box-shadow: none !important; }
-.sl-status-notes { padding: 0 6px; border-radius: 999px; font-size: 11px; color: var(--text-on-accent); background: color-mix(in srgb, #e0a03a 85%, transparent); }
-.sl-clickable { cursor: pointer; }
-.sl-clickable:hover { filter: brightness(1.05); text-decoration: underline; }
-/* AI review switch in a chapter's header: accent when on, faint when off. */
-.view-action.sl-header-review { color: var(--text-faint); }
-.view-action.sl-header-review.is-active { color: var(--text-accent); }
-/* Suggestion lists on inputs: no native ▼ glyph (suggestions still appear as you type). */
-.storyloom-glass-modal input[list]::-webkit-calendar-picker-indicator { display: none !important; }
+/* Chapter grid: same content-height rows as the codex grid. */
+.sl-ch-grid { grid-auto-rows: max-content; }
+/* Cast: room for the longest property name ("Relationships") next to its icon. */
+.storyloom-cast .sl-prop { grid-template-columns: minmax(112px, 38%) minmax(0, 1fr); }

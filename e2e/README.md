@@ -21,3 +21,5 @@ On a headless Linux box, `start.sh` starts Xvfb on display :99. Each script prin
 ## README screenshots
 
 `screenshots.mjs` stages the sample book (sync, a writing note, Ask AI, each view, light and dark) and saves the images in `docs/screenshots/`. Run it like the other parts, with the fake server up: `e2e/start.sh && node e2e/screenshots.mjs`.
+
+`visual-tour.mjs` screenshots every view, pop-up and menu in light and dark for a visual review (`THEMES=obsidian` for one theme).

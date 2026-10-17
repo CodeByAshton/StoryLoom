@@ -1,3 +1,4 @@
+// Screenshots of every view, pop-up and menu in light and dark (THEMES=moonstone,obsidian) for visual review; saved to $STORYLOOM_E2E_DIR/shots as t2-*.png.
 import { launch, shot } from "./launch.mjs";
 const { app, page } = await launch();
 const sleep = (ms) => page.waitForTimeout(ms);
