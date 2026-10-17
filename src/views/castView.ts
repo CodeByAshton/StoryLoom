@@ -79,13 +79,13 @@ export class CastView extends ItemView {
 			renderProps(header, [
 				{ icon: "text", name: "Words", value: (c) => c.setText(words.toLocaleString()) },
 				...(chapter.pov ? [{ icon: "eye", name: "POV", value: (c: HTMLElement) => c.setText(stripWikilinks(chapter.pov ?? "")) }] : []),
-				{ icon: "refresh-cw", name: "Story state", value: (c: HTMLElement) => (stale ? tag(c, "Edited since update", "is-warn") : tag(c, synced ? "Up to date" : "Not run yet", synced ? "is-ok" : "is-neutral")) },
+				{ icon: "refresh-cw", name: "Synced", value: (c: HTMLElement) => (stale ? tag(c, "Edited since sync", "is-warn") : tag(c, synced ? "Up to date" : "Never", synced ? "is-ok" : "is-neutral")) },
 			]);
 		} else header.createDiv({ cls: "sl-cast-meta", text: "Open a chapter to see everyone as of that point in the story." });
 
 		if (chapter && file) {
 			const actions = root.createDiv({ cls: "storyloom-cast-actions" });
-			this.button(actions, "Update story state", "refresh-cw", () => void this.plugin.updateStoryState(file), stale);
+			this.button(actions, "Sync chapter", "refresh-cw", () => void this.plugin.updateStoryState(file), stale);
 			this.button(actions, "Summarize", "align-left", () => void this.plugin.summarize(file));
 		}
 

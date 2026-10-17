@@ -15,7 +15,7 @@ Everything is stored in plain notes. You can read and edit every bit of it by ha
 
 The first time you open this vault, Obsidian asks whether you trust it. Choose **Trust author and enable plugins** so Storyloom can run. Storyloom then shows a short **setup guide** to connect an AI. You can skip it and reopen it later from the Storyloom menu.
 
-Everything Storyloom has is behind the **feather button** in the left ribbon. Chapters, Codex, Timeline and Graph also share a tab bar at the top, so you can switch between them in one tab. When you're in a chapter, the status bar at the bottom shows which chapter it is. A dot means you've edited it since its last story-state update. Click it for chapter actions.
+Everything Storyloom has is behind the **feather button** in the left ribbon. Chapters, Codex, Timeline and Graph also share a tab bar at the top, so you can switch between them in one tab. When you're in a chapter, the status bar at the bottom shows which chapter it is. A dot means you've edited it since it was last synced. Click it for chapter actions.
 
 1. Open **Manuscript → 01 - The Manor**. Character and place names are underlined. Hover one to see where that character is *as of this chapter*.
 2. Open chapter 3 and hover **Mara** again: she has moved, she's injured, and she knows something new.
@@ -32,7 +32,7 @@ Everything Storyloom has is behind the **feather button** in the left ribbon. Ch
    Then click **Test**.
 2. In a chapter, **select a sentence and press Cmd/Ctrl+K**. Type what you want ("make it tenser") and press Enter. Press **Tab** to accept or **Esc** to reject. One undo brings the original back.
 3. Right-click in a chapter for more tools: continue writing, rewrite, describe, expand, brainstorm.
-4. When you finish a chapter, run **Update story state** (in the Cast panel or the command palette). The AI proposes timeline and relationship changes; you tick what's right and click Apply.
+4. When you finish a chapter, click **Sync chapter**: the refresh button in the left ribbon, the same icon in the chapter's header, or the button in the Cast panel. Storyloom reads the chapter and records what changed in the codex: who moved, who learned what, who met whom. If you later rewrite the chapter, sync it again and the record follows.
 
 Inside a note, Cmd/Ctrl+K belongs to Storyloom instead of Obsidian's "Insert Markdown link". You can pick a different key in **Settings → Storyloom → Inline edit key**.
 

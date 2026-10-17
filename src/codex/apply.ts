@@ -3,7 +3,7 @@ import type { ApprovedChanges } from "../modals/stateReviewModal";
 import type { EntityRow } from "../modals/entityReviewModal";
 import type { CodexIndex } from "./index";
 import { parseRelationships, parseTimeline } from "./parse";
-import { appendToSection, closeOpenRelationships, dedupeTimeline, fillEntityTemplate, formatRelationshipLine, formatTimelineLine, hasActiveRelationship, safeFileName, TYPE_FOLDERS } from "./write";
+import { appendToSection, closeOpenRelationships, removeLines, dedupeTimeline, fillEntityTemplate, formatRelationshipLine, formatTimelineLine, hasActiveRelationship, safeFileName, TYPE_FOLDERS } from "./write";
 
 export interface ApplyPaths {
 	codexFolder: string;
@@ -52,12 +52,15 @@ export async function createEntities(app: App, index: CodexIndex, paths: ApplyPa
  * current text, so applying the same changes twice writes nothing the second time.
  */
 export async function applyChanges(app: App, index: CodexIndex, paths: ApplyPaths, changes: ApprovedChanges) {
+	const newCount = changes.newEntities.filter((e) => !index.getEntity(e.name)).length;
 	const created = await createEntities(app, index, paths, changes.newEntities);
 	const pathFor = (name: string) => index.getEntity(name)?.path ?? created.get(name);
 	const ch = changes.chapter;
 	let lines = 0;
 	let rels = 0;
 	const touched = new Set<string>();
+	/** Timeline lines exactly as written, so the next sync of this chapter can replace them. */
+	const written: { path: string; line: string }[] = [];
 
 	for (const t of changes.timeline) {
 		const file = fileAt(app, pathFor(t.entity));
@@ -68,7 +71,9 @@ export async function applyChanges(app: App, index: CodexIndex, paths: ApplyPath
 			if (!d) return text;
 			lines++;
 			touched.add(t.entity);
-			return appendToSection(text, "Timeline", [formatTimelineLine(ch, d.fields, d.note)]);
+			const line = formatTimelineLine(ch, d.fields, d.note);
+			written.push({ path: file.path, line });
+			return appendToSection(text, "Timeline", [line]);
 		});
 	}
 
@@ -86,7 +91,24 @@ export async function applyChanges(app: App, index: CodexIndex, paths: ApplyPath
 		});
 	}
 
-	return { created: changes.newEntities.filter((e) => !index.getEntity(e.name)).length, lines, rels, touched: Array.from(touched) };
+	return { created: newCount, lines, rels, touched: Array.from(touched), written };
+}
+
+/** Take out the timeline lines an earlier sync of this chapter wrote. Returns how many were removed. */
+export async function removeSyncedLines(app: App, lines: { path: string; line: string }[]): Promise<number> {
+	const byPath = new Map<string, string[]>();
+	for (const l of lines) byPath.set(l.path, [...(byPath.get(l.path) ?? []), l.line]);
+	let removed = 0;
+	for (const [path, ls] of byPath) {
+		const file = fileAt(app, path);
+		if (!file) continue;
+		await app.vault.process(file, (text) => {
+			const r = removeLines(text, ls);
+			removed += r.removed;
+			return r.text;
+		});
+	}
+	return removed;
 }
 
 function fileAt(app: App, path?: string): TFile | null {

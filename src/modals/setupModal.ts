@@ -237,7 +237,7 @@ export class SetupModal extends Modal {
 			["text-cursor-input", `Select text and press ${mod}+K`, "Ask the AI to rewrite it. Tab accepts, Esc discards. With nothing selected it writes at the cursor."],
 			["feather", "The Storyloom button in the left ribbon", "Opens Chapters, Codex, Timeline, Graph and more, plus quick actions."],
 			["users", "Names are underlined in your chapters", "Hover one to see that character's state as of the chapter you're in."],
-			["refresh-cw", "Update story state after a chapter", "Storyloom reads it and suggests what changed: who moved, who learned what. You approve each line."],
+			["refresh-cw", "Sync a chapter when you finish it", "Storyloom reads it and records what changed in the codex: who moved, who learned what. Want something different? Change the chapter and sync again."],
 		];
 		const list = body.createDiv({ cls: "sl-setup-tips" });
 		for (const [icon, title, desc] of tips) {

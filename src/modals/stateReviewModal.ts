@@ -38,7 +38,7 @@ export interface ApprovedChanges {
 }
 
 /** Turn the model's proposal into review rows, dropping anything already recorded. */
-export function buildReviewRows(update: StateUpdate, index: CodexIndex, chapter: number) {
+export function buildReviewRows(update: StateUpdate, index: Pick<CodexIndex, "getEntity">, chapter: number) {
 	const newNames = new Set(update.newEntities.map((e) => e.name));
 	const groups = new Map<string, TimelineGroup>();
 	for (const t of update.timeline) {
@@ -73,6 +73,29 @@ export function buildReviewRows(update: StateUpdate, index: CodexIndex, chapter:
 	}
 	const entities: EntityRow[] = update.newEntities.filter((e) => !index.getEntity(e.name)).map((e) => ({ ...e, checked: true }));
 	return { groups: Array.from(groups.values()), rels, entities };
+}
+
+/**
+ * The changes to write: every proposed line for an entity that exists (or is being created).
+ * Lines about names that aren't in the codex are left out, since there's no note to write them to.
+ */
+export function approvedFrom(chapter: number, rows: ReturnType<typeof buildReviewRows>): ApprovedChanges {
+	const createdNames = new Set(rows.entities.filter((e) => e.checked).map((e) => e.name));
+	const usable = (name: string, known: boolean) => known || createdNames.has(name);
+	const timeline: ApprovedChanges["timeline"] = [];
+	for (const g of rows.groups) {
+		if (!usable(g.entity, g.known)) continue;
+		const fields: Record<string, string | null> = {};
+		for (const f of g.fields) if (f.checked) fields[f.key] = f.value;
+		const note = g.note?.checked ? g.note.text : undefined;
+		if (Object.keys(fields).length || note) timeline.push({ entity: g.entity, fields, note });
+	}
+	return {
+		chapter,
+		timeline,
+		relationships: rows.rels.filter((r) => r.checked && r.label.trim()).map(({ checked: _c, ...r }) => r),
+		newEntities: rows.entities.filter((e) => e.checked && e.name.trim()),
+	};
 }
 
 export class StateReviewModal extends Modal {
@@ -171,21 +194,6 @@ export class StateReviewModal extends Modal {
 	onClose() {
 		this.contentEl.empty();
 		if (!this.applied) return this.resolve(null);
-		const createdNames = new Set(this.rows.entities.filter((e) => e.checked).map((e) => e.name));
-		const usable = (name: string, known: boolean) => known || createdNames.has(name);
-		const timeline: ApprovedChanges["timeline"] = [];
-		for (const g of this.rows.groups) {
-			if (!usable(g.entity, g.known)) continue;
-			const fields: Record<string, string | null> = {};
-			for (const f of g.fields) if (f.checked) fields[f.key] = f.value;
-			const note = g.note?.checked ? g.note.text : undefined;
-			if (Object.keys(fields).length || note) timeline.push({ entity: g.entity, fields, note });
-		}
-		this.resolve({
-			chapter: this.chapter,
-			timeline,
-			relationships: this.rows.rels.filter((r) => r.checked && r.label.trim()).map(({ checked: _c, ...r }) => r),
-			newEntities: this.rows.entities.filter((e) => e.checked && e.name.trim()),
-		});
+		this.resolve(approvedFrom(this.chapter, this.rows));
 	}
 }

@@ -60,7 +60,7 @@ await sleep(300);
 ok((await page.locator(".storyloom-graph-stage .sl-empty").count()) === 0, "empty state goes away when types come back");
 
 // ---- One ribbon button with a menu ----
-ok((await page.locator(".side-dock-ribbon-action[aria-label^='Storyloom']").count()) === 1, "a single Storyloom ribbon button");
+ok((await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').count()) === 1 && (await page.locator('.side-dock-ribbon-action[aria-label="Storyloom: Sync chapter"]').count()) === 1, "ribbon: one Storyloom menu button plus Sync chapter");
 await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').click();
 await sleep(300);
 const items = await page.locator(".menu .menu-item-title").allInnerTexts();
@@ -84,12 +84,46 @@ ok((await page.locator(".status-bar .sl-status .sl-status-dot").count()) === 1, 
 await page.locator(".status-bar .sl-status").click();
 await sleep(300);
 const sm = await page.locator(".menu .menu-item-title").allInnerTexts();
-ok(sm.includes("Update story state") && sm.includes("Next chapter"), `status menu has chapter actions: ${sm.join(", ")}`);
+ok(sm.includes("Sync chapter") && sm.includes("Next chapter"), `status menu has chapter actions: ${sm.join(", ")}`);
 await shot(page, "p8-status");
 await page.keyboard.press("Escape");
 await page.evaluate(() => window.app.workspace.openLinkText("Start Here.md", "", false));
 await sleep(800);
 ok(!(await page.locator(".status-bar .sl-status").isVisible()), "status bar item hides outside chapters");
+
+// ---- Sync: writes straight to the codex (no review), and a re-sync replaces what the last sync wrote ----
+const elias = "Codex/Characters/Elias Crane.md";
+const ch3 = "Manuscript/03 - The Harbor.md";
+await page.evaluate((p) => window.app.workspace.openLinkText(p, "", false), ch3);
+await sleep(1000);
+ok((await page.locator(".workspace-leaf.mod-active .view-action.sl-header-sync").count()) === 1, "chapter header has a Sync button");
+const before3 = (await read(elias)) ?? "";
+await page.locator(".workspace-leaf.mod-active .view-action.sl-header-sync").click();
+await sleep(2500);
+ok((await page.locator(".storyloom-review-modal").count()) === 0, "sync doesn't ask for approval");
+const after3 = (await read(elias)) ?? "";
+const ch3Lines = (t) => t.split("\n").filter((l) => /^- ch 3 \|/.test(l));
+ok(ch3Lines(after3).length > ch3Lines(before3).length && /agrees to help Mara/.test(after3), "sync wrote Elias's chapter 3 changes");
+ok(await exists("Codex/Characters/Captain Rook.md"), "sync created the new character");
+const notice = await page.locator(".notice").allInnerTexts();
+ok(notice.some((n) => /synced chapter 3/i.test(n) && /1 new note/.test(n)), `sync reports what it recorded: ${notice.find((n) => /synced/i.test(n))}`);
+// Pretend an earlier sync wrote a line the chapter no longer supports, then re-sync from the ribbon.
+await page.evaluate(async ([elias, ch3]) => {
+	const p = window.app.plugins.plugins.storyloom;
+	const f = window.app.vault.getAbstractFileByPath(elias);
+	const stale = "- ch 3 | status: Asleep at his desk";
+	await window.app.vault.process(f, (t) => t.replace("## Timeline\n", `## Timeline\n${stale}\n`));
+	p.settings.syncedLines[ch3] = [...(p.settings.syncedLines[ch3] ?? []), { path: elias, line: stale }];
+	await p.saveSettings();
+}, [elias, ch3]);
+await page.evaluate((p) => window.app.workspace.openLinkText(p, "", false), ch3);
+await sleep(500);
+await page.locator('.side-dock-ribbon-action[aria-label="Storyloom: Sync chapter"]').click();
+await sleep(2500);
+const resynced = (await read(elias)) ?? "";
+ok(!/Asleep at his desk/.test(resynced), "re-sync removed the line the chapter no longer supports");
+ok(ch3Lines(resynced).length === ch3Lines(after3).length, `re-sync replaced its own lines instead of duplicating them (${ch3Lines(after3).length} → ${ch3Lines(resynced).length})`);
+ok(/- ch 2 \| /.test(resynced) || !/- ch 2 \| /.test(before3), "hand-written lines for other chapters stay");
 
 // ---- Layout: codex detail never overlaps the grid; inline panel stays inside the editor ----
 await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-codex"));

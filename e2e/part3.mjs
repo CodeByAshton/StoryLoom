@@ -7,7 +7,7 @@ const sleep = (ms) => page.waitForTimeout(ms);
 const read = (p) => page.evaluate(async (p) => { const f = window.app.vault.getAbstractFileByPath(p); return f ? window.app.vault.read(f) : null; }, p);
 const cmd = (id) => page.evaluate((id) => window.app.commands.executeCommandById(id), id);
 for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) break; await sleep(300); }
-await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; p.settings.provider = "ollama"; p.settings.providers.ollama = { apiKey: "", baseUrl: "http://localhost:11434/v1", model: "x" }; await p.saveSettings(); });
+await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; p.settings.provider = "ollama"; p.settings.providers.ollama = { apiKey: "", baseUrl: "http://localhost:11434/v1", model: "x" }; p.settings.reviewStateChanges = true; await p.saveSettings(); });
 
 // (6) Update story state.
 await open("Manuscript/03 - The Harbor.md");

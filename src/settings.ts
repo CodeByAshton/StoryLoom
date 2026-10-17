@@ -26,13 +26,17 @@ export interface StoryloomSettings extends ClientSettings {
 	quickChips: string[];
 	instructionHistory: string[];
 	saveChats: boolean;
-	/** Chapter path -> prose hash at the last "Update story state", to flag chapters edited since. */
+	/** Chapter path -> prose hash at the last "Sync chapter", to flag chapters edited since. */
 	stateSynced: Record<string, string>;
+	/** Chapter path -> the timeline lines its last sync wrote (replaced on the next sync). */
+	syncedLines: Record<string, { path: string; line: string }[]>;
 	/** The setup wizard has been shown. */
 	onboarded: boolean;
 	/** One Storyloom ribbon button with a menu, or a button per view. */
 	separateRibbonButtons: boolean;
 	statusBar: boolean;
+	/** Show the proposed codex changes for approval before a chapter sync writes them. */
+	reviewStateChanges: boolean;
 }
 
 export const DEFAULT_SETTINGS: StoryloomSettings = {
@@ -68,9 +72,11 @@ export const DEFAULT_SETTINGS: StoryloomSettings = {
 	instructionHistory: [],
 	saveChats: false,
 	stateSynced: {},
+	syncedLines: {},
 	onboarded: false,
 	separateRibbonButtons: false,
 	statusBar: true,
+	reviewStateChanges: false,
 };
 
 export class StoryloomSettingTab extends PluginSettingTab {
@@ -225,7 +231,8 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		this.toggleSetting("Status bar", "Show the current chapter, its word count and whether its story state is up to date. Click it for chapter actions.", "statusBar");
 
 		new Setting(containerEl).setName("Advanced").setHeading();
-		this.toggleSetting("Remind me to update story state", "When you leave a chapter you've edited since its last story-state update, offer to run it.", "remindStateUpdate");
+		this.toggleSetting("Remind me to sync", "When you leave a chapter you've edited since it was last synced, offer to sync it.", "remindStateUpdate");
+		this.toggleSetting("Review changes before syncing", "Off: Sync chapter writes what it finds straight to the codex (the chapters are the source of truth). On: approve each change first.", "reviewStateChanges");
 		this.toggleSetting("Stream responses", "Show text as it's written. Turns itself off for the session if a provider blocks it (e.g. a local server without CORS enabled).", "stream");
 		this.toggleSetting("Save chats", "Keep Story Assistant conversations in .storyloom/chats/.", "saveChats");
 		this.toggleSetting("Show context before sending", "Preview the full prompt in a modal before each request.", "showContextBeforeSending");
@@ -274,7 +281,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			);
 	}
 
-	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate" | "hideCodexFolder" | "separateRibbonButtons" | "statusBar") {
+	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate" | "hideCodexFolder" | "separateRibbonButtons" | "statusBar" | "reviewStateChanges") {
 		new Setting(this.containerEl)
 			.setName(name)
 			.setDesc(desc)

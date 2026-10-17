@@ -51,6 +51,26 @@ export function appendToSection(markdown: string, heading: string, newLines: str
 }
 
 /**
+ * Remove lines a previous chapter sync wrote, so a re-sync replaces them instead of piling up.
+ * Exact matches only (ignoring surrounding whitespace), one removal per listed line, so anything
+ * edited or written by hand stays.
+ */
+export function removeLines(markdown: string, toRemove: string[]): { text: string; removed: number } {
+	if (!toRemove.length) return { text: markdown, removed: 0 };
+	const pending = new Map<string, number>();
+	for (const l of toRemove) pending.set(l.trim(), (pending.get(l.trim()) ?? 0) + 1);
+	let removed = 0;
+	const kept = markdown.split("\n").filter((line) => {
+		const n = pending.get(line.trim()) ?? 0;
+		if (!n) return true;
+		pending.set(line.trim(), n - 1);
+		removed++;
+		return false;
+	});
+	return { text: kept.join("\n"), removed };
+}
+
+/**
  * Close any open-ended relationship to `target` so it ends at `endChapter`.
  * `(ch 1+)` -> `(ch 1-6)`; no range -> `(ch 1-6)`. Ranges that start after `endChapter` are left alone.
  */

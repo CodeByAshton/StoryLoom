@@ -1415,3 +1415,7 @@ body.theme-dark .sl-ch-card:hover, body.theme-dark .sl-cx-card:hover { backgroun
 .sl-tl-avatar { color: #fff; background: hsl(var(--hue) 40% 52%); box-shadow: none; letter-spacing: 0.01em; }
 body.theme-dark .sl-tl-avatar { color: #fff; background: hsl(var(--hue) 34% 42%); box-shadow: none; }
 .sl-tl-avatar.is-more { background: var(--sl-wash-strong); color: var(--text-muted); filter: none; }
+
+/* Sync button in a chapter's header: a small dot when the chapter changed since its last sync. */
+.view-action.sl-header-sync { position: relative; }
+.view-action.sl-header-sync.is-stale::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--interactive-accent); box-shadow: 0 0 0 2px var(--background-primary); }

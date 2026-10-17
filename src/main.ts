@@ -1,10 +1,10 @@
 import type { EditorView } from "@codemirror/view";
 import { debounce, Editor, MarkdownView, Menu, Notice, setIcon, normalizePath, Platform, Plugin, requestUrl, Scope, TFile, type MarkdownFileInfo, type Modifier, type WorkspaceLeaf } from "obsidian";
 import { AIService } from "./ai";
-import { applyChanges, createEntities, ensureFolder, readTemplate } from "./codex/apply";
+import { applyChanges, createEntities, ensureFolder, readTemplate, removeSyncedLines } from "./codex/apply";
 import { CodexIndex } from "./codex/index";
-import { stripFrontmatter } from "./codex/parse";
-import { fillEntityTemplate, safeFileName, TYPE_FOLDERS } from "./codex/write";
+import { parseTimeline, stripFrontmatter } from "./codex/parse";
+import { fillEntityTemplate, removeLines, safeFileName, TYPE_FOLDERS } from "./codex/write";
 import type { Entity } from "./codex/types";
 import {
 	BRAINSTORM_TOPICS,
@@ -36,7 +36,7 @@ import { EntityReviewModal } from "./modals/entityReviewModal";
 import { ChoiceModal, ConfirmModal, InstructionModal } from "./modals/instructionModal";
 import { ReportModal } from "./modals/reportModal";
 import { ResultModal } from "./modals/resultModal";
-import { buildReviewRows, StateReviewModal } from "./modals/stateReviewModal";
+import { approvedFrom, buildReviewRows, StateReviewModal } from "./modals/stateReviewModal";
 import { TimelineEntryModal } from "./modals/timelineEntryModal";
 import { SetupModal } from "./modals/setupModal";
 import { DEFAULT_SETTINGS, StoryloomSettingTab, type StoryloomSettings } from "./settings";
@@ -96,7 +96,10 @@ export default class StoryloomPlugin extends Plugin {
 		} else {
 			this.addRibbonIcon("feather", "Storyloom", (ev) => this.storyloomMenu().showAtMouseEvent(ev));
 		}
+		// Sync is the one action you take after every chapter, so it gets its own button in the sidebar.
+		this.addRibbonIcon("refresh-cw", "Storyloom: Sync chapter", () => void this.syncActiveChapter());
 		this.setupStatusBar();
+		this.setupHeaderSync();
 
 		this.addSettingTab(new StoryloomSettingTab(this.app, this));
 		this.registerInlineEditKey();
@@ -155,6 +158,50 @@ export default class StoryloomPlugin extends Plugin {
 		return menu;
 	}
 
+	/** Sync the chapter you're working in (from the ribbon or a note's header). */
+	async syncActiveChapter() {
+		const file = this.activeMarkdownFile();
+		if (!file || !this.index.chapterForPath(file.path)) return new Notice("Storyloom: open a chapter to sync it.");
+		await this.updateStoryState(file);
+	}
+
+	// ---------- Sync button in chapter headers ----------
+
+	private headerButtons = new WeakMap<MarkdownView, HTMLElement>();
+
+	private setupHeaderSync() {
+		const refresh = () => {
+			for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+				const view = leaf.view as MarkdownView;
+				const isChapter = !!this.index.chapterForPath(view.file?.path);
+				const existing = this.headerButtons.get(view);
+				if (isChapter && !existing) {
+					const el = view.addAction("refresh-cw", "Sync chapter", () => {
+						if (view.file) void this.updateStoryState(view.file);
+					});
+					el.addClass("sl-header-sync");
+					this.headerButtons.set(view, el);
+				} else if (!isChapter && existing) {
+					existing.remove();
+					this.headerButtons.delete(view);
+				}
+				this.headerButtons.get(view)?.toggleClass("is-stale", isChapter && this.isStale(view.file?.path));
+			}
+		};
+		this.refreshHeaderSync = refresh;
+		this.registerEvent(this.app.workspace.on("layout-change", refresh));
+		this.registerEvent(this.app.workspace.on("file-open", refresh));
+		this.app.workspace.onLayoutReady(refresh);
+		this.register(() => document.querySelectorAll(".sl-header-sync").forEach((el) => el.remove()));
+	}
+	private refreshHeaderSync: () => void = () => {};
+
+	/** Edited since its last sync (by the cached prose hash; the status bar keeps it fresh while typing). */
+	private staleCache = new Map<string, boolean>();
+	private isStale(path?: string): boolean {
+		return !!path && !!this.staleCache.get(path);
+	}
+
 	openSetup() {
 		new SetupModal(this).open();
 	}
@@ -190,7 +237,7 @@ export default class StoryloomPlugin extends Plugin {
 		if (!el) return;
 		const file = this.activeMarkdownFile();
 		const ch = this.index.chapterForPath(file?.path);
-		if (!this.settings.statusBar || !file || !ch) {
+		if (!file || !ch) {
 			el.hide();
 			return;
 		}
@@ -198,14 +245,22 @@ export default class StoryloomPlugin extends Plugin {
 		const text = editor && this.app.workspace.getActiveFile()?.path === file.path ? editor.getValue() : await this.app.vault.cachedRead(file);
 		const synced = this.settings.stateSynced[file.path];
 		const stale = !!synced && synced !== proseHash(text);
+		if (this.staleCache.get(file.path) !== stale) {
+			this.staleCache.set(file.path, stale);
+			this.refreshHeaderSync();
+		}
+		if (!this.settings.statusBar) {
+			el.hide();
+			return;
+		}
 		el.empty();
 		el.show();
 		setIcon(el.createSpan({ cls: "sl-status-icon" }), "feather");
 		const all = this.index.chapters;
 		el.createSpan({ text: `Chapter ${all.indexOf(ch) + 1} of ${all.length}` });
 		el.createSpan({ cls: "sl-status-title", text: ch.title });
-		if (stale) el.createSpan({ cls: "sl-status-dot", attr: { "aria-label": "Edited since the last story-state update" } });
-		el.setAttr("aria-label", stale ? "Edited since the last story-state update. Click for chapter actions." : "Chapter actions");
+		if (stale) el.createSpan({ cls: "sl-status-dot", attr: { "aria-label": "Edited since it was last synced" } });
+		el.setAttr("aria-label", stale ? "Edited since it was last synced. Click for chapter actions." : "Chapter actions");
 		el.setAttr("data-tooltip-position", "top");
 	}
 
@@ -213,7 +268,7 @@ export default class StoryloomPlugin extends Plugin {
 		const menu = new Menu();
 		const file = this.activeMarkdownFile();
 		if (file && this.index.chapterForPath(file.path)) {
-			menu.addItem((i) => i.setTitle("Update story state").setIcon("refresh-cw").onClick(() => void this.updateStoryState(file)));
+			menu.addItem((i) => i.setTitle("Sync chapter").setIcon("refresh-cw").onClick(() => void this.updateStoryState(file)));
 			menu.addItem((i) => i.setTitle("Summarize chapter").setIcon("align-left").onClick(() => void this.summarize(file)));
 			menu.addSeparator();
 			menu.addItem((i) => i.setTitle("Previous chapter").setIcon("arrow-left").onClick(() => void this.stepChapter(-1)));
@@ -257,6 +312,7 @@ export default class StoryloomPlugin extends Plugin {
 
 	private onIndexChanged() {
 		this.updateStatus();
+		this.refreshHeaderSync();
 		this.refreshEditors();
 		for (const type of [CAST_VIEW, GRAPH_VIEW, TIMELINE_VIEW, CODEX_VIEW, CHAPTERS_VIEW]) {
 			for (const leaf of this.app.workspace.getLeavesOfType(type)) (leaf.view as unknown as { refresh?: () => void }).refresh?.();
@@ -330,6 +386,8 @@ export default class StoryloomPlugin extends Plugin {
 		if (!ok) return;
 
 		for (const { file } of notes) await this.app.vault.process(file, (t) => remapNote(t, map).text);
+		// Lines remembered from earlier syncs were renumbered in the notes; keep the record matching.
+		for (const lines of Object.values(this.settings.syncedLines)) for (const l of lines) l.line = remapNote(l.line, map).text;
 		for (const { c, to } of moves) {
 			const f = this.index.fileFor(c.path);
 			if (f) await this.app.fileManager.processFrontMatter(f, (fm) => (fm.chapter = to));
@@ -342,6 +400,10 @@ export default class StoryloomPlugin extends Plugin {
 			if (this.settings.stateSynced[old]) {
 				this.settings.stateSynced[dest] = this.settings.stateSynced[old];
 				delete this.settings.stateSynced[old];
+			}
+			if (this.settings.syncedLines[old]) {
+				this.settings.syncedLines[dest] = this.settings.syncedLines[old];
+				delete this.settings.syncedLines[old];
 			}
 		}
 		await this.saveData(this.settings);
@@ -418,7 +480,7 @@ export default class StoryloomPlugin extends Plugin {
 		editorCmd("continuity-check", "Continuity check", (e, f) => this.continuity(f, e));
 		this.addCommand({
 			id: "update-story-state",
-			name: "Update story state from this chapter",
+			name: "Sync chapter (update the codex from this chapter)",
 			checkCallback: (checking) => {
 				const f = this.activeMarkdownFile();
 				if (!f || !this.index.chapterForPath(f.path)) return false;
@@ -641,7 +703,7 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	async updateStoryState(file: TFile) {
-		return this.once(`state:${file.path}`, "updating this chapter's story state", () => this.updateStoryStateNow(file));
+		return this.once(`state:${file.path}`, "syncing this chapter", () => this.updateStoryStateNow(file));
 	}
 
 	private async updateStoryStateNow(file: TFile) {
@@ -650,28 +712,47 @@ export default class StoryloomPlugin extends Plugin {
 			new Notice("This note isn't a chapter (it needs `chapter: N` in its frontmatter).");
 			return;
 		}
-		const notice = new Notice(`Storyloom: reading chapter ${chapter.chapter}…`, 0);
+		const notice = new Notice(`Storyloom: syncing chapter ${chapter.chapter}…`, 0);
 		try {
 			const text = await this.fileText(file, this.editorFor(file) ?? undefined);
 			const ctx = await this.ai.context({ file, text, asOf: chapter.chapter - 1 });
 			const update = await this.ai.completeJson(stateUpdatePrompt(ctx.text, chapter.chapter), validateStateUpdate, STATE_SCHEMA);
 			notice.hide();
-			const rows = buildReviewRows(update, this.index, chapter.chapter);
-			if (!rows.groups.length && !rows.rels.length && !rows.entities.length) await this.markStateSynced(file, text);
-			const approved = await StateReviewModal.review(this.app, chapter.chapter, rows);
+			// A re-sync replaces what the last sync of this chapter wrote; compare against the codex without those lines.
+			const previous = this.settings.syncedLines[file.path] ?? [];
+			const rows = buildReviewRows(update, await this.withoutLines(previous), chapter.chapter);
+			// The codex follows the chapters: changes are written straight away (to change one, change the chapter).
+			const approved = this.settings.reviewStateChanges ? await StateReviewModal.review(this.app, chapter.chapter, rows) : approvedFrom(chapter.chapter, rows);
 			if (!approved) return;
-			await this.markStateSynced(file, text);
+			const replaced = await removeSyncedLines(this.app, previous);
 			const res = await applyChanges(this.app, this.index, this.settings, approved);
+			this.settings.syncedLines[file.path] = res.written;
+			await this.markStateSynced(file, text);
 			const parts = [
 				res.lines ? `${res.lines} timeline ${res.lines === 1 ? "entry" : "entries"}` : "",
 				res.rels ? `${res.rels} relationship${res.rels === 1 ? "" : "s"}` : "",
 				res.created ? `${res.created} new note${res.created === 1 ? "" : "s"}` : "",
 			].filter(Boolean);
-			new Notice(parts.length ? `Storyloom: added ${parts.join(", ")}${res.touched.length ? ` (${res.touched.join(", ")})` : ""}.` : "Storyloom: nothing new to write.");
+			const what = parts.length ? `Recorded ${parts.join(", ")}${res.touched.length ? ` (${res.touched.join(", ")})` : ""}.` : "Nothing new to record.";
+			new Notice(`Storyloom: synced chapter ${chapter.chapter}. ${what}${replaced ? ` Replaced ${replaced} line${replaced === 1 ? "" : "s"} from the last sync.` : ""}`, 8000);
 		} catch (e) {
 			notice.hide();
 			this.errorNotice(e);
 		}
+	}
+
+	/** The index's entities as they'd be with these (previously synced) lines taken out of their notes. */
+	private async withoutLines(lines: { path: string; line: string }[]): Promise<Pick<CodexIndex, "getEntity">> {
+		if (!lines.length) return this.index;
+		const patched = new Map<string, Entity>();
+		for (const path of new Set(lines.map((l) => l.path))) {
+			const e = [...this.index.entities.values()].find((x) => x.path === path);
+			const f = this.index.fileFor(path);
+			if (!e || !f) continue;
+			const text = removeLines(await this.app.vault.read(f), lines.filter((l) => l.path === path).map((l) => l.line)).text;
+			patched.set(e.name, { ...e, timeline: parseTimeline(text) });
+		}
+		return { getEntity: (name: string) => { const e = this.index.getEntity(name); return e ? patched.get(e.name) ?? e : undefined; } };
 	}
 
 	/** Commands that write to the vault shouldn't run twice at once for the same chapter. */
@@ -704,8 +785,8 @@ export default class StoryloomPlugin extends Plugin {
 		if (hash === synced || this.reminded.has(key)) return;
 		this.reminded.add(key);
 		const frag = document.createDocumentFragment();
-		frag.createSpan({ text: `“${this.index.chapterForPath(prev.path)?.title}” changed since its last story-state update.` });
-		const b = frag.createEl("button", { text: "Update story state", cls: "storyloom-notice-btn mod-cta" });
+		frag.createSpan({ text: `“${this.index.chapterForPath(prev.path)?.title}” changed since it was last synced.` });
+		const b = frag.createEl("button", { text: "Sync chapter", cls: "storyloom-notice-btn mod-cta" });
 		const notice = new Notice(frag, 12000);
 		b.addEventListener("click", () => {
 			notice.hide();
