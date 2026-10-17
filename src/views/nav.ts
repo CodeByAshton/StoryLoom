@@ -27,3 +27,12 @@ async function switchTo(leaf: WorkspaceLeaf, type: string) {
 	if (other) return ws.revealLeaf(other);
 	await leaf.setViewState({ type, active: true });
 }
+
+/** A quiet one-line summary next to the tabs ("3 chapters · 1,174 words"), instead of big stat blocks. */
+export function renderMeta(parent: HTMLElement, parts: (string | false | null | undefined)[]): HTMLElement {
+	return parent.createDiv({ cls: "sl-meta", text: parts.filter(Boolean).join(" · ") });
+}
+
+export function plural(n: number, word: string): string {
+	return `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
+}

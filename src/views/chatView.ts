@@ -62,11 +62,18 @@ export class ChatView extends ItemView {
 		const composer = root.createDiv({ cls: "storyloom-chat-composer" });
 		this.suggestEl = composer.createDiv({ cls: "storyloom-chat-suggest" });
 		this.suggestEl.hide();
-		this.input = composer.createEl("textarea", { cls: "storyloom-chat-input" });
-		this.input.placeholder = "Ask about your book… Use @ to mention a character or chapter.";
-		this.input.rows = 3;
-		this.sendBtn = composer.createEl("button", { cls: "mod-cta storyloom-chat-send", attr: { "aria-label": "Send" } });
-		setIcon(this.sendBtn, "send");
+		const field = composer.createDiv({ cls: "storyloom-chat-field" });
+		this.input = field.createEl("textarea", { cls: "storyloom-chat-input" });
+		this.input.placeholder = "Ask about your book…";
+		this.input.rows = 1;
+		this.sendBtn = field.createEl("button", { cls: "mod-cta storyloom-chat-send", attr: { "aria-label": "Send" } });
+		setIcon(this.sendBtn, "arrow-up");
+		const grow = () => {
+			this.input.style.height = "auto";
+			this.input.style.height = `${Math.min(160, this.input.scrollHeight)}px`;
+			field.toggleClass("has-text", !!this.input.value.trim());
+		};
+		this.input.addEventListener("input", grow);
 		this.sendBtn.addEventListener("click", () => void this.send());
 		this.input.addEventListener("input", () => this.updateSuggestions());
 		this.input.addEventListener("keydown", (e) => this.onKey(e));
@@ -94,11 +101,17 @@ export class ChatView extends ItemView {
 
 	private renderEmpty() {
 		const empty = this.listEl.createDiv({ cls: "storyloom-chat-empty" });
-		empty.createDiv({ text: "Try:" });
-		for (const q of ["Where is Arthur in chapter 2?", "Find plot holes so far.", "Is Mara's voice consistent?"]) {
-			const b = empty.createEl("button", { cls: "storyloom-chip", text: q });
+		setIcon(empty.createDiv({ cls: "sl-empty-icon" }), "message-circle");
+		empty.createDiv({ cls: "sl-empty-title", text: "Ask about your book" });
+		empty.createDiv({ cls: "sl-empty-body", text: "The assistant knows your codex, chapter summaries and the chapter you're in. Type @ to bring a character or chapter into the conversation." });
+		const chips = empty.createDiv({ cls: "storyloom-chat-chips" });
+		const people = this.plugin.index.sortedEntities().filter((e) => e.type === "character").map((e) => e.name.split(" ")[0]);
+		const ideas = [people[0] ? `Where is ${people[0]} in chapter 2?` : "Who appears in chapter 1?", "Find plot holes so far.", people[1] ? `Is ${people[1]}'s voice consistent?` : "What should happen next?"];
+		for (const q of ideas) {
+			const b = chips.createEl("button", { cls: "storyloom-chip", text: q });
 			b.addEventListener("click", () => {
 				this.input.value = q;
+				this.input.dispatchEvent(new Event("input"));
 				this.input.focus();
 			});
 		}
@@ -208,6 +221,7 @@ export class ChatView extends ItemView {
 		this.busy = true;
 		this.sendBtn.disabled = true;
 		this.input.value = "";
+		this.input.dispatchEvent(new Event("input"));
 		this.hideSuggestions();
 		this.listEl.querySelector(".storyloom-chat-empty")?.remove();
 

@@ -257,7 +257,14 @@ class GlassPanel implements TooltipView {
 		const line = this.view.contentDOM.querySelector(".cm-line") as HTMLElement | null;
 		if (!line) return;
 		const pad = parseFloat(getComputedStyle(line).paddingLeft) || 0;
-		const shift = line.getBoundingClientRect().left + pad - tip.getBoundingClientRect().left;
+		// Never wider than the editor, and never spilling past either edge of it.
+		const box = this.view.scrollDOM.getBoundingClientRect();
+		tip.style.maxWidth = `${Math.max(240, box.width - 24)}px`;
+		const t = tip.getBoundingClientRect();
+		let target = line.getBoundingClientRect().left + pad;
+		target = Math.min(target, box.right - 12 - t.width);
+		target = Math.max(target, box.left + 12);
+		const shift = target - t.left;
 		if (Math.abs(shift) > 1) tip.style.left = `${(parseFloat(tip.style.left) || 0) + shift}px`;
 	}
 

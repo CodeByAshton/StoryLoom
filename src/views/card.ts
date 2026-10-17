@@ -50,7 +50,10 @@ export function renderEntityCard(
 			const val = grid.createDiv({ cls: "storyloom-card-value" });
 			val.createSpan({ text: v || "—" });
 			const since = s.lastChangedIn[k];
-			if (since !== undefined && k !== "knows") val.createSpan({ cls: "storyloom-since", text: `since ch ${since}` });
+			if (since !== undefined && k !== "knows") {
+				val.createSpan({ cls: "storyloom-since", text: `since ch ${since}` });
+				val.setAttr("title", `Since chapter ${since}`);
+			}
 		}
 	} else if (!opts.compact) {
 		card.createDiv({ cls: "storyloom-card-empty", text: "No timeline entries yet." });

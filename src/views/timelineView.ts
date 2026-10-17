@@ -4,7 +4,7 @@ import { resolveState } from "../codex/state";
 import type { ChapterInfo, Entity } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEmpty } from "./empty";
-import { renderNav } from "./nav";
+import { plural, renderMeta, renderNav } from "./nav";
 import { wordCount } from "../util";
 import { renderEntityCard } from "./card";
 import { huePalette, initials, laneEvents, locationRuns, presentAt } from "./timelineModel";
@@ -87,12 +87,8 @@ export class TimelineView extends ItemView {
 		const total = Array.from(words.values()).reduce((a, b) => a + b, 0);
 		const bar = root.createDiv({ cls: "sl-tl-toolbar" });
 		renderNav(bar, this.leaf, this.getViewType());
-		const stats = bar.createDiv({ cls: "sl-tl-stats" });
-		for (const [n, label] of [[chapters.length, "chapters"], [total.toLocaleString(), "words"], [index.sortedEntities().filter((e) => e.type === "character").length, "characters"]] as const) {
-			const s = stats.createDiv({ cls: "sl-tl-stat" });
-			s.createSpan({ cls: "sl-tl-stat-n", text: String(n) });
-			s.createSpan({ cls: "sl-tl-stat-l", text: label });
-		}
+		const nChars = index.sortedEntities().filter((e) => e.type === "character").length;
+		renderMeta(bar, [chapters.length > 0 && plural(chapters.length, "chapter"), chapters.length > 0 && plural(total, "word"), nChars > 0 && plural(nChars, "character")]);
 		const seg = bar.createDiv({ cls: "sl-tl-segmented" });
 		for (const m of ["characters", "locations"] as Mode[]) {
 			const b = seg.createEl("button", { cls: m === this.mode ? "is-active" : "" });

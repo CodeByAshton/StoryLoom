@@ -3,7 +3,7 @@ import { stripFrontmatter } from "../codex/parse";
 import type { ChapterInfo } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEmpty } from "./empty";
-import { renderNav } from "./nav";
+import { plural, renderMeta, renderNav } from "./nav";
 import { proseHash, wordCount } from "../util";
 import { normalizeStatus, STATUSES, type ChapterStatus } from "./chaptersModel";
 import { huePalette, initials } from "./timelineModel";
@@ -85,16 +85,8 @@ export class ChaptersView extends ItemView {
 		const total = [...scans.values()].reduce((a, s) => a + s.words, 0);
 		const bar = root.createDiv({ cls: "sl-tl-toolbar" });
 		renderNav(bar, this.leaf, this.getViewType());
-		const stats = bar.createDiv({ cls: "sl-tl-stats" });
-		const stat = (n: string | number, l: string) => {
-			const s = stats.createDiv({ cls: "sl-tl-stat" });
-			s.createSpan({ cls: "sl-tl-stat-n", text: String(n) });
-			s.createSpan({ cls: "sl-tl-stat-l", text: l });
-		};
-		stat(chapters.length, "chapters");
-		stat(total.toLocaleString(), "words");
 		const done = chapters.filter((c) => normalizeStatus(c.status) === "final").length;
-		stat(`${done}/${chapters.length}`, "final");
+		renderMeta(bar, [chapters.length > 0 && plural(chapters.length, "chapter"), chapters.length > 0 && plural(total, "word"), done > 0 && `${done} final`]);
 		const seg = bar.createDiv({ cls: "sl-tl-segmented" });
 		for (const m of ["outline", "board"] as Mode[]) {
 			const b = seg.createEl("button", { cls: m === this.mode ? "is-active" : "" });

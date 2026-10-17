@@ -81,7 +81,7 @@ export class CodexView extends ItemView {
 			this.renderGrid(gridEl);
 		});
 		if (keepFocus) window.requestAnimationFrame(() => input.focus());
-		const add = bar.createEl("button", { cls: "sl-cx-new mod-cta" });
+		const add = bar.createEl("button", { cls: "sl-cx-new mod-cta", attr: { "aria-label": "New codex entry" } });
 		setIcon(add.createSpan({ cls: "storyloom-btn-icon" }), "plus");
 		add.createSpan({ text: "New" });
 		add.addEventListener("click", (ev) => {
@@ -210,13 +210,13 @@ export class CodexView extends ItemView {
 			const now = this.section(el, "Now");
 			const grid = now.createDiv({ cls: "storyloom-card-fields" });
 			for (const [k, v] of fields) {
-				grid.createDiv({ cls: "storyloom-card-label", text: k });
+				grid.createDiv({ cls: "storyloom-card-label", text: k.charAt(0).toUpperCase() + k.slice(1) });
 				const val = grid.createDiv({ cls: "storyloom-card-value" });
 				val.createSpan({ text: stripWikilinks(v) });
 				if (s.lastChangedIn[k] !== undefined) val.createSpan({ cls: "storyloom-since", text: `since ch ${s.lastChangedIn[k]}` });
 			}
 			if (s.knows.length) {
-				grid.createDiv({ cls: "storyloom-card-label", text: "knows" });
+				grid.createDiv({ cls: "storyloom-card-label", text: "Knows" });
 				const list = grid.createDiv({ cls: "storyloom-card-value" });
 				for (const k of s.knows) list.createDiv({ text: `• ${stripWikilinks(k)}` });
 			}

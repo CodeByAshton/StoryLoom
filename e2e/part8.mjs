@@ -91,6 +91,33 @@ await page.evaluate(() => window.app.workspace.openLinkText("Start Here.md", "",
 await sleep(800);
 ok(!(await page.locator(".status-bar .sl-status").isVisible()), "status bar item hides outside chapters");
 
+// ---- Layout: codex detail never overlaps the grid; inline panel stays inside the editor ----
+await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-codex"));
+await sleep(600);
+await page.locator(".sl-cx-card").first().click();
+await sleep(600);
+const cx = await page.evaluate(() => {
+	const g = document.querySelector(".sl-cx-grid"), d = document.querySelector(".sl-cx-detail");
+	const gr = g.getBoundingClientRect(), dr = d.getBoundingClientRect();
+	return { hidden: getComputedStyle(g).display === "none", gridRight: Math.round(gr.right), detailLeft: Math.round(dr.left), width: Math.round(document.querySelector(".sl-cx").getBoundingClientRect().width) };
+});
+ok(cx.hidden || cx.gridRight <= cx.detailLeft + 1, `codex detail doesn't overlap the cards ${JSON.stringify(cx)}`);
+await page.evaluate(() => window.app.workspace.openLinkText("Manuscript/03 - The Harbor.md", "", false));
+await sleep(800);
+await page.evaluate(() => { const leaf = window.app.workspace.getLeavesOfType("markdown")[0]; window.app.workspace.setActiveLeaf(leaf, { focus: true }); const e = leaf.view.editor; e.focus(); e.setSelection({ line: 4, ch: 0 }, { line: 4, ch: 40 }); });
+await sleep(300);
+await page.keyboard.press("Control+k");
+await page.waitForSelector(".storyloom-glass-panel", { timeout: 5000 }).catch(() => {});
+await sleep(500);
+const inl = await page.evaluate(() => {
+	const p = document.querySelector(".storyloom-glass-panel").getBoundingClientRect();
+	const b = document.querySelector(".workspace-leaf.mod-active .cm-scroller").getBoundingClientRect();
+	return { left: Math.round(p.left), right: Math.round(p.right), boxLeft: Math.round(b.left), boxRight: Math.round(b.right) };
+});
+ok(inl.left >= inl.boxLeft && inl.right <= inl.boxRight, `inline edit panel stays inside the editor ${JSON.stringify(inl)}`);
+await page.keyboard.press("Escape");
+await sleep(300);
+
 // ---- Dark mode hover card: no light box behind the glass ----
 await page.evaluate(() => window.app.changeTheme("obsidian"));
 await page.evaluate(() => window.app.workspace.openLinkText("Manuscript/03 - The Harbor.md", "", false));

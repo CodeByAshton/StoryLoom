@@ -1116,3 +1116,177 @@ body.theme-dark .sl-tl-pill {
 	-webkit-backdrop-filter: blur(8px);
 	backdrop-filter: blur(8px);
 }
+
+/* =====================================================================
+   Design system pass: one set of materials, controls and type, closer to
+   native macOS / iOS. Later rules here intentionally override earlier ones.
+   ===================================================================== */
+
+body {
+	--sl-r-sm: 8px;
+	--sl-r-md: 12px;
+	--sl-r-lg: 16px;
+	--sl-fill: color-mix(in srgb, var(--text-normal) 5%, transparent);
+	--sl-fill-hover: color-mix(in srgb, var(--text-normal) 8%, transparent);
+	--sl-hairline: color-mix(in srgb, var(--text-normal) 10%, transparent);
+	--sl-tint: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+	--sl-tint-strong: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+	--sl-card-shadow: 0 0 0 1px var(--sl-hairline), 0 1px 2px rgba(0, 0, 0, 0.04);
+	--sl-card-shadow-hover: 0 0 0 1px var(--sl-hairline), 0 10px 28px -12px rgba(15, 23, 42, 0.28);
+	--sl-seg-active: var(--background-primary);
+	--sl-seg-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+body.theme-dark {
+	--sl-card-shadow: 0 0 0 1px var(--sl-hairline);
+	--sl-card-shadow-hover: 0 0 0 1px color-mix(in srgb, var(--text-normal) 16%, transparent), 0 12px 30px -12px rgba(0, 0, 0, 0.6);
+	--sl-seg-active: color-mix(in srgb, var(--text-normal) 16%, var(--background-primary));
+	--sl-seg-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- Toolbar: one quiet row (tabs · summary · controls) ---- */
+.sl-tl-toolbar, .sl-cx-toolbar {
+	gap: 10px 12px;
+	padding: 10px 16px;
+	background: none;
+	border-bottom: 1px solid var(--sl-hairline);
+}
+.sl-meta { flex: 1 1 140px; min-width: 0; color: var(--text-muted); font-size: var(--font-ui-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Segmented controls (view tabs, Outline/Board, Characters/Locations) ---- */
+.sl-nav, .sl-tl-segmented {
+	padding: 2px;
+	gap: 0;
+	border: none;
+	border-radius: 9px;
+	background: var(--sl-fill);
+}
+.sl-nav-tab, .sl-tl-segmented button {
+	height: 26px;
+	padding: 0 11px;
+	border-radius: 7px !important;
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+	transition: background 180ms var(--sl-ease), color 180ms ease, box-shadow 180ms ease;
+}
+.sl-nav-tab:hover, .sl-tl-segmented button:hover { background: transparent !important; color: var(--text-normal); }
+.sl-nav-tab.is-active, .sl-tl-segmented button.is-active { background: var(--sl-seg-active) !important; color: var(--text-normal); box-shadow: var(--sl-seg-shadow) !important; }
+.sl-nav-tab.is-active .sl-nav-icon { color: var(--text-normal); }
+.sl-nav-icon svg, .sl-tl-segmented .storyloom-btn-icon svg { width: 14px; height: 14px; }
+
+/* ---- Chips: tinted, borderless ---- */
+.sl-cx-chips { gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--sl-hairline); }
+.sl-cx-chip, .storyloom-chip {
+	height: 26px;
+	padding: 0 11px;
+	border: none !important;
+	border-radius: 999px !important;
+	background: var(--sl-fill) !important;
+	box-shadow: none !important;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+.sl-cx-chip:hover, .storyloom-chip:hover { background: var(--sl-fill-hover) !important; color: var(--text-normal); transform: none; }
+.sl-cx-chip.is-active { background: var(--sl-tint) !important; color: var(--text-accent); }
+.sl-cx-chip.is-active .sl-cx-chip-icon { color: inherit; }
+.storyloom-graph .sl-cx-chip.is-active.storyloom-type-character, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-location, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-lore, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-item, .storyloom-graph .sl-cx-chip.is-active.storyloom-type-faction { background: color-mix(in srgb, var(--sl-color) 15%, transparent) !important; border: none !important; }
+.sl-gr-toggles .sl-cx-chip.is-active { background: var(--sl-tint) !important; color: var(--text-accent); border: none !important; }
+.sl-gr-toggles .sl-cx-chip.is-active .sl-cx-chip-icon { color: inherit; }
+.sl-gr-toggles .sl-cx-chip:not(.is-active) { opacity: 1; }
+
+/* ---- Search field ---- */
+.sl-cx-searchbox { height: 30px; border: none; border-radius: 9px; background: var(--sl-fill); }
+.sl-cx-searchbox:focus-within { border: none; background: var(--background-primary); box-shadow: 0 0 0 3px var(--sl-tint-strong), 0 0 0 1px var(--interactive-accent); }
+.sl-cx-new { height: 30px; padding: 0 12px; border-radius: 9px !important; }
+
+/* ---- Type: sentence case, no letter-spaced capitals ---- */
+.storyloom-card-label, .storyloom-section-title, .storyloom-result-label, .storyloom-review-key, .sl-tl-corner, .sl-tl-head-num, .sl-cx-section-title, .sl-cast-eyebrow {
+	text-transform: none;
+	letter-spacing: 0;
+	font-size: var(--font-ui-smaller);
+}
+.storyloom-card-label { color: var(--text-faint); padding-top: 0.15em; }
+.storyloom-section-title, .sl-cx-section-title { font-weight: var(--font-semibold); color: var(--text-muted); }
+.storyloom-review-key { color: var(--text-muted); }
+.sl-tl-corner, .sl-tl-head-num { color: var(--text-faint); }
+.sl-cast-eyebrow { font-weight: var(--font-semibold); }
+
+/* ---- Cards: hairline instead of borders, soft lift on hover ---- */
+.sl-ch-card, .sl-cx-card {
+	border: none;
+	border-radius: var(--sl-r-lg);
+	box-shadow: var(--sl-card-shadow);
+}
+.sl-ch-card:hover, .sl-cx-card:hover { transform: translateY(-1px); box-shadow: var(--sl-card-shadow-hover); }
+.sl-ch-card.is-now, .sl-cx-card.is-selected { box-shadow: 0 0 0 2px var(--interactive-accent), 0 8px 24px -12px color-mix(in srgb, var(--interactive-accent) 45%, transparent); }
+.sl-ch-num { background: var(--sl-tint) !important; color: var(--text-accent) !important; box-shadow: none !important; }
+.sl-ch-card.is-new { box-shadow: none; border: 1.5px dashed var(--sl-hairline); }
+.sl-ch-col { border: none; border-radius: var(--sl-r-lg); background: var(--sl-fill); }
+.sl-ch-col.is-over { background: color-mix(in srgb, var(--st) 9%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--st) 50%, transparent); }
+.sl-ch-col-empty { border: 1.5px dashed var(--sl-hairline); }
+.sl-ch-hint { padding: 12px 16px 0; }
+
+/* ---- Codex detail: a side panel when there's room, a full sheet when there isn't ---- */
+.sl-cx-detail { border-left: 1px solid var(--sl-hairline); background: var(--background-primary); }
+@container (max-width: 720px) {
+	.sl-cx-body.has-detail { grid-template-columns: 1fr; }
+	.sl-cx-body.has-detail .sl-cx-grid { display: none; }
+	.sl-cx-detail { border-left: none; }
+}
+
+/* ---- Cast panel: grouped list ---- */
+.storyloom-cast { padding: 12px; }
+.storyloom-cast .storyloom-cast-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 4px; }
+.storyloom-cast .storyloom-cast-actions button { justify-content: center; height: 30px; padding: 0 8px; border-radius: 9px; font-size: var(--font-ui-smaller); background: var(--sl-fill); border: none; box-shadow: none; }
+.storyloom-cast .storyloom-cast-actions button:hover { background: var(--sl-fill-hover); }
+.storyloom-cast .storyloom-cast-actions button.mod-cta { background: var(--interactive-accent); color: var(--text-on-accent); }
+.storyloom-cast .storyloom-card { border: none; border-radius: var(--sl-r-md); background: var(--sl-fill); padding: 10px 12px; }
+.storyloom-cast .storyloom-card:hover { background: var(--sl-fill-hover); border: none; }
+.storyloom-cast .storyloom-card + .storyloom-card { margin-top: 6px; }
+.storyloom-cast .storyloom-card-fields { grid-template-columns: 64px 1fr; gap: 3px 10px; margin-top: 6px; }
+.storyloom-cast .storyloom-since { display: none; }
+.storyloom-cast .storyloom-card-rel { display: grid; grid-template-columns: 64px 1fr; gap: 10px; margin-top: 3px; }
+.storyloom-cast .storyloom-card-type { font-size: var(--font-ui-smaller); }
+.storyloom-card.has-avatar .storyloom-card-fields, .storyloom-card.has-avatar .storyloom-card-rel { margin-left: 0; }
+.storyloom-cast-section { margin-top: 16px; }
+.storyloom-stale { padding: 6px 10px; border-radius: 9px; background: var(--sl-tint); font-weight: var(--font-medium); }
+
+/* ---- Story assistant ---- */
+.storyloom-chat-head { padding: 10px 12px; border-bottom: 1px solid var(--sl-hairline); }
+.storyloom-chat-head .storyloom-view-title { font-weight: var(--font-semibold); }
+.storyloom-chat-list { padding: 14px 12px; gap: 12px; }
+.storyloom-chat-empty { align-items: center; text-align: center; margin: auto 0; padding: 24px 8px; gap: 6px; }
+.storyloom-chat-empty .sl-empty-icon { width: 48px; height: 48px; border-radius: 15px; margin-bottom: 6px; }
+.storyloom-chat-chips { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 12px; }
+.storyloom-chat-chips .storyloom-chip { height: auto; min-height: 28px; padding: 5px 12px; white-space: normal; }
+.storyloom-chat-msg { border-radius: 18px; padding: 8px 12px; }
+.storyloom-chat-msg.is-user { max-width: 85%; background: var(--interactive-accent); color: var(--text-on-accent); border-bottom-right-radius: 6px; }
+.storyloom-chat-msg.is-assistant { background: none; padding: 2px 2px; }
+.storyloom-chat-composer { padding: 10px 12px calc(10px + 24px); border-top: none; }
+.storyloom-chat-field { position: relative; flex: 1; display: flex; align-items: flex-end; border-radius: 20px; background: var(--sl-fill); box-shadow: inset 0 0 0 1px var(--sl-hairline); transition: box-shadow 160ms ease, background 160ms ease; }
+.storyloom-chat-field:focus-within { background: var(--background-primary); box-shadow: inset 0 0 0 1px var(--interactive-accent), 0 0 0 3px var(--sl-tint); }
+.storyloom-chat-field .storyloom-chat-input { flex: 1; resize: none; min-height: 38px; max-height: 160px; padding: 9px 4px 9px 14px; border: none !important; background: transparent !important; box-shadow: none !important; line-height: 1.4; }
+.storyloom-chat-field .storyloom-chat-send { width: 28px; height: 28px; margin: 5px; padding: 0; border-radius: 50% !important; display: grid; place-items: center; opacity: 0.4; transform: scale(0.9); transition: opacity 160ms ease, transform 200ms var(--sl-spring); }
+.storyloom-chat-field.has-text .storyloom-chat-send { opacity: 1; transform: none; }
+.storyloom-chat-send svg { width: 16px; height: 16px; }
+
+/* ---- Modals ---- */
+.storyloom-review-group { border: none !important; border-radius: var(--sl-r-md) !important; background: var(--sl-glass-inner); box-shadow: inset 0 0 0 1px var(--sl-hairline); }
+.storyloom-review-modal .modal-content > .setting-item:last-child { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-top: 1px solid var(--sl-hairline); margin-top: 8px; padding-top: 12px; }
+.modal.storyloom-glass-modal .modal-title { font-size: var(--font-ui-large); }
+
+/* ---- Focus rings on every Storyloom control ---- */
+:is(.sl-nav-tab, .sl-tl-segmented button, .sl-cx-chip, .storyloom-chip, .sl-empty-actions button, .storyloom-glass-btn, .storyloom-glass-chip, .sl-setup-test):focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px var(--interactive-accent) !important; }
+
+/* ---- Respect "reduce motion" everywhere ---- */
+@media (prefers-reduced-motion: reduce) {
+	[class*="sl-"], [class*="storyloom-"], [class*="sl-"]::before, [class*="sl-"]::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
+}
+.storyloom-cast .storyloom-card-fields, .storyloom-cast .storyloom-card-rel { grid-template-columns: 84px minmax(0, 1fr); }
+.storyloom-cast .storyloom-cast-actions { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.storyloom-cast .storyloom-cast-actions button { min-width: 0; }
+.sl-cx-searchbox { min-width: 120px; }
+@container (max-width: 560px) {
+	.sl-cx-new > span:not(.storyloom-btn-icon) { display: none; }
+	.sl-cx-new { width: 30px; padding: 0; justify-content: center; }
+}
