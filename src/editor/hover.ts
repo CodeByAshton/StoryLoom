@@ -3,12 +3,14 @@ import { editorInfoField } from "obsidian";
 import type StoryloomPlugin from "../main";
 import { renderEntityCard } from "../views/card";
 import { frontmatterEnd, shouldHighlight } from "./highlight";
+import { noteAt } from "./writingNotes";
 
 export function entityHover(plugin: StoryloomPlugin) {
 	return hoverTooltip(
 		(view, pos): Tooltip | null => {
 			const re = plugin.index.nameRegex;
 			if (!re || !shouldHighlight(plugin, view)) return null;
+			if (noteAt(plugin, view, pos)) return null; // a writing note's card takes this spot
 			if (pos < frontmatterEnd(view.state.doc.sliceString(0, Math.min(view.state.doc.length, 5000)))) return null;
 			const line = view.state.doc.lineAt(pos);
 			const local = new RegExp(re.source, re.flags);

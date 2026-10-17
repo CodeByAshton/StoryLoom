@@ -3,7 +3,7 @@ import type { ApprovedChanges } from "../modals/stateReviewModal";
 import type { EntityRow } from "../modals/entityReviewModal";
 import type { CodexIndex } from "./index";
 import { parseRelationships, parseTimeline } from "./parse";
-import { appendToSection, closeOpenRelationships, removeLines, dedupeTimeline, fillEntityTemplate, formatRelationshipLine, formatTimelineLine, hasActiveRelationship, safeFileName, TYPE_FOLDERS } from "./write";
+import { appendToSection, changedLines, closeOpenRelationships, revertSynced, type SyncedLine, dedupeTimeline, fillEntityTemplate, formatRelationshipLine, formatTimelineLine, hasActiveRelationship, safeFileName, TYPE_FOLDERS } from "./write";
 
 export interface ApplyPaths {
 	codexFolder: string;
@@ -59,8 +59,8 @@ export async function applyChanges(app: App, index: CodexIndex, paths: ApplyPath
 	let lines = 0;
 	let rels = 0;
 	const touched = new Set<string>();
-	/** Timeline lines exactly as written, so the next sync of this chapter can replace them. */
-	const written: { path: string; line: string }[] = [];
+	/** Everything this sync wrote, so the next sync of this chapter can replace it (no manual clean-up). */
+	const written: SyncedLine[] = [];
 
 	for (const t of changes.timeline) {
 		const file = fileAt(app, pathFor(t.entity));
@@ -84,7 +84,10 @@ export async function applyChanges(app: App, index: CodexIndex, paths: ApplyPath
 			const source = { timeline: [], relationships: parseRelationships(text) };
 			if (hasActiveRelationship(source, r.to, r.label, r.fromChapter)) return text;
 			let next = r.endsPrevious ? closeOpenRelationships(text, r.to, r.fromChapter - 1, r.label) : text;
-			next = appendToSection(next, "Relationships", [formatRelationshipLine(r.to, r.label, { from: r.fromChapter, to: Infinity })]);
+			for (const c of changedLines(text, next)) written.push({ path: file.path, line: c.after, restore: c.before });
+			const line = formatRelationshipLine(r.to, r.label, { from: r.fromChapter, to: Infinity });
+			written.push({ path: file.path, line });
+			next = appendToSection(next, "Relationships", [line]);
 			rels++;
 			touched.add(r.from);
 			return next;
@@ -94,17 +97,17 @@ export async function applyChanges(app: App, index: CodexIndex, paths: ApplyPath
 	return { created: newCount, lines, rels, touched: Array.from(touched), written };
 }
 
-/** Take out the timeline lines an earlier sync of this chapter wrote. Returns how many were removed. */
-export async function removeSyncedLines(app: App, lines: { path: string; line: string }[]): Promise<number> {
-	const byPath = new Map<string, string[]>();
-	for (const l of lines) byPath.set(l.path, [...(byPath.get(l.path) ?? []), l.line]);
+/** Undo what an earlier sync of this chapter wrote (added lines out, edited lines back). Returns how many lines. */
+export async function removeSyncedLines(app: App, lines: SyncedLine[]): Promise<number> {
+	const byPath = new Map<string, SyncedLine[]>();
+	for (const l of lines) byPath.set(l.path, [...(byPath.get(l.path) ?? []), l]);
 	let removed = 0;
 	for (const [path, ls] of byPath) {
 		const file = fileAt(app, path);
 		if (!file) continue;
 		await app.vault.process(file, (text) => {
-			const r = removeLines(text, ls);
-			removed += r.removed;
+			const r = revertSynced(text, ls);
+			removed += r.reverted;
 			return r.text;
 		});
 	}

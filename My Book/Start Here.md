@@ -33,6 +33,7 @@ Everything Storyloom has is behind the **feather button** in the left ribbon. Ch
 2. In a chapter, **select a sentence and press Cmd/Ctrl+K**. Type what you want ("make it tenser") and press Enter. Press **Tab** to accept or **Esc** to reject. One undo brings the original back.
 3. Right-click in a chapter for more tools: continue writing, rewrite, describe, expand, brainstorm.
 4. When you finish a chapter, click **Sync chapter**: the refresh button in the left ribbon, the same icon in the chapter's header, or the button in the Cast panel. Storyloom reads the chapter and records what changed in the codex: who moved, who learned what, who met whom. If you later rewrite the chapter, sync it again and the record follows.
+5. Sync also does an **AI review** of the writing: typos, grammar, a wrong word, a run-on sentence. Each one gets a wavy underline; hover it to **Fix** or **Dismiss** it. The spell-check icon at the top of the chapter turns AI review on and off.
 
 Inside a note, Cmd/Ctrl+K belongs to Storyloom instead of Obsidian's "Insert Markdown link". You can pick a different key in **Settings → Storyloom → Inline edit key**.
 

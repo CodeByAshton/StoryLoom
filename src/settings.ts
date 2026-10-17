@@ -3,6 +3,8 @@ import { PROVIDERS, providerConfig, type ClientSettings, type ProviderConfig, ty
 import { claudeCodeStatus } from "./llm/claudeCodeNode";
 import { ENTITY_TYPES, type EntityType } from "./codex/types";
 import type StoryloomPlugin from "./main";
+import type { SyncedLine } from "./codex/write";
+import type { ChapterNotes } from "./notes/model";
 
 export interface StoryloomSettings extends ClientSettings {
 	temperature: number;
@@ -28,8 +30,8 @@ export interface StoryloomSettings extends ClientSettings {
 	saveChats: boolean;
 	/** Chapter path -> prose hash at the last "Sync chapter", to flag chapters edited since. */
 	stateSynced: Record<string, string>;
-	/** Chapter path -> the timeline lines its last sync wrote (replaced on the next sync). */
-	syncedLines: Record<string, { path: string; line: string }[]>;
+	/** Chapter path -> what its last sync wrote to the codex (undone and replaced on the next sync). */
+	syncedLines: Record<string, SyncedLine[]>;
 	/** The setup wizard has been shown. */
 	onboarded: boolean;
 	/** One Storyloom ribbon button with a menu, or a button per view. */
@@ -37,6 +39,10 @@ export interface StoryloomSettings extends ClientSettings {
 	statusBar: boolean;
 	/** Show the proposed codex changes for approval before a chapter sync writes them. */
 	reviewStateChanges: boolean;
+	/** Proofread the chapter (spelling, grammar, word choice, run-ons) when it's synced. */
+	writingNotes: boolean;
+	/** Chapter path -> the notes from its last proofread. */
+	chapterNotes: Record<string, ChapterNotes>;
 }
 
 export const DEFAULT_SETTINGS: StoryloomSettings = {
@@ -77,6 +83,8 @@ export const DEFAULT_SETTINGS: StoryloomSettings = {
 	separateRibbonButtons: false,
 	statusBar: true,
 	reviewStateChanges: false,
+	writingNotes: true,
+	chapterNotes: {},
 };
 
 export class StoryloomSettingTab extends PluginSettingTab {
@@ -232,6 +240,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName("Advanced").setHeading();
 		this.toggleSetting("Remind me to sync", "When you leave a chapter you've edited since it was last synced, offer to sync it.", "remindStateUpdate");
+		this.toggleSetting("AI review", "When you sync a chapter, also proofread it: spelling, grammar, words used with the wrong meaning, run-on sentences, repetition. Notes are underlined in the chapter; hover one to fix or dismiss it.", "writingNotes");
 		this.toggleSetting("Review changes before syncing", "Off: Sync chapter writes what it finds straight to the codex (the chapters are the source of truth). On: approve each change first.", "reviewStateChanges");
 		this.toggleSetting("Stream responses", "Show text as it's written. Turns itself off for the session if a provider blocks it (e.g. a local server without CORS enabled).", "stream");
 		this.toggleSetting("Save chats", "Keep Story Assistant conversations in .storyloom/chats/.", "saveChats");
@@ -281,7 +290,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			);
 	}
 
-	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate" | "hideCodexFolder" | "separateRibbonButtons" | "statusBar" | "reviewStateChanges") {
+	private toggleSetting(name: string, desc: string, key: "highlightEntities" | "highlightOutsideManuscript" | "askAiButton" | "saveChats" | "showContextBeforeSending" | "debug" | "stream" | "remindStateUpdate" | "hideCodexFolder" | "separateRibbonButtons" | "statusBar" | "reviewStateChanges" | "writingNotes") {
 		new Setting(this.containerEl)
 			.setName(name)
 			.setDesc(desc)

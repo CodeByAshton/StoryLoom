@@ -3,8 +3,8 @@ import { debounce, Editor, MarkdownView, Menu, Notice, setIcon, normalizePath, P
 import { AIService } from "./ai";
 import { applyChanges, createEntities, ensureFolder, readTemplate, removeSyncedLines } from "./codex/apply";
 import { CodexIndex } from "./codex/index";
-import { parseTimeline, stripFrontmatter } from "./codex/parse";
-import { fillEntityTemplate, removeLines, safeFileName, TYPE_FOLDERS } from "./codex/write";
+import { parseRelationships, parseTimeline, stripFrontmatter } from "./codex/parse";
+import { fillEntityTemplate, revertSynced, safeFileName, TYPE_FOLDERS, type SyncedLine } from "./codex/write";
 import type { Entity } from "./codex/types";
 import {
 	BRAINSTORM_TOPICS,
@@ -23,10 +23,13 @@ import {
 	STATE_SCHEMA,
 	stateUpdatePrompt,
 	summarizePrompt,
+	writingNotesPrompt,
 } from "./context/prompts";
 import { entityHighlighter, refreshEntities } from "./editor/highlight";
 import { entityHover } from "./editor/hover";
 import { InlineEditController, inlineEditExtension } from "./editor/inlineEdit";
+import { refreshNotes, writingNotesExtension } from "./editor/writingNotes";
+import { locateNotes, validateWritingNotes, WRITING_NOTES_SCHEMA, type LocatedNote, type WritingNote } from "./notes/model";
 import { createClient } from "./llm/client";
 import type { ClaudeCodeHost } from "./llm/claudeCode";
 import { createClaudeCodeHost } from "./llm/claudeCodeNode";
@@ -44,7 +47,7 @@ import { CAST_VIEW, CastView } from "./views/castView";
 import { CHAT_VIEW, ChatView } from "./views/chatView";
 import { CODEX_VIEW, CodexView } from "./views/codexView";
 import { CHAPTERS_VIEW, ChaptersView } from "./views/chaptersView";
-import { remapNote, renumberedBasename, reorderMapping, type ChapterStatus } from "./views/chaptersModel";
+import { remapLine, remapNote, renumberedBasename, reorderMapping, type ChapterStatus } from "./views/chaptersModel";
 import { GRAPH_VIEW, GraphView } from "./views/graphView";
 import { TIMELINE_VIEW, TimelineView } from "./views/timelineView";
 import { proseHash, wordCount } from "./util";
@@ -89,7 +92,7 @@ export default class StoryloomPlugin extends Plugin {
 		this.registerView(CODEX_VIEW, (leaf) => new CodexView(leaf, this));
 		this.registerView(CHAPTERS_VIEW, (leaf) => new ChaptersView(leaf, this));
 
-		this.registerEditorExtension([entityHighlighter(this), entityHover(this), inlineEditExtension(this, this.inline)]);
+		this.registerEditorExtension([entityHighlighter(this), entityHover(this), inlineEditExtension(this, this.inline), writingNotesExtension(this)]);
 
 		if (this.settings.separateRibbonButtons) {
 			for (const v of VIEWS) this.addRibbonIcon(v.icon, `Storyloom: ${v.name}`, () => void this.openView(v.type, v.where));
@@ -153,6 +156,7 @@ export default class StoryloomPlugin extends Plugin {
 		menu.addItem((i) => i.setTitle("New character").setIcon("user-plus").onClick(() => void this.newEntity("character")));
 		menu.addItem((i) => i.setTitle("New location").setIcon("map-pin").onClick(() => void this.newEntity("location")));
 		menu.addSeparator();
+		menu.addItem((i) => i.setTitle("AI review").setIcon("spell-check").setChecked(this.settings.writingNotes).onClick(() => void this.setAiReview(!this.settings.writingNotes)));
 		menu.addItem((i) => i.setTitle("Setup guide").setIcon("sparkles").onClick(() => this.openSetup()));
 		menu.addItem((i) => i.setTitle("Settings").setIcon("settings").onClick(() => openSettings(this.app)));
 		return menu;
@@ -168,6 +172,7 @@ export default class StoryloomPlugin extends Plugin {
 	// ---------- Sync button in chapter headers ----------
 
 	private headerButtons = new WeakMap<MarkdownView, HTMLElement>();
+	private reviewButtons = new WeakMap<MarkdownView, HTMLElement>();
 
 	private setupHeaderSync() {
 		const refresh = () => {
@@ -185,6 +190,20 @@ export default class StoryloomPlugin extends Plugin {
 					existing.remove();
 					this.headerButtons.delete(view);
 				}
+				const review = this.reviewButtons.get(view);
+				if (isChapter && !review) {
+					const el = view.addAction("spell-check", "AI review", () => void this.setAiReview(!this.settings.writingNotes));
+					el.addClass("sl-header-review");
+					this.reviewButtons.set(view, el);
+				} else if (!isChapter && review) {
+					review.remove();
+					this.reviewButtons.delete(view);
+				}
+				const r = this.reviewButtons.get(view);
+				if (r) {
+					r.toggleClass("is-active", this.settings.writingNotes);
+					r.setAttr("aria-label", this.settings.writingNotes ? "AI review is on: spelling, grammar and word choice are checked when you sync. Click to turn off." : "AI review is off. Click to turn on.");
+				}
 				this.headerButtons.get(view)?.toggleClass("is-stale", isChapter && this.isStale(view.file?.path));
 			}
 		};
@@ -192,7 +211,7 @@ export default class StoryloomPlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on("layout-change", refresh));
 		this.registerEvent(this.app.workspace.on("file-open", refresh));
 		this.app.workspace.onLayoutReady(refresh);
-		this.register(() => document.querySelectorAll(".sl-header-sync").forEach((el) => el.remove()));
+		this.register(() => document.querySelectorAll(".sl-header-sync, .sl-header-review").forEach((el) => el.remove()));
 	}
 	private refreshHeaderSync: () => void = () => {};
 
@@ -259,6 +278,8 @@ export default class StoryloomPlugin extends Plugin {
 		const all = this.index.chapters;
 		el.createSpan({ text: `Chapter ${all.indexOf(ch) + 1} of ${all.length}` });
 		el.createSpan({ cls: "sl-status-title", text: ch.title });
+		const notes = this.visibleNotes(file.path, text).length;
+		if (notes) el.createSpan({ cls: "sl-status-notes", text: `${notes} note${notes === 1 ? "" : "s"}` });
 		if (stale) el.createSpan({ cls: "sl-status-dot", attr: { "aria-label": "Edited since it was last synced" } });
 		el.setAttr("aria-label", stale ? "Edited since it was last synced. Click for chapter actions." : "Chapter actions");
 		el.setAttr("data-tooltip-position", "top");
@@ -270,6 +291,15 @@ export default class StoryloomPlugin extends Plugin {
 		if (file && this.index.chapterForPath(file.path)) {
 			menu.addItem((i) => i.setTitle("Sync chapter").setIcon("refresh-cw").onClick(() => void this.updateStoryState(file)));
 			menu.addItem((i) => i.setTitle("Summarize chapter").setIcon("align-left").onClick(() => void this.summarize(file)));
+			menu.addItem((i) => i.setTitle("Check writing").setIcon("spell-check").onClick(() => void this.checkWriting(file, this.activeEditor() ?? undefined)));
+			if (this.notesFor(file.path).length) {
+				menu.addItem((i) =>
+					i.setTitle("Next writing note").setIcon("arrow-down-to-dot").onClick(() => {
+						const e = this.activeEditor();
+						if (e) this.nextNote(e, file);
+					}),
+				);
+			}
 			menu.addSeparator();
 			menu.addItem((i) => i.setTitle("Previous chapter").setIcon("arrow-left").onClick(() => void this.stepChapter(-1)));
 			menu.addItem((i) => i.setTitle("Next chapter").setIcon("arrow-right").onClick(() => void this.stepChapter(1)));
@@ -291,6 +321,8 @@ export default class StoryloomPlugin extends Plugin {
 		this.applyCodexFolderVisibility();
 		this.refreshEditors();
 		this.updateStatus?.();
+		this.notesChanged?.();
+		this.refreshHeaderSync?.();
 	}
 
 	llm(): LLMClient {
@@ -387,7 +419,11 @@ export default class StoryloomPlugin extends Plugin {
 
 		for (const { file } of notes) await this.app.vault.process(file, (t) => remapNote(t, map).text);
 		// Lines remembered from earlier syncs were renumbered in the notes; keep the record matching.
-		for (const lines of Object.values(this.settings.syncedLines)) for (const l of lines) l.line = remapNote(l.line, map).text;
+		for (const lines of Object.values(this.settings.syncedLines))
+			for (const l of lines) {
+				l.line = remapLine(l.line, map);
+				if (l.restore !== undefined) l.restore = remapLine(l.restore, map);
+			}
 		for (const { c, to } of moves) {
 			const f = this.index.fileFor(c.path);
 			if (f) await this.app.fileManager.processFrontMatter(f, (fm) => (fm.chapter = to));
@@ -478,6 +514,18 @@ export default class StoryloomPlugin extends Plugin {
 		editorCmd("summarize-chapter", "Summarize chapter", (e, f) => this.summarize(f, e));
 		editorCmd("critique-chapter", "Critique chapter", (_e, f) => this.critique(f));
 		editorCmd("continuity-check", "Continuity check", (e, f) => this.continuity(f, e));
+		this.addCommand({
+			id: "check-writing",
+			name: "Check writing (proofread this chapter)",
+			editorCheckCallback: (checking, editor, ctx) => {
+				const f = ctx.file;
+				if (!f || !this.index.chapterForPath(f.path)) return false;
+				if (!checking) void this.checkWriting(f, editor);
+				return true;
+			},
+		});
+		editorCmd("next-writing-note", "Go to next writing note", (e, f) => this.nextNote(e, f));
+		this.addCommand({ id: "toggle-ai-review", name: "Turn AI review on or off", callback: () => void this.setAiReview(!this.settings.writingNotes) });
 		this.addCommand({
 			id: "update-story-state",
 			name: "Sync chapter (update the codex from this chapter)",
@@ -694,6 +742,24 @@ export default class StoryloomPlugin extends Plugin {
 		}).open();
 	}
 
+	async checkWriting(file: TFile, editor?: Editor) {
+		if (!this.settings.writingNotes) {
+			this.settings.writingNotes = true; // asking for a check means you want to see the notes
+			this.refreshHeaderSync();
+		}
+		return this.once(`notes:${file.path}`, "checking this chapter", async () => {
+			const notice = new Notice("Storyloom: checking the writing…", 0);
+			try {
+				const notes = await this.proofread(file, await this.fileText(file, editor));
+				notice.hide();
+				new Notice(notes.length ? `Storyloom: ${notes.length} writing note${notes.length === 1 ? "" : "s"} underlined. Hover one to fix or dismiss it.` : "Storyloom: no writing notes. Nice and clean.");
+			} catch (e) {
+				notice.hide();
+				this.errorNotice(e);
+			}
+		});
+	}
+
 	private editorFor(file: TFile): Editor | null {
 		let found: Editor | null = null;
 		this.app.workspace.iterateAllLeaves((leaf) => {
@@ -716,7 +782,9 @@ export default class StoryloomPlugin extends Plugin {
 		try {
 			const text = await this.fileText(file, this.editorFor(file) ?? undefined);
 			const ctx = await this.ai.context({ file, text, asOf: chapter.chapter - 1 });
-			const update = await this.ai.completeJson(stateUpdatePrompt(ctx.text, chapter.chapter), validateStateUpdate, STATE_SCHEMA);
+			// Proofreading runs alongside the sync; if it fails, the sync still goes through.
+			const proofread = this.settings.writingNotes ? this.proofread(file, text).catch((e) => (this.settings.debug && console.warn("[Storyloom] writing notes failed", e), null)) : Promise.resolve(null);
+			const [update, notes] = await Promise.all([this.ai.completeJson(stateUpdatePrompt(ctx.text, chapter.chapter), validateStateUpdate, STATE_SCHEMA), proofread]);
 			notice.hide();
 			// A re-sync replaces what the last sync of this chapter wrote; compare against the codex without those lines.
 			const previous = this.settings.syncedLines[file.path] ?? [];
@@ -734,23 +802,107 @@ export default class StoryloomPlugin extends Plugin {
 				res.created ? `${res.created} new note${res.created === 1 ? "" : "s"}` : "",
 			].filter(Boolean);
 			const what = parts.length ? `Recorded ${parts.join(", ")}${res.touched.length ? ` (${res.touched.join(", ")})` : ""}.` : "Nothing new to record.";
-			new Notice(`Storyloom: synced chapter ${chapter.chapter}. ${what}${replaced ? ` Replaced ${replaced} line${replaced === 1 ? "" : "s"} from the last sync.` : ""}`, 8000);
+			const noteText = notes === null ? "" : notes.length ? ` ${notes.length} writing note${notes.length === 1 ? "" : "s"} underlined in the chapter.` : " No writing notes.";
+			new Notice(`Storyloom: synced chapter ${chapter.chapter}. ${what}${replaced ? ` Replaced ${replaced} line${replaced === 1 ? "" : "s"} from the last sync.` : ""}${noteText}`, 8000);
 		} catch (e) {
 			notice.hide();
 			this.errorNotice(e);
 		}
 	}
 
+	// ---------- Writing notes ----------
+
+	notesFor(path: string): WritingNote[] {
+		if (!this.settings.writingNotes) return [];
+		return this.settings.chapterNotes[path]?.notes ?? [];
+	}
+
+	/** Turn AI review (writing notes) on or off everywhere: underlines, sync proofreading, counts. */
+	async setAiReview(on: boolean) {
+		this.settings.writingNotes = on;
+		await this.saveData(this.settings);
+		this.notesChanged();
+		this.refreshHeaderSync();
+		const file = this.activeMarkdownFile();
+		if (!on) {
+			new Notice("Storyloom: AI review is off. Your notes are kept and come back when you turn it on.");
+			return;
+		}
+		const unchecked = !!file && !!this.index.chapterForPath(file.path) && !this.settings.chapterNotes[file.path];
+		const frag = document.createDocumentFragment();
+		frag.createSpan({ text: "Storyloom: AI review is on. Chapters are proofread when you sync them." });
+		if (unchecked && file) {
+			const b = frag.createEl("button", { text: "Check this chapter now", cls: "storyloom-notice-btn mod-cta" });
+			b.addEventListener("click", () => void this.checkWriting(file, this.activeEditor() ?? undefined));
+		}
+		new Notice(frag, 8000);
+	}
+
+	/** Proofread a chapter and store the notes (replacing the previous ones). */
+	async proofread(file: TFile, text: string): Promise<WritingNote[]> {
+		const body = stripFrontmatter(text);
+		const notes = await this.ai.completeJson(writingNotesPrompt(body, await this.styleGuide()), validateWritingNotes, WRITING_NOTES_SCHEMA);
+		const found = locateNotes(body, notes).map((l) => l.note); // drop quotes the model didn't copy exactly
+		this.settings.chapterNotes[file.path] = { hash: proseHash(text), notes: found };
+		await this.saveData(this.settings);
+		this.notesChanged();
+		return found;
+	}
+
+	async removeNote(path: string, note: WritingNote) {
+		const entry = this.settings.chapterNotes[path];
+		if (!entry) return;
+		entry.notes = entry.notes.filter((n) => n !== note && !(n.quote === note.quote && n.message === note.message));
+		if (!entry.notes.length) delete this.settings.chapterNotes[path];
+		await this.saveData(this.settings);
+		this.notesChanged();
+	}
+
+	private notesChanged() {
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			if (leaf.view instanceof MarkdownView) cmOf(leaf.view.editor)?.dispatch({ effects: refreshNotes.of(null) });
+		});
+		this.app.workspace.getLeavesOfType(CAST_VIEW).forEach((l) => (l.view as CastView).refresh());
+		this.updateStatus();
+	}
+
+	/** Notes that are still in the text, in order. */
+	visibleNotes(path: string, text: string): LocatedNote[] {
+		return locateNotes(text, this.notesFor(path));
+	}
+
+	/** Move the cursor to the next writing note after it (wrapping around). */
+	nextNote(editor: Editor, file: TFile) {
+		const all = this.visibleNotes(file.path, editor.getValue());
+		if (!all.length) {
+			new Notice("Storyloom: no writing notes in this chapter.");
+			return;
+		}
+		const cur = editor.posToOffset(editor.getCursor("to"));
+		const n = all.find((l) => l.from > cur) ?? all[0];
+		editor.setSelection(editor.offsetToPos(n.from), editor.offsetToPos(n.to));
+		editor.scrollIntoView({ from: editor.offsetToPos(n.from), to: editor.offsetToPos(n.to) }, true);
+		editor.focus();
+	}
+
+	/** The Book note's "## Style guide" section, so proofreading respects deliberate choices. */
+	private async styleGuide(): Promise<string> {
+		const f = this.app.vault.getAbstractFileByPath(normalizePath(this.settings.bookPath));
+		if (!(f instanceof TFile)) return "";
+		const m = /^##\s+Style guide\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/im.exec(await this.app.vault.cachedRead(f));
+		return m ? m[1].trim().slice(0, 2000) : "";
+	}
+
 	/** The index's entities as they'd be with these (previously synced) lines taken out of their notes. */
-	private async withoutLines(lines: { path: string; line: string }[]): Promise<Pick<CodexIndex, "getEntity">> {
+	private async withoutLines(lines: SyncedLine[]): Promise<Pick<CodexIndex, "getEntity">> {
 		if (!lines.length) return this.index;
 		const patched = new Map<string, Entity>();
 		for (const path of new Set(lines.map((l) => l.path))) {
 			const e = [...this.index.entities.values()].find((x) => x.path === path);
 			const f = this.index.fileFor(path);
 			if (!e || !f) continue;
-			const text = removeLines(await this.app.vault.read(f), lines.filter((l) => l.path === path).map((l) => l.line)).text;
-			patched.set(e.name, { ...e, timeline: parseTimeline(text) });
+			const text = revertSynced(await this.app.vault.read(f), lines.filter((l) => l.path === path)).text;
+			patched.set(e.name, { ...e, timeline: parseTimeline(text), relationships: parseRelationships(text) });
 		}
 		return { getEntity: (name: string) => { const e = this.index.getEntity(name); return e ? patched.get(e.name) ?? e : undefined; } };
 	}

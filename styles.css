@@ -1419,3 +1419,38 @@ body.theme-dark .sl-tl-avatar { color: #fff; background: hsl(var(--hue) 34% 42%)
 /* Sync button in a chapter's header: a small dot when the chapter changed since its last sync. */
 .view-action.sl-header-sync { position: relative; }
 .view-action.sl-header-sync.is-stale::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--interactive-accent); box-shadow: 0 0 0 2px var(--background-primary); }
+
+/* ---------- Writing notes (proofreading from Sync) ---------- */
+.sl-wn { text-decoration: underline wavy; text-decoration-thickness: 1.5px; text-underline-offset: 3px; text-decoration-skip-ink: none; cursor: help; border-radius: 2px; transition: background 120ms ease; }
+.sl-wn:hover { background: color-mix(in srgb, var(--sl-wn) 12%, transparent); }
+.sl-wn { --sl-wn: #e0a03a; text-decoration-color: color-mix(in srgb, var(--sl-wn) 80%, transparent); }
+.sl-wn-spelling { --sl-wn: #e5484d; }
+.sl-wn-grammar, .sl-wn-punctuation { --sl-wn: #3b82f6; }
+.sl-wn-word-choice { --sl-wn: #e0a03a; }
+.sl-wn-run-on, .sl-wn-clarity { --sl-wn: #8b5cf6; }
+.sl-wn-repetition { --sl-wn: #14b8a6; }
+
+.sl-wn-card { width: 300px; padding: 12px 12px 10px; }
+.sl-wn-card.is-spelling { --sl-wn: #e5484d; }
+.sl-wn-card.is-grammar, .sl-wn-card.is-punctuation { --sl-wn: #3b82f6; }
+.sl-wn-card.is-word-choice { --sl-wn: #e0a03a; }
+.sl-wn-card.is-run-on, .sl-wn-card.is-clarity { --sl-wn: #8b5cf6; }
+.sl-wn-card.is-repetition { --sl-wn: #14b8a6; }
+.sl-wn-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--sl-wn); }
+.sl-wn-icon { display: inline-flex; }
+.sl-wn-icon svg { width: 14px; height: 14px; }
+.sl-wn-message { margin-top: 6px; font-size: 13px; line-height: 1.45; color: var(--text-normal); }
+.sl-wn-fix { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; padding: 6px 8px; border-radius: 8px; background: var(--sl-glass-inner); box-shadow: inset 0 0 0 1px var(--sl-hairline); font-size: 13px; line-height: 1.4; }
+.sl-wn-old { color: var(--text-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, #e5484d 70%, transparent); }
+.sl-wn-new { color: var(--text-normal); background: color-mix(in srgb, #22a06b 16%, transparent); border-radius: 3px; padding: 0 2px; }
+.sl-wn-arrow { display: inline-flex; color: var(--text-faint); }
+.sl-wn-arrow svg { width: 12px; height: 12px; }
+.sl-wn-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+.sl-wn-actions .storyloom-glass-btn { height: 26px; }
+.cm-tooltip:has(> .sl-wn-card) { background: transparent !important; border: none !important; box-shadow: none !important; }
+.sl-status-notes { padding: 0 6px; border-radius: 999px; font-size: 11px; color: var(--text-on-accent); background: color-mix(in srgb, #e0a03a 85%, transparent); }
+.sl-clickable { cursor: pointer; }
+.sl-clickable:hover { filter: brightness(1.05); text-decoration: underline; }
+/* AI review switch in a chapter's header: accent when on, faint when off. */
+.view-action.sl-header-review { color: var(--text-faint); }
+.view-action.sl-header-review.is-active { color: var(--text-accent); }

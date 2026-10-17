@@ -33,6 +33,14 @@ createServer((req, res) => {
 		const user = j.messages?.at(-1)?.content ?? "";
 		let content;
 		if (/report what changed/.test(user)) content = "Here you go:\n```json\n" + JSON.stringify(STATE, null, 2) + "\n```";
+		else if (/Proofread this chapter/.test(user))
+			content = JSON.stringify({
+				notes: [
+					{ quote: "Mara walked the length of the quay", kind: "word-choice", message: "“Walked the length” is fine, but “paced” fits her mood better here.", suggestion: "Mara paced the length of the quay" },
+					{ quote: "To whom, she would not say.", kind: "grammar", message: "Fragment reads as a run-on with the sentence before.", suggestion: "" },
+					{ quote: "this text is not in the chapter", kind: "spelling", message: "Should be ignored.", suggestion: "x" },
+				],
+			});
 		else if (/continuity errors/.test(user)) content = JSON.stringify({ issues: [{ quote: "Elias Crane sat at a high desk", conflict: "Codex: nothing", fix: "None", severity: "low" }] });
 		else if (/Rewrite the selected span/.test(user) && /tighten/.test(user)) {
 			const sel = user.slice(user.lastIndexOf("⟦") + 1, user.lastIndexOf("⟧"));

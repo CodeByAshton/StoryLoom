@@ -52,6 +52,7 @@ export class CastView extends ItemView {
 		let mentioned: Entity[] = [];
 		let stale = false;
 		let words = 0;
+		let noteCount = 0;
 		let synced: string | undefined;
 		if (file instanceof TFile && file.extension === "md") {
 			const raw = await this.app.vault.cachedRead(file);
@@ -59,6 +60,7 @@ export class CastView extends ItemView {
 			stale = !!chapter && !!synced && synced !== proseHash(raw);
 			const text = stripFrontmatter(raw);
 			words = wordCount(text);
+			noteCount = this.plugin.visibleNotes(file.path, text).length;
 			const names = index.mentionsIn(text);
 			if (chapter?.pov) {
 				const pov = index.getEntity(chapter.pov);
@@ -79,6 +81,19 @@ export class CastView extends ItemView {
 			renderProps(header, [
 				{ icon: "text", name: "Words", value: (c) => c.setText(words.toLocaleString()) },
 				...(chapter.pov ? [{ icon: "eye", name: "POV", value: (c: HTMLElement) => c.setText(stripWikilinks(chapter.pov ?? "")) }] : []),
+				...(this.plugin.settings.writingNotes ? [{
+					icon: "spell-check",
+					name: "Writing notes",
+					value: (c: HTMLElement) => {
+						if (!noteCount) return void c.createSpan({ cls: "sl-prop-empty", text: this.plugin.settings.chapterNotes[file?.path ?? ""] || synced ? "None" : "Sync to check" });
+						const t = tag(c, `${noteCount} to look at`, "is-warn sl-clickable");
+						t.setAttr("aria-label", "Go to the next writing note");
+						t.addEventListener("click", () => {
+							const editor = this.plugin.activeEditor();
+							if (editor && file) this.plugin.nextNote(editor, file);
+						});
+					},
+				}] : []),
 				{ icon: "refresh-cw", name: "Synced", value: (c: HTMLElement) => (stale ? tag(c, "Edited since sync", "is-warn") : tag(c, synced ? "Up to date" : "Never", synced ? "is-ok" : "is-neutral")) },
 			]);
 		} else header.createDiv({ cls: "sl-cast-meta", text: "Open a chapter to see everyone as of that point in the story." });

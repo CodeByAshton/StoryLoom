@@ -107,6 +107,45 @@ ok(ch3Lines(after3).length > ch3Lines(before3).length && /agrees to help Mara/.t
 ok(await exists("Codex/Characters/Captain Rook.md"), "sync created the new character");
 const notice = await page.locator(".notice").allInnerTexts();
 ok(notice.some((n) => /synced chapter 3/i.test(n) && /1 new note/.test(n)), `sync reports what it recorded: ${notice.find((n) => /synced/i.test(n))}`);
+// Writing notes: underlined in the chapter, counted in the Cast panel, fixed or dismissed from a hover card.
+await sleep(500);
+ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 2, `sync underlined the writing notes it found (${await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()}; quotes not in the chapter are dropped)`);
+ok(/2 notes/.test(await page.locator(".status-bar .sl-status").innerText()), "status bar counts the writing notes");
+// The AI review switch in the chapter's header turns the notes off and back on.
+const clearNotices = () => page.locator(".notice").evaluateAll((ns) => ns.forEach((n) => n.remove()));
+await clearNotices();
+const reviewBtn = page.locator(".workspace-leaf.mod-active .view-action.sl-header-review");
+ok((await reviewBtn.count()) === 1 && (await reviewBtn.getAttribute("class")).includes("is-active"), "chapter header has an AI review switch, on by default");
+await reviewBtn.click();
+await sleep(500);
+ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 0 && !(await reviewBtn.getAttribute("class")).includes("is-active") && !/notes/.test(await page.locator(".status-bar .sl-status").innerText()), "turning AI review off hides the notes");
+await clearNotices();
+await reviewBtn.click();
+await sleep(500);
+ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 2, "turning it back on brings the same notes back");
+await page.locator(".notice").evaluateAll((ns) => ns.forEach((n) => n.remove()));
+await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn-word-choice").first().hover();
+await page.waitForSelector(".sl-wn-card", { timeout: 4000 }).catch(() => {});
+await sleep(300);
+const card = await page.locator(".sl-wn-card").innerText().catch(() => "");
+ok(/Word choice/.test(card) && /paced the length/.test(card), "hovering a note shows what's wrong and the fix");
+ok((await page.locator(".cm-tooltip .storyloom-hover:not(.sl-wn-card)").count()) === 0, "the character card stays out of the way over a writing note");
+await shot(page, "p8-writing-note");
+await page.locator(".sl-wn-card button", { hasText: "Fix" }).click();
+await sleep(600);
+const fixed = (await read(ch3)) ?? (await page.evaluate(() => window.app.workspace.activeEditor.editor.getValue()));
+const live = await page.evaluate(() => window.app.workspace.getLeavesOfType("markdown").map((l) => l.view.editor.getValue()).join("\n"));
+ok(/Mara paced the length of the quay/.test(live), "Fix replaces the text in the chapter");
+ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 1, "the fixed note goes away");
+await page.mouse.move(5, 5);
+await sleep(300);
+await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").first().hover();
+await page.waitForSelector(".sl-wn-card", { timeout: 4000 }).catch(() => {});
+await page.locator(".sl-wn-card button", { hasText: "Dismiss" }).click();
+await sleep(500);
+ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 0 && (await page.evaluate((p) => window.app.plugins.plugins.storyloom.notesFor(p).length, ch3)) === 0, "Dismiss removes a note for good");
+void fixed;
+
 // Pretend an earlier sync wrote a line the chapter no longer supports, then re-sync from the ribbon.
 await page.evaluate(async ([elias, ch3]) => {
 	const p = window.app.plugins.plugins.storyloom;

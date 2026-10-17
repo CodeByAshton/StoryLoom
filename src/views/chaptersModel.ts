@@ -54,6 +54,15 @@ export function remapNote(markdown: string, map: Map<number, number>): { text: s
 	return { text: lines.join("\n"), changed };
 }
 
+/** Renumber one timeline or relationship line on its own (used for the record of what a sync wrote). */
+export function remapLine(line: string, map: Map<number, number>): string {
+	for (const heading of ["Timeline", "Relationships"]) {
+		const r = remapNote(`## ${heading}\n${line}`, map);
+		if (r.changed) return r.text.split("\n")[1];
+	}
+	return line;
+}
+
 /** Stable-sort the `- ch N` lines of a section by chapter, leaving other lines where they are. */
 function sortSection(lines: string[], start: number, end: number) {
 	const idx: number[] = [];

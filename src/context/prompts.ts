@@ -163,6 +163,36 @@ Guidance:
 	};
 }
 
+/** Proofreading only: the chapter text itself, not the story. Cheap, since it needs no book context. */
+export function writingNotesPrompt(chapter: string, styleNotes: string): Prompt {
+	return {
+		system: `You are a careful copy editor for a novelist. You flag mechanical problems in their prose so they can fix them. You never comment on the story, plot, characters or pacing.${styleNotes ? `\n\nThe author's style guide (respect it; don't flag deliberate choices it describes):\n${styleNotes}` : ""}`,
+		user: `Proofread this chapter. Flag only real mechanical issues:
+- spelling and typos
+- grammar (agreement, tense slips, missing or doubled words)
+- word choice: a word used with the wrong meaning or a mix-up (their/there/they're, its/it's, affect/effect, lose/loose, then/than, peak/peek, and similar)
+- punctuation (comma splices, misplaced apostrophes, broken dialogue punctuation)
+- run-on sentences that are genuinely hard to read
+- repetition: the same word or phrase repeated close together in a way that clunks
+- clarity: a sentence whose meaning is ambiguous because of how it's built
+
+Don't flag deliberate style: fragments, dialect or informal speech in dialogue, unusual rhythm, or anything the style guide allows. Prefer a few useful notes over many trivial ones (at most 30).
+
+For each note:
+- "quote": copy the problem text EXACTLY from the chapter, with enough surrounding words (usually 3 to 12) that it appears only once
+- "kind": one of spelling, grammar, word-choice, punctuation, run-on, repetition, clarity
+- "message": one short sentence that explains it plainly, e.g. "“Their” is possessive; here you mean the place, “there”."
+- "suggestion": the corrected version of the whole quote, ready to paste in; empty if there's no single fix
+
+Return only JSON: {"notes": [...]}. Return {"notes": []} if the chapter is clean.
+
+Chapter:
+⟦
+${chapter}
+⟧`,
+	};
+}
+
 export const JSON_RETRY = "Return only valid JSON matching this schema, with no other text:";
 
 export function extractEntitiesPrompt(ctx: string, known: string[]): Prompt {

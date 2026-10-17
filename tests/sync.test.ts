@@ -55,3 +55,29 @@ describe("approvedFrom (sync writes without a review step)", () => {
 		expect(a.timeline).toHaveLength(0);
 	});
 });
+
+import { changedLines, revertSynced } from "../src/codex/write";
+import { remapLine } from "../src/views/chaptersModel";
+
+describe("revertSynced (no manual clean-up after a rewrite)", () => {
+	const before = "## Relationships\n- [[Arthur Vane]]: client (ch 1+)\n";
+	const afterSync = "## Relationships\n- [[Arthur Vane]]: client (ch 1-2)\n- [[Arthur Vane]]: rival (ch 3+)\n";
+	it("puts back relationships a sync closed and removes the ones it added", () => {
+		const edits = changedLines(before, "## Relationships\n- [[Arthur Vane]]: client (ch 1-2)\n");
+		expect(edits).toEqual([{ before: "- [[Arthur Vane]]: client (ch 1+)", after: "- [[Arthur Vane]]: client (ch 1-2)" }]);
+		const r = revertSynced(afterSync, [{ line: edits[0].after, restore: edits[0].before }, { line: "- [[Arthur Vane]]: rival (ch 3+)" }]);
+		expect(r.reverted).toBe(2);
+		expect(r.text).toBe(before);
+	});
+	it("leaves lines alone that were changed by hand since", () => {
+		const r = revertSynced("- [[Arthur Vane]]: rival (ch 4+)", [{ line: "- [[Arthur Vane]]: rival (ch 3+)" }]);
+		expect(r.reverted).toBe(0);
+	});
+});
+
+describe("remapLine", () => {
+	const map = new Map([[3, 1], [1, 2], [2, 3]]);
+	it("renumbers a single timeline line", () => expect(remapLine("- ch 3 | status: Injured", map)).toBe("- ch 1 | status: Injured"));
+	it("renumbers a single relationship range", () => expect(remapLine("- [[Arthur Vane]]: rival (ch 3+)", map)).toBe("- [[Arthur Vane]]: rival (ch 1+)"));
+	it("leaves other lines alone", () => expect(remapLine("hello", map)).toBe("hello"));
+});

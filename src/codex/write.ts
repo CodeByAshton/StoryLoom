@@ -70,6 +70,36 @@ export function removeLines(markdown: string, toRemove: string[]): { text: strin
 	return { text: kept.join("\n"), removed };
 }
 
+/** A line a sync wrote: added (removed on re-sync) or edited from `restore` (put back on re-sync). */
+export interface SyncedLine {
+	path: string;
+	line: string;
+	restore?: string;
+}
+
+/** Undo what an earlier sync did to one note: drop the lines it added, put back the lines it edited. */
+export function revertSynced(markdown: string, entries: Pick<SyncedLine, "line" | "restore">[]): { text: string; reverted: number } {
+	const lines = markdown.split("\n");
+	let reverted = 0;
+	const drop = new Set<number>();
+	for (const e of entries) {
+		const i = lines.findIndex((l, idx) => !drop.has(idx) && l.trim() === e.line.trim());
+		if (i === -1) continue; // edited by hand since: leave it
+		if (e.restore !== undefined) lines[i] = e.restore;
+		else drop.add(i);
+		reverted++;
+	}
+	return { text: lines.filter((_, i) => !drop.has(i)).join("\n"), reverted };
+}
+
+/** Lines that differ between two versions of a note with the same line count (what an in-place edit changed). */
+export function changedLines(before: string, after: string): { before: string; after: string }[] {
+	const a = before.split("\n");
+	const b = after.split("\n");
+	if (a.length !== b.length) return [];
+	return a.flatMap((l, i) => (l !== b[i] ? [{ before: l, after: b[i] }] : []));
+}
+
 /**
  * Close any open-ended relationship to `target` so it ends at `endChapter`.
  * `(ch 1+)` -> `(ch 1-6)`; no range -> `(ch 1-6)`. Ranges that start after `endChapter` are left alone.
