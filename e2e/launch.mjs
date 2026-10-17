@@ -1,6 +1,6 @@
 // Connects to an Obsidian started with --remote-debugging-port=9222 (see start.sh).
 import { chromium } from "playwright-core";
-const S = process.env.STORYLOOM_E2E_DIR ?? "/tmp/storyloom-e2e";
+const S = process.env.MOTIF_E2E_DIR ?? "/tmp/motif-e2e";
 export async function launch() {
 	const browser = await chromium.connectOverCDP("http://localhost:9222");
 	const page = browser.contexts()[0].pages().find((p) => p.url().includes("index.html"));

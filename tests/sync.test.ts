@@ -90,3 +90,14 @@ describe("revertSynced undoes in reverse order", () => {
 		expect(revertSynced(text, entries).text).toBe("## Relationships\n");
 	});
 });
+
+describe("revertSynced across renames", () => {
+	it("matches a line whose link a rename left as is, or wrote path-qualified", () => {
+		expect(revertSynced("- [[Old Name]]: rival (ch 3+)", [{ line: "- [[New Name]]: rival (ch 3+)" }]).text).toBe("");
+		expect(revertSynced("- [[People/New Name|Arthur]]: rival (ch 3+)", [{ line: "- [[New Name|Arthur]]: rival (ch 3+)" }]).text).toBe("");
+	});
+	it("leaves it when more than one line differs only in its links", () => {
+		const md = "- [[A]]: rival (ch 3+)\n- [[B]]: rival (ch 3+)";
+		expect(revertSynced(md, [{ line: "- [[C]]: rival (ch 3+)" }]).reverted).toBe(0);
+	});
+});

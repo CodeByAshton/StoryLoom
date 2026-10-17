@@ -6,10 +6,10 @@
 
 *Write your book. Motif keeps track of it.*
 
-[![Obsidian](https://img.shields.io/badge/Obsidian-1.5%2B-7c3aed?logo=obsidian&logoColor=white)](https://obsidian.md)
-[![Version](https://img.shields.io/badge/version-0.1.0-8b5cf6)](manifest.json)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![Bring your own AI](https://img.shields.io/badge/AI-Claude%20%C2%B7%20OpenAI%20%C2%B7%20Ollama-22a06b)](#-connect-an-ai)
+[![Obsidian](https://img.shields.io/badge/Obsidian-1.5%2B-222222?logo=obsidian&logoColor=white)](https://obsidian.md)
+[![Version](https://img.shields.io/badge/version-0.1.0-333333)](manifest.json)
+[![License](https://img.shields.io/badge/license-Apache--2.0-555555)](LICENSE)
+[![Bring your own AI](https://img.shields.io/badge/AI-Claude%20%C2%B7%20OpenAI%20%C2%B7%20Ollama-111111)](#-connect-an-ai)
 
 <img src="docs/screenshots/hero.png" alt="A chapter open in Obsidian, with character names underlined, two writing notes, and the Cast panel showing everyone's state as of this chapter" width="860">
 
@@ -19,28 +19,28 @@
 
 You're on chapter 23. Where was Mara in chapter 9? Does Elias know about the ledger yet? Were those two still friends when the fire happened?
 
-**Motif remembers so you don't have to.** Finish a chapter, click **Sync chapter**, and the AI reads it and records what changed: who moved, who learned what, who stopped trusting whom. Hover any name in your manuscript to see that character *as of the chapter you're in*. It also gives you Sudowrite-style writing tools and a proofreader that underlines the "their" that should be "there".
+**Motif remembers so you don't have to.** Finish a chapter, click **Sync chapter**, and the AI reads it and records what changed: who moved, who learned what, who stopped trusting whom. Hover any name in your manuscript to see that character *as of the chapter you're in*. It also gives you AI writing tools that work on the passage in front of you, and a proofreader that underlines the "their" that should be "there".
 
 It's all plain Markdown in your vault. No hidden database, no lock-in, no subscription to us. And it stays out of your way: a quiet black-and-white interface where type does the work, with Motif's text size adjustable in settings.
 
 ## ✨ What's in the box
 
 ### 🪄 Ask AI, right where you write
-Select a passage, press **⌘K** / **Ctrl+K** (or click the little **Ask AI** pill), and say what you want: *"tighter"*, *"more dread"*, *"show, don't tell"*. A floating glass panel streams the new version in and shows a word-by-word diff. **Tab** keeps it, **Esc** throws it away, and one undo brings the original back. With nothing selected, it writes at the cursor.
+Select a passage, press **⌘K** / **Ctrl+K** (or click the little **Ask AI** pill), and say what you want: *"tighter"*, *"more dread"*, *"show, don't tell"*. A floating panel streams the new version in and shows a word-by-word diff. **Tab** keeps it, **Esc** throws it away, and one undo brings the original back. With nothing selected, it writes at the cursor.
 
 <img src="docs/screenshots/inline.png" alt="The Ask AI panel floating over a paragraph, streaming a tighter rewrite with Replace and Discard buttons" width="760">
 
 ### 🔄 Sync chapter: a story bible that writes itself
 When you finish a chapter, hit **Sync chapter**. You'll find it in the ribbon, at the top of every chapter and in the Cast panel. Motif reads the chapter and writes the changes into your codex: new locations, injuries, secrets learned, alliances made and broken, and new characters as they show up.
 
-- **The chapters are the source of truth.** By default there's nothing to approve. Rewrite the chapter, sync again, and the codex follows. Motif replaces exactly what its last sync wrote and never touches lines you typed by hand.
+- **The chapters are the source of truth.** By default there's nothing to approve (turn on **Review codex changes** in settings if you'd like to check each change first). Rewrite the chapter, sync again, and the codex follows. Motif replaces exactly what its last sync wrote and never touches lines you typed by hand.
 - **It tells you when it's out of date.** A dot on the Sync chapter button means the chapter changed since its last sync.
 - **It survives reordering.** Drag chapter 7 to position 3 and every timeline line and relationship range follows it.
 
 ### 🔍 AI review: a proofreader that stays in its lane
-While it syncs, Motif also proofreads the chapter. It looks for typos, grammar, words used with the wrong meaning (*their/there, affect/effect, peak/peek*), run-on sentences and clunky repetition. **It never touches your story**: no plot opinions, no "have you considered a dragon".
+While it syncs, Motif also proofreads the chapter. It looks for spelling, grammar and punctuation slips, words used with the wrong meaning (*their/there, affect/effect, peak/peek*), run-on sentences, clunky repetition and unclear phrasing. **It never touches your story**: no plot opinions, no "have you considered a dragon".
 
-Each writing note is a wavy underline. Hover it to see what's wrong, then **Fix** it in one click or **Dismiss** it. Turn AI review on or off with the spell-check button at the top of any chapter.
+Each writing note is a wavy underline. Hover it to see what's wrong, then **Fix** it in one click or **Dismiss** it. Turn AI review on or off with the spell-check button at the top of any chapter. To proofread without syncing, run **Run AI review** from the command palette.
 
 <img src="docs/screenshots/review.png" alt="A wavy underline under 'Mara walked the length of the quay' with a card explaining the word choice, a before/after preview, and Fix and Dismiss buttons" width="760">
 
@@ -55,10 +55,11 @@ Four views that share one tab bar and swap in place, so they feel like one app.
 | **Chapters.** A card per chapter with summary, POV, cast and word count. Drag to reorder, or focus a card and press **Alt+←/→** (the codex follows). You can also switch to a **Draft → Revised → Final** board. | **Codex.** Every character, location and piece of lore, with search, type filters and a side peek. |
 | <img src="docs/screenshots/board.png" alt="Chapters board with Draft, Revised and Final columns"> | <img src="docs/screenshots/codex.png" alt="Codex with Mara Winston open in a side peek showing her properties"> |
 | **Timeline.** One lane per character and one column per chapter. Locations are colored bars across the chapters someone stays put; hover any square to see them at that moment. | **Graph.** Your cast as a network. Drag the chapter slider and watch relationships form and fall apart. |
-| <img src="docs/screenshots/timeline.png" alt="Story timeline with location bars across chapters and a hover card"> | <img src="docs/screenshots/graph.png" alt="Story graph with characters, locations and relationship lines, and a floating chapter slider"> |
+| <img src="docs/screenshots/timeline.png" alt="Timeline with location bars across chapters and a hover card"> | <img src="docs/screenshots/graph.png" alt="Graph with characters, locations and relationship lines, and a floating chapter slider"> |
 
 ### 🛠️ And the rest of the toolbox
-- **Writing tools:** Continue writing, Rewrite (2–3 versions), Describe (five senses), Expand, Brainstorm, Summarize chapter, Critique and Continuity check (click an issue to jump to the line). They're in the command palette and on the right-click menu.
+- **Writing tools:** Continue writing, Rewrite (2–3 versions), Describe (five senses), Expand, Brainstorm, Summarize chapter, Critique and Continuity check (click an issue to jump to the line). They're all in the command palette, and the ones for the passage in front of you (Continue, Rewrite, Describe, Expand, Brainstorm) are on the right-click menu too.
+- **Find new codex entries:** scans a chapter for characters, places and lore the codex doesn't have yet.
 - **Story assistant:** a chat that knows your codex and chapter summaries. Type `@` to pull in a character or chapter.
 - **Housekeeping:**
   - New chapter (auto-numbered) and new character, location or lore entry;
@@ -96,7 +97,7 @@ Bring your own. Motif never sends your writing anywhere except the provider you 
 | **Anthropic** (API key) | Pay per use, with prompt caching so long books stay cheap. The default model is `claude-sonnet-5-5`. |
 | **OpenAI · OpenRouter** | Any model they serve. |
 | **Ollama · LM Studio** | Free, private and offline, running on your own machine. |
-| **Custom** | Any OpenAI-compatible endpoint. |
+| **OpenAI-compatible** | Any other OpenAI-compatible endpoint. |
 
 Answers stream in as they're written. With Anthropic, your book's stable context (codex, summaries, style guide) is sent as a cached block, so repeated requests on the same chapter only pay full price for the chapter itself.
 

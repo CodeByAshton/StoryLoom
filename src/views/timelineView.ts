@@ -38,7 +38,7 @@ export class TimelineView extends ItemView {
 		return TIMELINE_VIEW;
 	}
 	getDisplayText() {
-		return "Story timeline";
+		return "Timeline";
 	}
 	getIcon() {
 		return "table";
@@ -114,7 +114,7 @@ export class TimelineView extends ItemView {
 			renderEmpty(root, {
 				icon: this.mode === "characters" ? "users" : "map-pin",
 				title: `No ${this.mode} yet`,
-				body: `Add a ${type} to the codex, or sync a chapter and Motif will suggest them.`,
+				body: `Add a ${type} to the codex, or sync a chapter and Motif adds them as they appear.`,
 				actions: [{ label: `New ${type}`, icon: "plus", cta: true, onClick: () => void this.plugin.newEntity(type) }],
 			});
 			return;

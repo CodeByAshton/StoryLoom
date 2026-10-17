@@ -63,7 +63,7 @@ export class GraphView extends ItemView {
 		return GRAPH_VIEW;
 	}
 	getDisplayText() {
-		return "Story graph";
+		return "Graph";
 	}
 	getIcon() {
 		return "network";
@@ -196,6 +196,7 @@ export class GraphView extends ItemView {
 		}
 		for (const e of entities) this.drawNode(e);
 		if (!this.userMoved) this.fitView(names);
+		else this.svgEl.setAttribute("viewBox", `${this.view.x} ${this.view.y} ${this.view.w} ${this.view.h}`); // a rebuilt shell keeps the user's pan and zoom
 		this.update();
 	}
 

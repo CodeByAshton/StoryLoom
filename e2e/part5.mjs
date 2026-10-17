@@ -1,7 +1,7 @@
 // Claude Code provider (fake CLI + the real CLI with an invalid key) and glass modals.
 import { readFileSync } from "fs";
 import { launch, shot } from "./launch.mjs";
-const S = process.env.STORYLOOM_E2E_DIR ?? "/tmp/storyloom-e2e";
+const S = process.env.MOTIF_E2E_DIR ?? "/tmp/motif-e2e";
 const FAKE = process.env.FAKE_CLAUDE ?? `${S}/fake-claude/claude`; // copy e2e/fixtures/fake-claude there;
 const REAL = process.env.REAL_CLAUDE_ISOLATED ?? `${S}/real-claude-isolated.sh`;
 const { app, page, logs } = await launch();

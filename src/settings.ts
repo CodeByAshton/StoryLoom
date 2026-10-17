@@ -148,11 +148,12 @@ export class MotifSettingTab extends PluginSettingTab {
 			if (s.provider !== "anthropic") {
 				new Setting(containerEl)
 					.setName("Base URL")
-					.setDesc("The /v1 endpoint. Requests go to {base}/chat/completions.")
+					.setDesc("The server's address, ending in /v1 (e.g. http://localhost:11434/v1).")
 					.addText((t) => t.setPlaceholder(PROVIDERS[s.provider].defaults.baseUrl).setValue(cfg.baseUrl).onChange((v) => update({ baseUrl: v.trim() })));
 			}
 			new Setting(containerEl)
 				.setName("Model")
+				.setDesc("The model name your provider uses. Leave empty for the default.")
 				.addText((t) => t.setPlaceholder(PROVIDERS[s.provider].defaults.model).setValue(cfg.model).onChange((v) => update({ model: v.trim() || PROVIDERS[s.provider].defaults.model })));
 		}
 
@@ -200,7 +201,7 @@ export class MotifSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl).setName("Sync and AI review").setHeading();
-		this.toggleSetting("AI review", "Proofread each chapter when you sync it: spelling, grammar, word choice, run-on sentences and repetition. Hover a writing note to fix or dismiss it.", "writingNotes");
+		this.toggleSetting("AI review", "Proofread each chapter when you sync it: spelling, grammar, punctuation, word choice, run-on sentences, repetition and clarity. Hover a writing note to fix or dismiss it.", "writingNotes");
 		this.toggleSetting("Remind me to sync", "When you leave a chapter you've changed since its last sync, offer to sync it.", "remindStateUpdate");
 		this.toggleSetting("Review codex changes", "Approve each change before Sync chapter saves it to the codex. When off, changes are saved right away.", "reviewStateChanges");
 
@@ -208,7 +209,7 @@ export class MotifSettingTab extends PluginSettingTab {
 		this.toggleSetting("Show the Ask AI button", "A small button appears above selections of three or more words.", "askAiButton");
 		this.textSetting("Ask AI shortcut", "Opens Ask AI in the editor, e.g. Mod-k or Mod-Shift-e (Mod is Cmd on macOS, Ctrl elsewhere). Replaces Obsidian's Mod-k (insert link) in notes. Leave empty to turn off. Takes effect after reloading the plugin.", "inlineEditKey");
 		new Setting(containerEl)
-			.setName("Ask AI shortcuts")
+			.setName("Quick instructions")
 			.setDesc("One-tap instructions shown in the Ask AI panel, one per line.")
 			.addTextArea((t) => {
 				t.setValue(s.quickChips.join("\n")).onChange(async (v) => {
@@ -225,7 +226,7 @@ export class MotifSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName("Book").setHeading();
 		this.textSetting("Manuscript folder", "Where your chapter notes live.", "manuscriptFolder");
 		this.textSetting("Codex folder", "Where your characters, locations and lore live.", "codexFolder");
-		this.toggleSetting("Hide the Codex folder", "Keep it out of the file explorer and browse it in the Codex view instead. The notes stay in your vault as plain Markdown.", "hideCodexFolder");
+		this.toggleSetting("Hide the codex folder", "Keep it out of the file explorer and browse it in the Codex view instead. The notes stay in your vault as plain Markdown.", "hideCodexFolder");
 		this.textSetting("Templates folder", "Templates for new chapters, characters, locations and lore.", "templatesFolder");
 		this.textSetting("Book note", "The note with your premise, style guide and voice sample.", "bookPath");
 
@@ -245,7 +246,7 @@ export class MotifSettingTab extends PluginSettingTab {
 		this.toggleSetting("Red underline for spelling", "Spelling notes get a faint red underline. Other writing notes stay gray.", "redSpelling");
 		this.toggleSetting("Underline codex names", "Underline character, location and lore names in chapters. Hover one to see it as of that chapter.", "highlightEntities");
 		this.toggleSetting("Underline outside chapters", "Also underline codex names in notes that aren't chapters.", "highlightOutsideManuscript");
-		this.toggleSetting("Status bar", "Show the current chapter, its writing notes and whether it needs syncing. Click it for chapter actions.", "statusBar");
+		this.toggleSetting("Show status bar item", "Show the current chapter, its writing notes and whether it needs syncing. Click it for chapter actions.", "statusBar");
 		this.toggleSetting("Separate ribbon buttons", "A ribbon button for each view instead of one Motif button with a menu. Takes effect after reloading the plugin.", "separateRibbonButtons");
 		new Setting(containerEl).setName("Graph colors").setDesc("Motif is black and white except where color carries information: the story graph uses these, and the timeline gives each place its own muted tone.");
 		for (const type of ENTITY_TYPES) {
@@ -258,11 +259,11 @@ export class MotifSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl).setName("Advanced").setHeading();
-		this.numberSetting("Temperature", "0 to 1. Higher is more surprising. Newer Claude models ignore this.", "temperature", 0, 2, true);
-		this.numberSetting("Max output tokens", "The longest answer the AI may give. Thinking models need headroom.", "maxTokens", 256, 64000);
+		this.numberSetting("Temperature", "0 to 2. Higher is more surprising. Newer Claude models ignore this.", "temperature", 0, 2, true);
+		this.numberSetting("Max output tokens", "The longest answer the AI may give. Raise it if long answers get cut off.", "maxTokens", 256, 64000);
 		this.numberSetting("Context budget", "How many characters of book context go with each request.", "contextBudget", 4000, 2000000);
 		this.toggleSetting("Stream responses", "Show text as it's written. Turns itself off for the session if a provider blocks it (e.g. a local server without CORS enabled).", "stream");
-		this.toggleSetting("Save chats", "Keep Story assistant conversations in .motif/chats/.", "saveChats");
+		this.toggleSetting("Save chats", "Keep Story assistant conversations in .motif/chats/ (a hidden folder; open it from your file manager).", "saveChats");
 		this.toggleSetting("Show the prompt before sending", "Preview everything that will be sent to the AI before each request.", "showContextBeforeSending");
 		this.toggleSetting("Debug mode", "Log context sizes and requests to the developer console.", "debug");
 	}

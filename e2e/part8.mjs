@@ -64,7 +64,7 @@ ok((await page.locator('.side-dock-ribbon-action[aria-label="Motif"]').count()) 
 await page.locator('.side-dock-ribbon-action[aria-label="Motif"]').click();
 await sleep(300);
 const items = await page.locator(".menu .menu-item-title").allInnerTexts();
-ok(["Chapters", "Codex", "Story timeline", "Story graph", "Cast", "Story assistant", "New chapter", "New character", "Setup guide", "Settings"].every((x) => items.includes(x)), `menu lists views and actions: ${items.join(", ")}`);
+ok(["Chapters", "Codex", "Timeline", "Graph", "Cast", "Story assistant", "New chapter", "New character", "Setup guide", "Settings"].every((x) => items.includes(x)), `menu lists views and actions: ${items.join(", ")}`);
 await shot(page, "p8-menu");
 await page.locator(".menu .menu-item", { hasText: /^Codex$/ }).click();
 await sleep(500);

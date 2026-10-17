@@ -3,7 +3,7 @@ import { Prec, StateEffect, StateField, Transaction, type EditorState, type Exte
 import { Decoration, EditorView, keymap, showTooltip, ViewPlugin, type DecorationSet, type Tooltip, type TooltipView, type ViewUpdate } from "@codemirror/view";
 import { editorInfoField, Scope, setIcon } from "obsidian";
 import { cleanProse, inlineEditPrompt, REWRITE_PRESETS } from "../context/prompts";
-import { friendlyError } from "../llm/types";
+import { friendlyError, LLMError } from "../llm/types";
 import type MotifPlugin from "../main";
 import { diffWords, similarity } from "./diff";
 import { isSettingsError, openSettings } from "../ui";
@@ -154,6 +154,10 @@ export class InlineEditController {
 	}
 
 	private async generate(view: EditorView, st: InlineEditState, instruction: string): Promise<string> {
+		// Register the request before any await, so Stop also cancels it while the context loads.
+		this.aborts.get(view)?.abort();
+		const abort = new AbortController();
+		this.aborts.set(view, abort);
 		const file = view.state.field(editorInfoField, false)?.file ?? null;
 		const doc = view.state.doc.toString();
 		const before = doc.slice(Math.max(0, st.from - 1500), st.from);
@@ -168,9 +172,7 @@ export class InlineEditController {
 			after,
 			insert: st.insert && !refining,
 		});
-		this.aborts.get(view)?.abort();
-		const abort = new AbortController();
-		this.aborts.set(view, abort);
+		if (abort.signal.aborted) throw new LLMError("aborted", "Stopped.");
 		// Stream into the panel, at most one update per frame.
 		let pending: string | null = null;
 		const flush = () => {
@@ -196,7 +198,7 @@ export class InlineEditController {
 	}
 }
 
-// ---------- Floating glass panel ----------
+// ---------- Floating panel ----------
 
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 

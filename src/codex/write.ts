@@ -84,13 +84,25 @@ export function revertSynced(markdown: string, entries: Pick<SyncedLine, "line" 
 	const drop = new Set<number>();
 	// Undo in reverse: a line added and then closed by the same sync must be reopened before it's removed.
 	for (const e of [...entries].reverse()) {
-		const i = lines.findIndex((l, idx) => !drop.has(idx) && l.trim() === e.line.trim());
-		if (i === -1) continue; // edited by hand since: leave it
+		let i = lines.findIndex((l, idx) => !drop.has(idx) && l.trim() === e.line.trim());
+		if (i === -1) {
+			// A rename may have changed the links (or left them alone when the record was relinked):
+			// accept a line that differs only in its link targets, if exactly one does.
+			const key = linkless(e.line);
+			const hits = lines.flatMap((l, idx) => (!drop.has(idx) && linkless(l) === key ? [idx] : []));
+			if (hits.length !== 1) continue; // edited by hand since: leave it
+			i = hits[0];
+		}
 		if (e.restore !== undefined) lines[i] = e.restore;
 		else drop.add(i);
 		reverted++;
 	}
 	return { text: lines.filter((_, i) => !drop.has(i)).join("\n"), reverted };
+}
+
+/** A line with its wikilink targets blanked (aliases kept), for matching across renames. */
+function linkless(line: string): string {
+	return line.trim().replace(/\[\[[^\]|]*(\|[^\]]*)?\]\]/g, (_, alias: string | undefined) => `[[${alias ?? ""}]]`);
 }
 
 /** Lines that differ between two versions of a note with the same line count (what an in-place edit changed). */

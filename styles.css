@@ -654,7 +654,7 @@ body.sl-red-spelling .sl-wn-spelling { text-decoration-color: color-mix(in srgb,
 }
 
 /* Faces (Locations mode): monochrome outline circles */
-.sl-avatar, .sl-tl-avatar {
+.sl-tl-avatar {
 	display: inline-grid;
 	place-items: center;
 	flex-shrink: 0;
@@ -665,8 +665,6 @@ body.sl-red-spelling .sl-wn-spelling { text-decoration-color: color-mix(in srgb,
 	font-weight: var(--font-semibold);
 	font-variant-numeric: tabular-nums;
 }
-.sl-avatar.is-sm { width: 20px; height: 20px; font-size: calc(9px * var(--sl-scale)); }
-.sl-avatar.is-lg { width: 52px; height: 52px; font-size: var(--sl-t-lg); }
 .sl-tl-avatar { width: 32px; height: 32px; font-size: var(--sl-t-xs); }
 .sl-tl-avatar.is-small { width: 24px; height: 24px; font-size: calc(10px * var(--sl-scale)); margin-left: -5px; box-shadow: 0 0 0 2px var(--sl-base); }
 .sl-tl-avatar.is-small:first-child { margin-left: 0; }

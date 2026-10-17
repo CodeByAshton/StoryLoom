@@ -84,7 +84,7 @@ export class ReportModal extends Modal {
 			row.addEventListener("click", () => {
 				if (!i.quote) return;
 				if (this.opts.onJump?.(i.quote)) this.close();
-				else new Notice("Couldn't find that line in the chapter. It may have been paraphrased.");
+				else new Notice("Motif: couldn't find that line in the chapter. It may have been paraphrased.");
 			});
 		}
 	}
@@ -97,7 +97,7 @@ export class ReportModal extends Modal {
 		if (markdown) {
 			right.createEl("button", { text: "Copy" }).addEventListener("click", async () => {
 				await navigator.clipboard.writeText(markdown);
-				new Notice("Copied.");
+				new Notice("Motif: copied.");
 			});
 		}
 	}

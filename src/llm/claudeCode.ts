@@ -175,6 +175,7 @@ export class ClaudeCodeClient implements LLMClient {
 
 	private run(host: ClaudeCodeHost, binary: string, sysFile: string, req: CompleteRequest, onText: OnText, signal?: AbortSignal): Promise<string> {
 		return new Promise<string>((resolve, reject) => {
+			if (signal?.aborted) return reject(new LLMError("aborted", "Stopped."));
 			const parser = new StreamJsonParser();
 			let stderr = "";
 			let settled = false;

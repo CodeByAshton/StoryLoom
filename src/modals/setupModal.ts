@@ -143,7 +143,7 @@ export class SetupModal extends Modal {
 		} else if (s.provider === "anthropic") {
 			const i = field("API key", cfg.apiKey, "sk-ant-…", (v) => void save({ apiKey: v }), true);
 			window.setTimeout(() => i.focus(), 0);
-			detail.createEl("p", { cls: "storyloom-muted", text: "Stored only in this vault's plugin settings file." });
+			detail.createEl("p", { cls: "storyloom-muted", text: "Stored unencrypted in this vault's plugin settings. Don't sync or share that file." });
 		} else if (s.provider === "ollama") {
 			field("Model", cfg.model, PROVIDERS.ollama.defaults.model, (v) => void save({ model: v || PROVIDERS.ollama.defaults.model }));
 			detail.createEl("p", { cls: "storyloom-muted", text: "Start Ollama and pull a model first, e.g. `ollama pull llama3.1`." });

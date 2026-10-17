@@ -125,13 +125,13 @@ export class TimelineEntryModal extends Modal {
 	private async save() {
 		const line = this.line();
 		if (!line) {
-			new Notice("Fill in at least one field.");
+			new Notice("Motif: fill in at least one field.");
 			return;
 		}
 		const f = this.app.vault.getAbstractFileByPath(this.entity.path);
 		if (!(f instanceof TFile)) return;
 		await this.app.vault.process(f, (text) => appendToSection(text, "Timeline", [line]));
-		new Notice(`Added to ${this.entity.name}'s timeline.`);
+		new Notice(`Motif: added to ${this.entity.name}'s timeline.`);
 		this.close();
 	}
 

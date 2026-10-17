@@ -1,4 +1,4 @@
-import { debounce, ItemView, TFile, type WorkspaceLeaf } from "obsidian";
+import { debounce, ItemView, Platform, TFile, type WorkspaceLeaf } from "obsidian";
 import { stripFrontmatter, stripWikilinks } from "../codex/parse";
 import type { ChapterInfo } from "../codex/types";
 import type MotifPlugin from "../main";
@@ -29,6 +29,8 @@ export class ChaptersView extends ItemView {
 	private scans = new Map<string, Scan>();
 	private dragging: string | null = null;
 	private seq = 0;
+	/** The card to focus after the next render (keyboard reordering moves it). */
+	private focusNext: number | null = null;
 	refresh = debounce(() => void this.render(), 250, true);
 
 	constructor(
@@ -79,6 +81,8 @@ export class ChaptersView extends ItemView {
 		if (seq !== this.seq) return;
 
 		const root = this.contentEl;
+		// Re-rendering rebuilds every card: keep keyboard focus on the same one.
+		const focused = root.contains(document.activeElement) ? (document.activeElement as HTMLElement).closest<HTMLElement>(".sl-ch-card")?.dataset.path : undefined;
 		root.empty();
 		root.addClass("sl-ch");
 
@@ -113,13 +117,17 @@ export class ChaptersView extends ItemView {
 		if (this.mode === "outline") this.renderOutline(body, chapters, scans);
 		else this.renderBoard(body, chapters, scans);
 		this.markNow();
+		const cards = Array.from(body.querySelectorAll<HTMLElement>(".sl-ch-card"));
+		const target = this.focusNext !== null ? cards[this.focusNext] : cards.find((c) => c.dataset.path === focused);
+		this.focusNext = null;
+		target?.focus();
 	}
 
 	// ---------- Outline: drag to reorder ----------
 
 	private renderOutline(body: HTMLElement, chapters: ChapterInfo[], scans: Map<string, Scan>) {
 		const hint = body.createDiv({ cls: "sl-ch-hint" });
-		hint.createSpan({ text: "Drag cards to reorder (or focus one and press Alt+← / →). Chapter numbers and codex timelines update to match." });
+		hint.createSpan({ text: `Drag cards to reorder (or focus one and press ${Platform.isMacOS ? "Option" : "Alt"}+← / →). Chapter numbers and codex timelines update to match.` });
 		const grid = body.createDiv({ cls: "sl-ch-grid" });
 		const maxWords = Math.max(1, ...[...scans.values()].map((s) => s.words));
 		chapters.forEach((c, i) => {
@@ -134,7 +142,11 @@ export class ChaptersView extends ItemView {
 				ev.preventDefault();
 				const order = chapters.map((x) => x.path);
 				[order[i], order[j]] = [order[j], order[i]];
-				void this.plugin.reorderChapters(order);
+				void this.plugin.reorderChapters(order).then(() => {
+					// Keep focus on the moved chapter so Alt+arrow can keep moving it.
+					this.focusNext = this.plugin.index.chapters[j]?.title === c.title ? j : i;
+					return this.render();
+				});
 			});
 			card.addEventListener("dragover", (ev) => {
 				if (!this.dragging || this.dragging === c.path) return;

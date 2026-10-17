@@ -1,6 +1,6 @@
 #!/bin/bash
 # Restart Obsidian on display :99 with a fresh copy of the vault.
-S=${STORYLOOM_E2E_DIR:-/tmp/storyloom-e2e}
+S=${MOTIF_E2E_DIR:-/tmp/motif-e2e}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 OBSIDIAN=${OBSIDIAN_BIN:-$S/obs/squashfs-root/obsidian}
 pkill -f -- "$OBSIDIAN --no-sandbox"; sleep 1

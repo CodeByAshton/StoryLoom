@@ -47,6 +47,7 @@ import { CAST_VIEW, CastView } from "./views/castView";
 import { CHAT_VIEW, ChatView } from "./views/chatView";
 import { CODEX_VIEW, CodexView } from "./views/codexView";
 import { CHAPTERS_VIEW, ChaptersView } from "./views/chaptersView";
+import { plural } from "./views/nav";
 import { remapLine, remapNote, renumberedBasename, reorderMapping, type ChapterStatus } from "./views/chaptersModel";
 import { GRAPH_VIEW, GraphView } from "./views/graphView";
 import { TIMELINE_VIEW, TimelineView } from "./views/timelineView";
@@ -63,8 +64,8 @@ export const SAMPLE_FLAG = "motif_sample";
 const VIEWS: { type: string; name: string; icon: string; where: "tab" | "right" }[] = [
 	{ type: CHAPTERS_VIEW, name: "Chapters", icon: "layout-grid", where: "tab" },
 	{ type: CODEX_VIEW, name: "Codex", icon: "library", where: "tab" },
-	{ type: TIMELINE_VIEW, name: "Story timeline", icon: "table", where: "tab" },
-	{ type: GRAPH_VIEW, name: "Story graph", icon: "network", where: "tab" },
+	{ type: TIMELINE_VIEW, name: "Timeline", icon: "table", where: "tab" },
+	{ type: GRAPH_VIEW, name: "Graph", icon: "network", where: "tab" },
 	{ type: CAST_VIEW, name: "Cast", icon: "users", where: "right" },
 	{ type: CHAT_VIEW, name: "Story assistant", icon: "message-circle", where: "right" },
 ];
@@ -113,6 +114,7 @@ export default class MotifPlugin extends Plugin {
 		this.registerEvent(this.app.vault.on("rename", (f, old) => void this.onRename(f.path, old)));
 		this.registerEvent(this.app.vault.on("delete", (f) => void this.onDelete(f.path)));
 		this.registerEvent(this.app.workspace.on("file-open", (f) => void this.onFileOpen(f)));
+		this.registerEvent(this.app.workspace.on("window-open", (win) => this.applyColors(win.doc.body)));
 		this.app.workspace.onLayoutReady(async () => {
 			await this.index.load((ref) => this.registerEvent(ref));
 			if (!this.settings.onboarded) this.openSetup();
@@ -127,9 +129,11 @@ export default class MotifPlugin extends Plugin {
 
 	onunload() {
 		document.getElementById("storyloom-hide-codex")?.remove();
-		for (const type of Object.keys(this.settings.entityColors)) document.body.style.removeProperty(`--storyloom-${type}`);
-		document.body.style.removeProperty("--sl-scale");
-		document.body.removeClass("sl-red-spelling");
+		for (const b of [document.body, ...this.popoutBodies()]) {
+			for (const type of Object.keys(this.settings.entityColors)) b.style.removeProperty(`--storyloom-${type}`);
+			b.style.removeProperty("--sl-scale");
+			b.removeClass("sl-red-spelling");
+		}
 	}
 
 	/**
@@ -159,6 +163,7 @@ export default class MotifPlugin extends Plugin {
 		menu.addItem((i) => i.setTitle("New chapter").setIcon("file-plus").onClick(() => void this.newChapter()));
 		menu.addItem((i) => i.setTitle("New character").setIcon("user-plus").onClick(() => void this.newEntity("character")));
 		menu.addItem((i) => i.setTitle("New location").setIcon("map-pin").onClick(() => void this.newEntity("location")));
+		menu.addItem((i) => i.setTitle("New lore entry").setIcon("scroll-text").onClick(() => void this.newEntity("lore")));
 		menu.addSeparator();
 		menu.addItem((i) => i.setTitle("AI review").setIcon("spell-check").setChecked(this.settings.writingNotes).onClick(() => void this.setAiReview(!this.settings.writingNotes)));
 		menu.addItem((i) => i.setTitle("Setup guide").setIcon("sparkles").onClick(() => this.openSetup()));
@@ -206,7 +211,7 @@ export default class MotifPlugin extends Plugin {
 				const r = this.reviewButtons.get(view);
 				if (r) {
 					r.toggleClass("sl-on", this.settings.writingNotes);
-					r.setAttr("aria-label", this.settings.writingNotes ? "AI review is on: spelling, grammar and word choice are checked when you sync. Click to turn off." : "AI review is off. Click to turn on.");
+					r.setAttr("aria-label", this.settings.writingNotes ? "AI review is on: each chapter is proofread when you sync it. Click to turn off." : "AI review is off. Click to turn on.");
 				}
 				this.headerButtons.get(view)?.toggleClass("is-stale", isChapter && this.isStale(view.file?.path));
 			}
@@ -297,7 +302,7 @@ export default class MotifPlugin extends Plugin {
 		if (file && this.index.chapterForPath(file.path)) {
 			menu.addItem((i) => i.setTitle("Sync chapter").setIcon("refresh-cw").onClick(() => void this.updateStoryState(file)));
 			menu.addItem((i) => i.setTitle("Summarize chapter").setIcon("align-left").onClick(() => void this.summarize(file)));
-			menu.addItem((i) => i.setTitle("Check writing").setIcon("spell-check").onClick(() => void this.checkWriting(file, this.activeEditor() ?? undefined)));
+			menu.addItem((i) => i.setTitle("Run AI review").setIcon("spell-check").onClick(() => void this.checkWriting(file, this.activeEditor() ?? undefined)));
 			if (this.notesFor(file.path).length) {
 				menu.addItem((i) =>
 					i.setTitle("Next writing note").setIcon("arrow-down-to-dot").onClick(() => {
@@ -312,13 +317,29 @@ export default class MotifPlugin extends Plugin {
 			menu.addItem((i) => i.setTitle("Show in Chapters").setIcon("layout-grid").onClick(() => void this.openView(CHAPTERS_VIEW, "tab")));
 		}
 		menu.addSeparator();
-		menu.addItem((i) => i.setTitle("Cast").setIcon("users").onClick(() => void this.openView(CAST_VIEW, "right")));
+		menu.addItem((i) => i.setTitle("Open cast").setIcon("users").onClick(() => void this.openView(CAST_VIEW, "right")));
 		return menu;
 	}
 
 	async loadSettings() {
-		const data = (await this.loadData()) ?? {};
+		const data = (await this.loadData()) ?? (await this.legacyData()) ?? {};
 		this.settings = { ...DEFAULT_SETTINGS, ...data, entityColors: { ...DEFAULT_SETTINGS.entityColors, ...(data.entityColors ?? {}) } };
+	}
+
+	/** Settings saved under the plugin's old id (Storyloom), carried over the first time Motif loads. */
+	private async legacyData(): Promise<Record<string, any> | null> {
+		const path = normalizePath(`${this.app.vault.configDir}/plugins/storyloom/data.json`);
+		try {
+			if (!(await this.app.vault.adapter.exists(path))) return null;
+			const data = JSON.parse(await this.app.vault.adapter.read(path));
+			if (data && typeof data === "object") {
+				await this.saveData(data);
+				return data;
+			}
+		} catch {
+			// Unreadable old settings: start fresh.
+		}
+		return null;
 	}
 
 	async saveSettings() {
@@ -337,10 +358,23 @@ export default class MotifPlugin extends Plugin {
 		return createClient(this.settings, http, (url, init) => window.fetch(url, init), this.claudeHost);
 	}
 
-	applyColors() {
-		for (const [type, color] of Object.entries(this.settings.entityColors)) document.body.style.setProperty(`--storyloom-${type}`, color);
-		document.body.style.setProperty("--sl-scale", String({ small: 0.92, default: 1, large: 1.1 }[this.settings.textSize] ?? 1));
-		document.body.toggleClass("sl-red-spelling", this.settings.redSpelling);
+	/** Entity colours, text size and spelling colour, on the main window and any pop-out windows. */
+	applyColors(body?: HTMLElement) {
+		const bodies = body ? [body] : [document.body, ...this.popoutBodies()];
+		for (const b of bodies) {
+			for (const [type, color] of Object.entries(this.settings.entityColors)) b.style.setProperty(`--storyloom-${type}`, color);
+			b.style.setProperty("--sl-scale", String({ small: 0.92, default: 1, large: 1.1 }[this.settings.textSize] ?? 1));
+			b.toggleClass("sl-red-spelling", this.settings.redSpelling);
+		}
+	}
+
+	private popoutBodies(): HTMLElement[] {
+		const bodies = new Set<HTMLElement>();
+		this.app.workspace.iterateAllLeaves((l) => {
+			const b = l.view.containerEl.ownerDocument?.body;
+			if (b && b !== document.body) bodies.add(b);
+		});
+		return [...bodies];
 	}
 
 	rememberInstruction(text: string) {
@@ -523,7 +557,7 @@ export default class MotifPlugin extends Plugin {
 		editorCmd("continuity-check", "Check continuity", (e, f) => this.continuity(f, e));
 		this.addCommand({
 			id: "check-writing",
-			name: "Check writing",
+			name: "Run AI review",
 			editorCheckCallback: (checking, editor, ctx) => {
 				const f = ctx.file;
 				if (!f || !this.index.chapterForPath(f.path)) return false;
@@ -558,17 +592,17 @@ export default class MotifPlugin extends Plugin {
 		this.addCommand({ id: "open-chapters", name: "Open chapters", callback: () => void this.openView(CHAPTERS_VIEW, "tab") });
 		this.addCommand({ id: "open-codex", name: "Open codex", callback: () => void this.openView(CODEX_VIEW, "tab") });
 		this.addCommand({ id: "open-cast", name: "Open cast", callback: () => void this.openView(CAST_VIEW, "right") });
-		this.addCommand({ id: "open-graph", name: "Open story graph", callback: () => void this.openView(GRAPH_VIEW, "tab") });
-		this.addCommand({ id: "open-timeline", name: "Open story timeline", callback: () => void this.openView(TIMELINE_VIEW, "tab") });
+		this.addCommand({ id: "open-graph", name: "Open graph", callback: () => void this.openView(GRAPH_VIEW, "tab") });
+		this.addCommand({ id: "open-timeline", name: "Open timeline", callback: () => void this.openView(TIMELINE_VIEW, "tab") });
 		this.addCommand({ id: "open-chat", name: "Open story assistant", callback: () => void this.openView(CHAT_VIEW, "right") });
 
 		this.addCommand({ id: "new-chapter", name: "New chapter", callback: () => void this.newChapter() });
 		for (const type of ["character", "location", "lore"]) {
-			this.addCommand({ id: `new-${type}`, name: `New ${type}`, callback: () => void this.newEntity(type) });
+			this.addCommand({ id: `new-${type}`, name: type === "lore" ? "New lore entry" : `New ${type}`, callback: () => void this.newEntity(type) });
 		}
 		this.addCommand({ id: "next-chapter", name: "Go to next chapter", callback: () => void this.stepChapter(1) });
 		this.addCommand({ id: "previous-chapter", name: "Go to previous chapter", callback: () => void this.stepChapter(-1) });
-		this.addCommand({ id: "word-count", name: "Word count by chapter", callback: () => void this.showWordCounts() });
+		this.addCommand({ id: "word-count", name: "Show word count by chapter", callback: () => void this.showWordCounts() });
 		this.addCommand({ id: "export-manuscript", name: "Export manuscript", callback: () => void this.exportManuscript() });
 		this.addCommand({ id: "clear-sample-content", name: "Clear sample content", callback: () => void this.clearSample() });
 		this.addCommand({ id: "rebuild-index", name: "Refresh codex", callback: () => void this.index.rebuild() });
@@ -589,8 +623,8 @@ export default class MotifPlugin extends Plugin {
 				add("Motif: Continue writing", "pen-line", () => void this.continueWriting(editor, file));
 				if (sel) {
 					add("Motif: Rewrite selection", "replace", () => void this.rewrite(editor, file));
-					add("Motif: Describe", "eye", () => void this.describe(editor, file));
-					add("Motif: Expand", "unfold-vertical", () => void this.expand(editor, file));
+					add("Motif: Describe selection", "eye", () => void this.describe(editor, file));
+					add("Motif: Expand selection", "unfold-vertical", () => void this.expand(editor, file));
 				}
 				add("Motif: Brainstorm", "lightbulb", () => void this.brainstorm(editor, file));
 			}),
@@ -636,7 +670,7 @@ export default class MotifPlugin extends Plugin {
 		}
 		const passage = editor.getSelection();
 		new ResultModal(this.app, {
-			title: `Rewrite — ${choice.replace("…", "")}`,
+			title: `Rewrite: ${choice.replace("…", "").toLowerCase()}`,
 			editor,
 			perItemButtons: true,
 			run: async (extra) => {
@@ -756,7 +790,7 @@ export default class MotifPlugin extends Plugin {
 			this.refreshHeaderSync();
 		}
 		return this.once(`notes:${file.path}`, "checking this chapter", async () => {
-			const notice = new Notice("Motif: checking the writing…", 0);
+			const notice = new Notice("Motif: running AI review…", 0);
 			try {
 				const notes = await this.proofread(file, await this.fileText(file, editor));
 				notice.hide();
@@ -812,12 +846,15 @@ export default class MotifPlugin extends Plugin {
 			// Record what was written even if a write fails partway, so the next sync can still replace it.
 			const written: SyncedLine[] = [];
 			let replaced = 0;
+			let removed = false;
 			let res: Awaited<ReturnType<typeof applyChanges>>;
 			try {
 				replaced = await removeSyncedLines(this.app, previous);
+				removed = true;
 				res = await applyChanges(this.app, this.index, this.settings, approved, written);
 			} finally {
-				this.settings.syncedLines[file.path] = written;
+				// If removing the old lines failed partway, keep their record so the next sync can finish the job.
+				this.settings.syncedLines[file.path] = removed ? written : [...previous, ...written];
 				await this.saveData(this.settings);
 			}
 			await this.markStateSynced(file, text);
@@ -857,7 +894,7 @@ export default class MotifPlugin extends Plugin {
 		const frag = document.createDocumentFragment();
 		frag.createSpan({ text: "Motif: AI review is on. Chapters are proofread when you sync them." });
 		if (unchecked && file) {
-			const b = frag.createEl("button", { text: "Check writing now", cls: "storyloom-notice-btn mod-cta" });
+			const b = frag.createEl("button", { text: "Run AI review now", cls: "storyloom-notice-btn mod-cta" });
 			b.addEventListener("click", () => void this.checkWriting(file, this.editorFor(file) ?? undefined));
 		}
 		new Notice(frag, 8000);
@@ -1002,11 +1039,12 @@ export default class MotifPlugin extends Plugin {
 		if (changed) await this.saveData(s);
 	}
 
-	/** A deleted chapter takes its sync status and writing notes with it. */
+	/** A deleted chapter takes its sync status, sync record and writing notes with it (its codex lines stay). */
 	private async onDelete(path: string) {
 		const s = this.settings;
-		if (!(path in s.stateSynced) && !(path in s.chapterNotes)) return;
+		if (!(path in s.stateSynced) && !(path in s.chapterNotes) && !(path in s.syncedLines)) return;
 		delete s.stateSynced[path];
+		delete s.syncedLines[path];
 		delete s.chapterNotes[path];
 		await this.saveData(s);
 	}
@@ -1092,7 +1130,7 @@ export default class MotifPlugin extends Plugin {
 
 	async stepChapter(dir: 1 | -1) {
 		const chapters = this.index.chapters;
-		if (!chapters.length) return new Notice("No chapters yet.");
+		if (!chapters.length) return new Notice("Motif: no chapters yet.");
 		const cur = this.index.chapterForPath(this.activeMarkdownFile()?.path);
 		const idx = cur ? chapters.indexOf(cur) + dir : dir > 0 ? 0 : chapters.length - 1;
 		const target = chapters[idx];
@@ -1150,13 +1188,16 @@ export default class MotifPlugin extends Plugin {
 		const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
 		const path = normalizePath(`Exports/${safeFileName(bookTitle)} ${stamp}.md`);
 		const file = await this.app.vault.create(path, parts.join("\n\n") + "\n");
-		new Notice(`Exported ${this.index.chapters.length} chapters to ${path}`);
+		new Notice(`Motif: exported ${plural(this.index.chapters.length, "chapter")} to ${path}.`);
 		await this.app.workspace.getLeaf("tab").openFile(file);
 	}
 
 	async clearSample() {
-		const files = this.app.vault.getMarkdownFiles().filter((f) => this.app.metadataCache.getFileCache(f)?.frontmatter?.[SAMPLE_FLAG] === true);
-		if (!files.length) return new Notice("No sample content found.");
+		const files = this.app.vault.getMarkdownFiles().filter((f) => {
+			const fm = this.app.metadataCache.getFileCache(f)?.frontmatter;
+			return fm?.[SAMPLE_FLAG] === true || fm?.storyloom_sample === true; // (the old name, for vaults made before the rename)
+		});
+		if (!files.length) return new Notice("Motif: no sample content found.");
 		const ok = await ConfirmModal.ask(this.app, {
 			title: "Clear sample content?",
 			cta: "Move to trash",

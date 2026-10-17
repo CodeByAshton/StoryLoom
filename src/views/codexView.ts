@@ -66,6 +66,8 @@ export class CodexView extends ItemView {
 	private render() {
 		const root = this.contentEl;
 		const keepFocus = document.activeElement?.classList.contains("sl-cx-search");
+		// Re-rendering rebuilds every card: keep keyboard focus on the same one.
+		const focusedCard = root.contains(document.activeElement) ? (document.activeElement as HTMLElement).closest<HTMLElement>(".sl-cx-card")?.dataset.name : undefined;
 		root.empty();
 		root.addClass("sl-cx");
 		const all = this.plugin.index.sortedEntities();
@@ -110,12 +112,12 @@ export class CodexView extends ItemView {
 
 		const body = root.createDiv({ cls: `sl-cx-body${this.selected ? " has-detail" : ""}` });
 		const gridEl = body.createDiv({ cls: "sl-cx-grid" });
-		this.renderGrid(gridEl);
+		this.renderGrid(gridEl, focusedCard);
 		const sel = this.selected ? this.plugin.index.entities.get(this.selected) : undefined;
 		if (sel) this.renderDetail(body.createDiv({ cls: "sl-cx-detail" }), sel);
 	}
 
-	private renderGrid(grid: HTMLElement) {
+	private renderGrid(grid: HTMLElement, focusedCard?: string) {
 		grid.empty();
 		const list = this.filtered();
 		if (!list.length) {
@@ -141,7 +143,8 @@ export class CodexView extends ItemView {
 		}
 		list.forEach((e, i) => {
 			const s = resolveState(e, Infinity);
-			const card = focusable(grid.createDiv({ cls: `sl-cx-card storyloom-type-${e.type}${this.selected === e.name ? " is-selected" : ""}` }));
+			const card = focusable(grid.createDiv({ cls: `sl-cx-card storyloom-type-${e.type}${this.selected === e.name ? " is-selected" : ""}`, attr: { "data-name": e.name } }));
+			if (e.name === focusedCard) window.requestAnimationFrame(() => card.focus());
 			card.style.animationDelay = `${Math.min(i, 20) * 22}ms`;
 			const head = card.createDiv({ cls: "sl-cx-card-head" });
 			const t = head.createDiv({ cls: "sl-cx-card-title" });

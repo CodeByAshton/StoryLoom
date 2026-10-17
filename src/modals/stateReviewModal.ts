@@ -123,7 +123,7 @@ export class StateReviewModal extends Modal {
 
 	onOpen() {
 		this.modalEl.addClass("storyloom-review-modal");
-		this.titleEl.setText(`Review sync — Chapter ${this.chapter}`);
+		this.titleEl.setText(`Review sync: chapter ${this.chapter}`);
 		const { groups, rels, entities } = this.rows;
 		const c = this.contentEl;
 		if (!groups.length && !rels.length && !entities.length) {

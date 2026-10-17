@@ -282,13 +282,13 @@ export class ChatView extends ItemView {
 		setIcon(copy, "copy");
 		copy.addEventListener("click", async () => {
 			await navigator.clipboard.writeText(text);
-			new Notice("Copied.");
+			new Notice("Motif: copied.");
 		});
 		const ins = bar.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Insert into note" } });
 		setIcon(ins, "text-cursor-input");
 		ins.addEventListener("click", () => {
 			const editor = this.plugin.activeEditor();
-			if (!editor) return new Notice("Open a note to insert into.");
+			if (!editor) return new Notice("Motif: open a note to insert into.");
 			editor.replaceRange(text, editor.getCursor());
 			const leaf = this.app.workspace.getLeavesOfType("markdown").find((l) => (l.view as MarkdownView).editor === editor);
 			if (leaf) this.app.workspace.setActiveLeaf(leaf, { focus: true });

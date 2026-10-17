@@ -2,12 +2,11 @@ import { setIcon } from "obsidian";
 import { stripWikilinks } from "../codex/parse";
 import { resolveState } from "../codex/state";
 import type { Entity } from "../codex/types";
-import { initials } from "./timelineModel";
 import { focusable } from "../ui";
 
 /**
- * Notion-style building blocks for side panels: property rows (icon · name · value), small tags and
- * solid avatars. Flat, typographic, no boxes — the panel reads like a page, not a stack of cards.
+ * Building blocks for side panels: property rows (name · value) and small outline tags.
+ * Flat and typographic, no boxes: the panel reads like a page, not a stack of cards.
  */
 
 export const FIELD_ICONS: Record<string, string> = { location: "map-pin", with: "users", status: "activity", knows: "lightbulb", note: "sticky-note", role: "user-round" };
@@ -32,15 +31,9 @@ export function renderProps(parent: HTMLElement, rows: PropRow[]): HTMLElement {
 	return list;
 }
 
-/** A Notion select-option pill. Coloured by the nearest `--sl-color` (entity type), or neutral grey. */
+/** A small outline tag; `is-strong` fills it for emphasis. */
 export function tag(parent: HTMLElement, text: string, cls = ""): HTMLElement {
 	return parent.createSpan({ cls: `sl-tag ${cls}`.trim(), text });
-}
-
-export function avatar(parent: HTMLElement, name: string, hue: number, size: "sm" | "md" | "lg" = "sm"): HTMLElement {
-	const a = parent.createSpan({ cls: `sl-avatar is-${size}`, text: initials(name) });
-	a.style.setProperty("--hue", String(hue));
-	return a;
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -90,8 +83,10 @@ export function stateRows(e: Entity, asOf: number, handlers: EntityRowHandlers =
 				cell.addClass("is-text");
 				for (const r of s.relationships) {
 					const line = cell.createDiv({ cls: "sl-prop-line" });
-					const t = focusable(line.createSpan({ cls: "sl-prop-link", text: r.target }));
-					if (handlers.openLink) t.addEventListener("click", () => handlers.openLink?.(r.target));
+					// Only a target something can open looks and acts like a link.
+					const open = handlers.openLink;
+					if (open) focusable(line.createSpan({ cls: "sl-prop-link", text: r.target })).addEventListener("click", () => open(r.target));
+					else line.createSpan({ text: r.target });
 					line.createSpan({ cls: "sl-prop-muted", text: ` ${r.label}` });
 				}
 			},

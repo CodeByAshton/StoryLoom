@@ -128,7 +128,7 @@ export class ConfirmModal extends Modal {
 /** Shows the full prompt before sending (debug setting). */
 export function previewPrompt(app: App, system: string, user: string): Promise<boolean> {
 	return ConfirmModal.ask(app, {
-		title: "Context preview",
+		title: "Prompt preview",
 		cta: "Send",
 		body: (el) => {
 			el.createEl("p", { cls: "storyloom-muted", text: `System ${system.length.toLocaleString()} chars · user ${user.length.toLocaleString()} chars` });

@@ -10,7 +10,7 @@ Bring an existing draft in, and get a finished one out, without leaving Obsidian
 - **Import**
   - Word (`.docx`), Markdown and HTML files.
   - Split the file into chapters at its headings (or at page breaks), number them, and add the chapter frontmatter.
-  - Offer to run Sync on each new chapter so the codex fills in.
+  - Offer to **Sync chapter** for each new chapter so the codex fills in.
 - **Export**
   - **Word (`.docx`)** for editors and agents.
   - **EPUB** for e-readers and stores.
