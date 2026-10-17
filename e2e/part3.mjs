@@ -75,7 +75,7 @@ ok((snapshot2["Codex/Characters/Arthur Vane.md"].match(/- ch 3/g) ?? []).length 
 // Summarize → save to frontmatter.
 await cmd("storyloom:summarize-chapter");
 await page.waitForSelector(".storyloom-result-text", { timeout: 8000 });
-await page.getByRole("button", { name: "Save to summary" }).click();
+await page.getByRole("button", { name: "Save as chapter summary" }).click();
 await sleep(800);
 const ch3 = await read("Manuscript/03 - The Harbor.md");
 ok(/summary: The fog pressed in/.test(ch3), "summary written to frontmatter");

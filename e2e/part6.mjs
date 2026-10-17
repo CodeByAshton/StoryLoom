@@ -60,7 +60,7 @@ const faces = await page.evaluate(() => {
 ok(JSON.stringify(faces) === JSON.stringify({ "Blackwood Manor": ["AV+MW", "AV+MW", "AV"], "Old Harbor": ["EC", "EC", "EC+MW"] }), `locations mode shows who is where: ${JSON.stringify(faces)}`);
 await page.locator(".sl-tl-cell").nth(2).hover();
 await sleep(400);
-ok(/As of Chapter 3/.test(await page.locator(".sl-tl-tip").innerText().catch(() => "")), "hovering a cell shows the state card for that chapter");
+ok(/As of chapter 3/i.test(await page.locator(".sl-tl-tip").innerText().catch(() => "")), "hovering a cell shows the state card for that chapter");
 await shot(page, "p6-timeline-locations");
 
 const errs = logs.filter((l) => /^\[(error|pageerror)\]/.test(l));

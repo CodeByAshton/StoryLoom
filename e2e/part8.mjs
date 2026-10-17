@@ -110,7 +110,7 @@ ok(notice.some((n) => /synced chapter 3/i.test(n) && /1 new note/.test(n)), `syn
 // Writing notes: underlined in the chapter, counted in the Cast panel, fixed or dismissed from a hover card.
 await sleep(500);
 ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 2, `sync underlined the writing notes it found (${await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()}; quotes not in the chapter are dropped)`);
-ok(/2 notes/.test(await page.locator(".status-bar .sl-status").innerText()), "status bar counts the writing notes");
+ok(/2 writing notes/.test(await page.locator(".status-bar .sl-status").innerText()), "status bar counts the writing notes");
 // The AI review switch in the chapter's header turns the notes off and back on.
 const clearNotices = () => page.locator(".notice").evaluateAll((ns) => ns.forEach((n) => n.remove()));
 await clearNotices();

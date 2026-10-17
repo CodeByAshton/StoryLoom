@@ -33,10 +33,10 @@ async function hoverCard(path, name) {
 // (3) Hover Mara in chapter 3 and chapter 1.
 const c3 = await hoverCard("Manuscript/03 - The Harbor.md", "Mara Winston");
 await shot(page, "03-hover-ch3");
-ok(/As of Chapter 3/.test(c3) && /Old Harbor/.test(c3) && /Injured/.test(c3), `(3) ch3 hover shows state as of ch 3 → ${JSON.stringify(c3.slice(0, 160))}`);
+ok(/As of chapter 3/i.test(c3) && /Old Harbor/.test(c3) && /Injured/.test(c3), `(3) ch3 hover shows state as of ch 3 → ${JSON.stringify(c3.slice(0, 160))}`);
 const c1 = await hoverCard("Manuscript/01 - The Manor.md", "Mara Winston");
 await shot(page, "03-hover-ch1");
-ok(/As of Chapter 1/.test(c1) && /Blackwood Manor/.test(c1) && !/Old Harbor/.test(c1), `(3) ch1 hover shows ch-1 location → ${JSON.stringify(c1.slice(0, 160))}`);
+ok(/As of chapter 1/i.test(c1) && /Blackwood Manor/.test(c1) && !/Old Harbor/.test(c1), `(3) ch1 hover shows ch-1 location → ${JSON.stringify(c1.slice(0, 160))}`);
 const highlighted = await page.locator(".cm-content .storyloom-entity").count();
 ok(highlighted > 5, `(4.1) entity names highlighted in chapter (${highlighted})`);
 await open("Start Here.md");
