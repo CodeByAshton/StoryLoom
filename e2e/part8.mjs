@@ -50,8 +50,8 @@ await page.waitForSelector(".storyloom-graph .storyloom-graph-stage .storyloom-s
 ok((await page.locator(".storyloom-graph-stage > .storyloom-scrubber.storyloom-glass").count()) === 1, "graph scrubber floats over the graph");
 await sleep(600);
 await shot(page, "p8-graph");
-const bf = await page.evaluate(() => getComputedStyle(document.querySelector(".storyloom-scrubber")).backdropFilter);
-ok(/blur/.test(bf), `scrubber is glass (${bf})`);
+const bf = await page.evaluate(() => { const cs = getComputedStyle(document.querySelector(".storyloom-scrubber")); return { shadow: cs.boxShadow !== "none", bg: cs.backgroundColor }; });
+ok(bf.shadow && !/rgba\(0, 0, 0, 0\)/.test(bf.bg), `scrubber floats on a solid surface ${JSON.stringify(bf)}`);
 for (const t of ["Characters", "Locations", "Lore"]) await page.locator(".storyloom-graph .sl-cx-chips .sl-cx-chip", { hasText: t }).click();
 await sleep(300);
 ok(/Everything is filtered out/.test(await page.locator(".storyloom-graph-stage .sl-empty").innerText().catch(() => "")), "graph explains an all-filtered view");

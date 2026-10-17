@@ -81,7 +81,8 @@ await sleep(300);
 
 // Glass modals.
 await useClaudeCode(FAKE);
-const glassCount = () => page.evaluate(() => { const m = document.querySelector(".modal.storyloom-glass-modal, .prompt.storyloom-glass-modal"); return m ? getComputedStyle(m).backdropFilter : "none"; });
+// Every Storyloom pop-up shares one material: a solid surface with a hairline border and a soft shadow.
+const glassCount = () => page.evaluate(() => { const m = document.querySelector(".modal.storyloom-glass-modal, .prompt.storyloom-glass-modal"); if (!m) return "none"; const cs = getComputedStyle(m); return cs.boxShadow !== "none" && parseFloat(cs.borderTopWidth) > 0 ? "styled" : "unstyled"; });
 await select();
 await page.evaluate(() => window.app.commands.executeCommandById("storyloom:rewrite-selection"));
 await sleep(500);
@@ -93,7 +94,7 @@ await page.waitForSelector(".storyloom-result-item", { timeout: 10000 }).catch((
 await sleep(400);
 const modalGlass = await glassCount();
 await shot(page, "p5-rewrite-modal");
-ok(/blur/.test(pickerGlass) && /blur/.test(modalGlass), `pickers and result pop-ups use the glass material (${pickerGlass} / ${modalGlass})`);
+ok(pickerGlass === "styled" && modalGlass === "styled", `pickers and result pop-ups share the Storyloom pop-up style (${pickerGlass} / ${modalGlass})`);
 await page.keyboard.press("Escape");
 await sleep(300);
 await page.evaluate(() => window.app.commands.executeCommandById("storyloom:word-count"));

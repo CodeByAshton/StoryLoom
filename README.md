@@ -21,7 +21,7 @@ You're on chapter 23. Where was Mara in chapter 9? Does Elias know about the led
 
 **Storyloom remembers so you don't have to.** Finish a chapter, click **Sync chapter**, and the AI reads it and records what changed: who moved, who learned what, who stopped trusting whom. Hover any name in your manuscript to see that character *as of the chapter you're in*. It also gives you Sudowrite-style writing tools and a proofreader that underlines the "their" that should be "there".
 
-It's all plain Markdown in your vault. No hidden database, no lock-in, no subscription to us.
+It's all plain Markdown in your vault. No hidden database, no lock-in, no subscription to us. And it stays out of your way: a quiet black-and-white interface where type does the work, with Storyloom's text size adjustable in settings.
 
 ## ✨ What's in the box
 
@@ -52,10 +52,10 @@ Four views that share one tab bar and swap in place, so they feel like one app.
 
 | | |
 |---|---|
-| **Chapters.** A card per chapter with summary, POV, cast and word count. Drag to reorder, or focus a card and press **Alt+←/→** (the codex follows). You can also switch to a **Draft → Revised → Final** board. | **Codex.** Every character, place and piece of lore, with search, type filters and a Notion-style side peek. |
+| **Chapters.** A card per chapter with summary, POV, cast and word count. Drag to reorder, or focus a card and press **Alt+←/→** (the codex follows). You can also switch to a **Draft → Revised → Final** board. | **Codex.** Every character, location and piece of lore, with search, type filters and a side peek. |
 | <img src="docs/screenshots/board.png" alt="Chapters board with Draft, Revised and Final columns"> | <img src="docs/screenshots/codex.png" alt="Codex with Mara Winston open in a side peek showing her properties"> |
 | **Timeline.** One lane per character and one column per chapter. Locations are colored bars across the chapters someone stays put; hover any square to see them at that moment. | **Graph.** Your cast as a network. Drag the chapter slider and watch relationships form and fall apart. |
-| <img src="docs/screenshots/timeline.png" alt="Story timeline with location bars across chapters and a hover card"> | <img src="docs/screenshots/graph.png" alt="Story graph with characters, places and relationship lines, and a floating chapter slider"> |
+| <img src="docs/screenshots/timeline.png" alt="Story timeline with location bars across chapters and a hover card"> | <img src="docs/screenshots/graph.png" alt="Story graph with characters, locations and relationship lines, and a floating chapter slider"> |
 
 ### 🛠️ And the rest of the toolbox
 - **Writing tools:** Continue writing, Rewrite (2–3 versions), Describe (five senses), Expand, Brainstorm, Summarize chapter, Critique and Continuity check (click an issue to jump to the line). They're in the command palette and on the right-click menu.
