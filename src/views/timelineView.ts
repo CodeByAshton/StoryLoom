@@ -130,12 +130,10 @@ export class TimelineView extends ItemView {
 		// Header row
 		const maxWords = Math.max(1, ...Array.from(words.values()));
 		const corner = grid.createDiv({ cls: "sl-tl-corner" });
-		corner.style.gridRow = "1";
 		corner.setText(this.mode === "characters" ? "Character" : "Location");
 		chapters.forEach((c, i) => {
 			const h = focusable(grid.createDiv({ cls: "sl-tl-head", attr: { "data-col": String(i) } }), `Open chapter ${c.chapter}: ${c.title}`);
-			h.style.gridColumn = String(i + 2);
-			h.style.gridRow = "1";
+			h.style.gridColumn = `${i + 2}`;
 			h.style.animationDelay = `${i * 30}ms`;
 			h.createDiv({ cls: "sl-tl-head-num", text: `Chapter ${c.chapter}` });
 			h.createDiv({ cls: "sl-tl-head-title", text: c.title });
@@ -162,7 +160,7 @@ export class TimelineView extends ItemView {
 			const nm = name.createDiv({ cls: "sl-tl-name-text" });
 			nm.createDiv({ cls: "sl-tl-name-main", text: e.name });
 			if (e.role) nm.createDiv({ cls: "sl-tl-name-role", text: e.role });
-			name.addEventListener("click", () => this.plugin.openInCodex(e));
+			name.addEventListener("click", () => void this.plugin.openInCodex(e));
 
 			// Cells (background, hover, mentions, events)
 			const cells: HTMLElement[] = chapters.map((c, i) => {

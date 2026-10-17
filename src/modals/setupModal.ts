@@ -32,11 +32,11 @@ export class SetupModal extends Modal {
 		this.render();
 	}
 
-	async onClose() {
+	onClose() {
 		this.contentEl.empty();
 		if (!this.plugin.settings.onboarded) {
 			this.plugin.settings.onboarded = true;
-			await this.plugin.saveSettings();
+			void this.plugin.saveSettings();
 		}
 	}
 
@@ -116,7 +116,7 @@ export class SetupModal extends Modal {
 		this.providerDetail(detail, status);
 		// Start with focus on the chosen card, so focus and selection never point at two different cards.
 		window.requestAnimationFrame(() => {
-			if (!detail.contains(document.activeElement)) (grid.querySelector(".sl-setup-choice.is-selected") as HTMLElement | null)?.focus();
+			if (!detail.contains(document.activeElement)) grid.querySelector<HTMLElement>(".sl-setup-choice.is-selected")?.focus();
 		});
 		this.footer(body, { label: "Continue", onClick: () => this.go(1) }, "Skip for now");
 	}
@@ -160,14 +160,15 @@ export class SetupModal extends Modal {
 		const test = status.createEl("button", { cls: "sl-setup-test" });
 		test.setText(s.provider === "claudecode" ? "Check Claude Code" : "Test connection");
 		const out = status.createDiv({ cls: "sl-setup-result" });
-		test.addEventListener("click", async () => {
+		test.addEventListener("click", () => {
 			test.disabled = true;
 			out.className = "sl-setup-result is-pending";
 			out.setText(s.provider === "claudecode" ? "Looking for Claude Code…" : "Sending a tiny test request…");
-			const r = await this.test();
-			test.disabled = false;
-			out.className = `sl-setup-result ${r.ok ? "is-ok" : "is-error"}`;
-			out.setText(r.message);
+			void this.test().then((r) => {
+				test.disabled = false;
+				out.className = `sl-setup-result ${r.ok ? "is-ok" : "is-error"}`;
+				out.setText(r.message);
+			});
 		});
 	}
 
@@ -216,12 +217,14 @@ export class SetupModal extends Modal {
 
 		const b = this.footer(body, {
 			label: "Create",
-			onClick: async () => {
+			onClick: () => {
 				b.disabled = true;
 				b.setText("Creating…");
-				await applyScaffold(this.app, planScaffold(s, exists, this.bookTitle));
-				await this.plugin.index.rebuild();
-				this.go(2);
+				void (async () => {
+					await applyScaffold(this.app, planScaffold(s, exists, this.bookTitle));
+					await this.plugin.index.rebuild();
+					this.go(2);
+				})();
 			},
 		}, "Skip");
 	}

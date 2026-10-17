@@ -70,7 +70,7 @@ export class AIService {
 			asOf,
 			budget: s.contextBudget,
 		});
-		if (s.debug) console.log(`[Motif] context ${built.text.length} chars`, built.sections, built.truncated ? "(truncated)" : "");
+		if (s.debug) console.debug(`[Motif] context ${built.text.length} chars`, built.sections, built.truncated ? "(truncated)" : "");
 		return built;
 	}
 
@@ -84,7 +84,7 @@ export class AIService {
 			if (!ok) throw new LLMError("aborted", "Cancelled.");
 		}
 		const messages: ChatMessage[] = [...(opts.history ?? []), { role: "user", content: prompt.user }];
-		if (s.debug) console.log("[Motif] request", { system: prompt.system.length, user: prompt.user.length });
+		if (s.debug) console.debug("[Motif] request", { system: prompt.system.length, user: prompt.user.length });
 		return { system: prompt.system, messages, maxTokens: opts.maxTokens ?? s.maxTokens, temperature: opts.temperature ?? s.temperature };
 	}
 
@@ -104,7 +104,7 @@ export class AIService {
 		const key = JSON.stringify([s.provider, s.providers[s.provider]?.baseUrl ?? ""]);
 		const req = await this.request(prompt, opts);
 		if (s.stream && client.stream && !this.noStream.has(key)) {
-			const stream = client.stream.bind(client);
+			const stream: NonNullable<LLMClient["stream"]> = (r, on, sig) => (client.stream ? client.stream(r, on, sig) : client.complete(r));
 			let started = false;
 			try {
 				// Retry only while nothing has been shown yet; a half-written answer isn't restarted.
@@ -142,7 +142,7 @@ export class AIService {
 			);
 			try {
 				return validate(extractJson(second));
-			} catch (e2) {
+			} catch {
 				throw new LLMError("bad_request", "The AI's answer couldn't be read, even after a retry. Try again.");
 			}
 		}

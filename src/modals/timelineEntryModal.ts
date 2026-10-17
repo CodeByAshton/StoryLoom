@@ -119,7 +119,7 @@ export class TimelineEntryModal extends Modal {
 		new Setting(contentEl)
 			.addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()))
 			.addButton((b) => b.setButtonText("Add to timeline").setCta().onClick(() => void this.save()));
-		window.setTimeout(() => (first as HTMLInputElement | null)?.focus(), 0);
+		window.setTimeout(() => first?.focus(), 0);
 	}
 
 	private async save() {

@@ -95,9 +95,8 @@ export class ReportModal extends Modal {
 		const right = bar.createDiv({ cls: "storyloom-footer-right" });
 		left.createEl("button", { text: "Retry" }).addEventListener("click", () => void this.generate());
 		if (markdown) {
-			right.createEl("button", { text: "Copy" }).addEventListener("click", async () => {
-				await navigator.clipboard.writeText(markdown);
-				new Notice("Motif: copied.");
+			right.createEl("button", { text: "Copy" }).addEventListener("click", () => {
+				void navigator.clipboard.writeText(markdown).then(() => new Notice("Motif: copied."));
 			});
 		}
 	}

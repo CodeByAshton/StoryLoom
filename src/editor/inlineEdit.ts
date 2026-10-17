@@ -1,7 +1,7 @@
 import { isolateHistory } from "@codemirror/commands";
 import { Prec, StateEffect, StateField, Transaction, type EditorState, type Extension } from "@codemirror/state";
 import { Decoration, EditorView, keymap, showTooltip, ViewPlugin, type DecorationSet, type Tooltip, type TooltipView, type ViewUpdate } from "@codemirror/view";
-import { editorInfoField, Scope, setIcon } from "obsidian";
+import { editorInfoField, Platform, Scope, setIcon } from "obsidian";
 import { cleanProse, inlineEditPrompt, REWRITE_PRESETS } from "../context/prompts";
 import { friendlyError, LLMError } from "../llm/types";
 import type MotifPlugin from "../main";
@@ -75,7 +75,7 @@ export class InlineEditController {
 	open(view: EditorView): boolean {
 		const cur = this.get(view);
 		if (cur && cur.phase === "input") {
-			(view.dom.querySelector(".storyloom-glass-input") as HTMLInputElement | null)?.focus();
+			view.dom.querySelector<HTMLInputElement>(".storyloom-glass-input")?.focus();
 			return true;
 		}
 		const sel = view.state.selection.main;
@@ -204,7 +204,7 @@ const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce
 
 /** Fade a copy of the panel out where it was, so closing feels smooth even though CM removes it at once. */
 function ghostOut(view: EditorView) {
-	const el = view.dom.querySelector(".storyloom-glass-panel") as HTMLElement | null;
+	const el = view.dom.querySelector<HTMLElement>(".storyloom-glass-panel");
 	if (!el || reducedMotion()) return;
 	const rect = el.getBoundingClientRect();
 	const ghost = el.cloneNode(true) as HTMLElement;
@@ -258,7 +258,7 @@ class GlassPanel implements TooltipView {
 	positioned() {
 		const tip = this.dom; // CM puts the cm-tooltip class (and its position) on our element itself
 		// Lines carry the real text column (Obsidian centres them when "readable line length" is on).
-		const line = this.view.contentDOM.querySelector(".cm-line") as HTMLElement | null;
+		const line = this.view.contentDOM.querySelector<HTMLElement>(".cm-line");
 		if (!line) return;
 		const pad = parseFloat(getComputedStyle(line).paddingLeft) || 0;
 		// Never wider than the editor, and never spilling past either edge of it.
@@ -273,7 +273,7 @@ class GlassPanel implements TooltipView {
 	}
 
 	mount() {
-		window.requestAnimationFrame(() => (this.dom.querySelector(".storyloom-glass-input") as HTMLInputElement | null)?.focus());
+		window.requestAnimationFrame(() => this.dom.querySelector<HTMLInputElement>(".storyloom-glass-input")?.focus());
 	}
 
 	update(u: ViewUpdate) {
@@ -289,7 +289,7 @@ class GlassPanel implements TooltipView {
 	/** While streaming: swap the skeleton for the text so far, growing smoothly. */
 	private showPartial(text: string) {
 		const sk = this.inner.querySelector(".storyloom-glass-skeleton");
-		let live = this.inner.querySelector(".storyloom-glass-result") as HTMLElement | null;
+		let live = this.inner.querySelector<HTMLElement>(".storyloom-glass-result");
 		const from = this.dom.offsetHeight;
 		if (!live) {
 			live = createDiv({ cls: "storyloom-glass-result is-streaming" });
@@ -475,7 +475,7 @@ function askPill(plugin: MotifPlugin, ctrl: InlineEditController): Extension {
 							const b = dom.createEl("button", { cls: "storyloom-ask-pill-btn" });
 							icon(b, "sparkles", "storyloom-glass-icon is-accent");
 							b.createSpan({ text: "Ask AI" });
-							const key = plugin.settings.inlineEditKey.replace(/^Mod-/i, navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl+").toUpperCase();
+							const key = plugin.settings.inlineEditKey.replace(/^Mod-/i, Platform.isMacOS ? "⌘" : "Ctrl+").toUpperCase();
 							if (key) b.createSpan({ cls: "storyloom-glass-kbd", text: key });
 							b.addEventListener("mousedown", (e) => e.preventDefault());
 							b.addEventListener("click", () => ctrl.open(view));

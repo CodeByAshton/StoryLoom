@@ -137,7 +137,7 @@ export class CodexIndex extends Events {
 		if (!fm) return null;
 		const isChapter = fm.type === "chapter" || (this.inFolder(file.path, this.settings().manuscriptFolder) && fm.chapter !== undefined);
 		if (!isChapter) return null;
-		const raw = fm.chapter;
+		const raw: unknown = fm.chapter;
 		const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
 		if (!Number.isFinite(n)) return null;
 		const pov = typeof fm.pov === "string" ? (parseWikilink(fm.pov) ?? stripWikilinks(fm.pov)) : undefined;
@@ -159,7 +159,7 @@ export class CodexIndex extends Events {
 			for (const n of [e.name, ...e.aliases]) if (!this.names.has(n)) this.names.set(n, e.name);
 		}
 		this.nameRegex = buildNameRegex(Array.from(this.names.keys()));
-		if (this.settings().debug) console.log(`[Motif] index: ${this.entities.size} entities, ${this.chapters.length} chapters`);
+		if (this.settings().debug) console.debug(`[Motif] index: ${this.entities.size} entities, ${this.chapters.length} chapters`);
 		this.emitChanged();
 	}
 

@@ -69,8 +69,8 @@ export class ChatView extends ItemView {
 		this.sendBtn = field.createEl("button", { cls: "mod-cta storyloom-chat-send", attr: { "aria-label": "Send" } });
 		setIcon(this.sendBtn, "arrow-up");
 		const grow = () => {
-			this.input.style.height = "auto";
-			this.input.style.height = `${Math.min(160, this.input.scrollHeight)}px`;
+			this.input.setCssProps({ height: "auto" });
+			this.input.setCssProps({ height: `${Math.min(160, this.input.scrollHeight)}px` });
 			field.toggleClass("has-text", !!this.input.value.trim());
 		};
 		this.input.addEventListener("input", grow);
@@ -80,7 +80,7 @@ export class ChatView extends ItemView {
 
 		// Clickable wikilinks in rendered answers.
 		this.listEl.addEventListener("click", (e) => {
-			const a = (e.target as HTMLElement).closest("a.internal-link") as HTMLAnchorElement | null;
+			const a = (e.target as HTMLElement).closest<HTMLAnchorElement>("a.internal-link");
 			if (!a) return;
 			e.preventDefault();
 			const href = a.dataset.href ?? a.getAttribute("href") ?? "";
@@ -223,7 +223,7 @@ export class ChatView extends ItemView {
 		this.hideSuggestions();
 		this.listEl.querySelector(".storyloom-chat-empty")?.remove();
 
-		this.addBubble("user", q);
+		void this.addBubble("user", q);
 		const pending = this.listEl.createDiv({ cls: "storyloom-chat-msg is-assistant" });
 		const l = pending.createDiv({ cls: "storyloom-loading" });
 		l.createSpan({ cls: "storyloom-spinner" });
@@ -280,9 +280,8 @@ export class ChatView extends ItemView {
 		const bar = msg.createDiv({ cls: "storyloom-chat-actions" });
 		const copy = bar.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Copy" } });
 		setIcon(copy, "copy");
-		copy.addEventListener("click", async () => {
-			await navigator.clipboard.writeText(text);
-			new Notice("Motif: copied.");
+		copy.addEventListener("click", () => {
+			void navigator.clipboard.writeText(text).then(() => new Notice("Motif: copied."));
 		});
 		const ins = bar.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Insert into note" } });
 		setIcon(ins, "text-cursor-input");

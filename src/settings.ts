@@ -133,9 +133,9 @@ export class MotifSettingTab extends PluginSettingTab {
 
 		if (s.provider === "claudecode") this.claudeCodeSettings(containerEl, cfg, update);
 		else {
-			const keyDesc = document.createDocumentFragment();
+			const keyDesc = createFragment();
 			keyDesc.appendText(PROVIDERS[s.provider].needsKey ? "Required. " : "Optional for local servers. ");
-			keyDesc.appendText("Stored locally and unencrypted in this vault's .obsidian/plugins/motif/data.json. Don't sync or commit that file.");
+			keyDesc.appendText(`Stored locally and unencrypted in this vault's ${this.app.vault.configDir}/plugins/motif/data.json. Don't sync or commit that file.`);
 			new Setting(containerEl)
 				.setName("API key")
 				.setDesc(keyDesc)

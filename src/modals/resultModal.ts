@@ -96,7 +96,7 @@ export class ResultModal extends Modal {
 	}
 
 	private renderLive(text: string) {
-		let el = this.bodyEl.querySelector(".storyloom-result-live") as HTMLElement | null;
+		let el = this.bodyEl.querySelector<HTMLElement>(".storyloom-result-live");
 		if (!el) {
 			this.bodyEl.empty();
 			el = this.bodyEl.createDiv({ cls: "storyloom-result-live" });
@@ -159,7 +159,7 @@ export class ResultModal extends Modal {
 		}, !this.hasSelection);
 		if (this.hasSelection) {
 			this.button(bar, "Replace selection", "replace", () => {
-				(this.opts.editor as Editor).replaceRange(text(), this.from as EditorPosition, this.to as EditorPosition);
+				(this.opts.editor as Editor).replaceRange(text(), this.from as EditorPosition, this.to);
 				this.close();
 			}, true);
 		}
@@ -181,7 +181,7 @@ export class ResultModal extends Modal {
 			});
 			if (!this.opts.perItemButtons || this.items.length === 1) this.editorButtons(right, () => this.allText());
 		}
-		if (this.busy) this.footerEl.querySelectorAll("button").forEach((b) => ((b as HTMLButtonElement).disabled = true));
+		if (this.busy) this.footerEl.querySelectorAll("button").forEach((b) => (b.disabled = true));
 	}
 
 	private button(parent: HTMLElement, label: string, icon: string | undefined, onClick: () => void | Promise<void>, cta = false) {

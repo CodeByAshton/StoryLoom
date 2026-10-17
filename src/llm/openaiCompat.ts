@@ -25,12 +25,12 @@ export function buildOpenAIRequest(opts: OpenAICompatOptions, req: CompleteReque
 export function parseOpenAIResponse(text: string, providerName: string): string {
 	let j: { choices?: { message?: { content?: unknown }; finish_reason?: string }[] };
 	try {
-		j = JSON.parse(text);
+		j = JSON.parse(text) as typeof j;
 	} catch {
 		throw new LLMError("server", `${providerName} returned a response that wasn't JSON.`);
 	}
 	const content = j.choices?.[0]?.message?.content;
-	const out = typeof content === "string" ? content : Array.isArray(content) ? content.map((c) => c?.text ?? "").join("") : "";
+	const out = typeof content === "string" ? content : Array.isArray(content) ? (content as { text?: unknown }[]).map((c) => (typeof c?.text === "string" ? c.text : "")).join("") : "";
 	// Some local reasoning models wrap their thoughts in <think> tags.
 	const cleaned = stripThinking(out);
 	if (!cleaned.trim()) throw new LLMError("empty", `${providerName} returned an empty response.`);
@@ -66,7 +66,7 @@ export async function consumeOpenAIStream(body: ReadableStream<Uint8Array>, onTe
 		if (ev.data.trim() === "[DONE]") break;
 		let j: { choices?: { delta?: { content?: string } }[]; error?: { message?: string } };
 		try {
-			j = JSON.parse(ev.data);
+			j = JSON.parse(ev.data) as typeof j;
 		} catch {
 			continue;
 		}

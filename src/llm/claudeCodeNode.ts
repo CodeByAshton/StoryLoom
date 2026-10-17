@@ -16,7 +16,7 @@ interface NodeMods {
 
 function nodeMods(): NodeMods | null {
 	const req = (window as unknown as { require?: NodeRequire }).require;
-	const proc = (globalThis as unknown as { process?: { env: Record<string, string | undefined> } }).process;
+	const proc = (window as unknown as { process?: { env: Record<string, string | undefined> } }).process;
 	if (!req || !proc) return null;
 	try {
 		return {
@@ -88,7 +88,7 @@ export function createClaudeCodeHost(): ClaudeCodeHost | null {
 			return m.cp.spawn(binary, args, { cwd, env: env(), shell, windowsHide: true });
 		},
 		async writeTemp(text: string) {
-			const dir = await m.fs.promises.mkdtemp(m.path.join(m.os.tmpdir(), "storyloom-"));
+			const dir = await m.fs.promises.mkdtemp(m.path.join(m.os.tmpdir(), "motif-"));
 			const file = m.path.join(dir, "system.txt");
 			await m.fs.promises.writeFile(file, text, "utf8");
 			return file;

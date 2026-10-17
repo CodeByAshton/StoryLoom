@@ -57,7 +57,7 @@ export function buildAnthropicRequest(opts: AnthropicOptions, req: CompleteReque
 export function parseAnthropicResponse(text: string): string {
 	let j: { content?: { type: string; text?: string }[]; stop_reason?: string };
 	try {
-		j = JSON.parse(text);
+		j = JSON.parse(text) as typeof j;
 	} catch {
 		throw new LLMError("server", "Anthropic returned a response that wasn't JSON.");
 	}
@@ -126,9 +126,9 @@ export class AnthropicClient implements LLMClient {
 export const REQUEST_TIMEOUT_MS = 120_000;
 
 export async function send(http: HttpFn, req: HttpRequest, providerName: string, timeoutMs = REQUEST_TIMEOUT_MS) {
-	let timer: ReturnType<typeof setTimeout> | undefined;
+	let timer: number | undefined;
 	const timeout = new Promise<never>((_, reject) => {
-		timer = setTimeout(() => reject(new LLMError("server", `${providerName} didn't answer within ${Math.round(timeoutMs / 1000)} seconds. Try again.`)), timeoutMs);
+		timer = window.setTimeout(() => reject(new LLMError("server", `${providerName} didn't answer within ${Math.round(timeoutMs / 1000)} seconds. Try again.`)), timeoutMs);
 	});
 	try {
 		return await Promise.race([http(req), timeout]);
@@ -149,7 +149,7 @@ export async function send(http: HttpFn, req: HttpRequest, providerName: string,
 				: `Couldn't reach ${providerName} (${host}). Check your internet connection. ${e instanceof Error ? e.message : ""}`.trim(),
 		);
 	} finally {
-		clearTimeout(timer);
+		window.clearTimeout(timer);
 	}
 }
 
@@ -169,7 +169,7 @@ export async function consumeAnthropicStream(body: ReadableStream<Uint8Array>, o
 	for await (const ev of readSSE(body)) {
 		let j: { type?: string; delta?: { type?: string; text?: string; stop_reason?: string }; error?: { message?: string } };
 		try {
-			j = JSON.parse(ev.data);
+			j = JSON.parse(ev.data) as typeof j;
 		} catch {
 			continue;
 		}

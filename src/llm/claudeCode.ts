@@ -112,7 +112,7 @@ export class StreamJsonParser {
 			api_error_status?: number;
 		};
 		try {
-			j = JSON.parse(line);
+			j = JSON.parse(line) as typeof j;
 		} catch {
 			return false;
 		}
@@ -182,7 +182,7 @@ export class ClaudeCodeClient implements LLMClient {
 			const done = (fn: () => void) => {
 				if (settled) return;
 				settled = true;
-				clearTimeout(timer);
+				window.clearTimeout(timer);
 				signal?.removeEventListener("abort", onAbort);
 				fn();
 			};
@@ -198,7 +198,7 @@ export class ClaudeCodeClient implements LLMClient {
 				done(() => reject(new LLMError("aborted", "Stopped.")));
 			};
 			signal?.addEventListener("abort", onAbort);
-			const timer = setTimeout(() => {
+			const timer = window.setTimeout(() => {
 				proc.kill("SIGTERM");
 				done(() => reject(new LLMError("server", "Claude Code took too long to answer. Try again.", undefined, false)));
 			}, this.opts.timeoutMs ?? 300_000);

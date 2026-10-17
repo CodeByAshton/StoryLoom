@@ -8,7 +8,8 @@
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "vault": "npm run build && node scripts/install-vault.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [
     "obsidian",

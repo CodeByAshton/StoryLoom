@@ -8,7 +8,7 @@ export async function withRetry<T>(fn: () => Promise<T>, debug = false, allowed:
 		} catch (e) {
 			if (attempt >= delays.length || !isRetryable(e) || !allowed()) throw e;
 			if (debug) console.warn(`[Motif] retrying after: ${e instanceof Error ? e.message : e}`);
-			await new Promise((r) => setTimeout(r, delays[attempt]));
+			await new Promise((r) => window.setTimeout(r, delays[attempt]));
 		}
 	}
 }

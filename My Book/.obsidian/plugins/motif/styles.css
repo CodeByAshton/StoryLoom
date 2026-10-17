@@ -552,6 +552,7 @@ body.sl-red-spelling .sl-wn-spelling { text-decoration-color: color-mix(in srgb,
 .sl-tl-cell, .sl-tl-head { min-width: 0; }
 
 .sl-tl-corner, .sl-tl-head {
+	grid-row: 1;
 	position: sticky;
 	top: 0;
 	z-index: 4;
@@ -1221,3 +1222,7 @@ details.storyloom-cast-section > summary:hover { background: var(--sl-wash); col
 
 /* Grid rows take their content height (cards clip overflow, which would let rows shrink to fit the pane). */
 .sl-cx-grid, .sl-ch-grid { grid-auto-rows: max-content; }
+
+/* Settings → Hide the codex folder */
+.nav-folder.sl-hidden-folder { display: none; }
+.sl-cx-detail:focus { outline: none; }

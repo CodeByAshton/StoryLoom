@@ -77,6 +77,7 @@ export default class MotifPlugin extends Plugin {
 	inline!: InlineEditController;
 	/** Lazily created: loads Node modules, desktop only. */
 	claudeHost: ClaudeCodeHost | null | undefined;
+	private explorerObservers = new Map<HTMLElement, MutationObserver>();
 
 	async onload() {
 		await this.loadSettings();
@@ -115,7 +116,9 @@ export default class MotifPlugin extends Plugin {
 		this.registerEvent(this.app.vault.on("delete", (f) => void this.onDelete(f.path)));
 		this.registerEvent(this.app.workspace.on("file-open", (f) => void this.onFileOpen(f)));
 		this.registerEvent(this.app.workspace.on("window-open", (win) => this.applyColors(win.doc.body)));
+		this.registerEvent(this.app.workspace.on("layout-change", () => this.applyCodexFolderVisibility()));
 		this.app.workspace.onLayoutReady(async () => {
+			this.applyCodexFolderVisibility();
 			await this.index.load((ref) => this.registerEvent(ref));
 			if (!this.settings.onboarded) this.openSetup();
 			// On a cold start the metadata cache may still be filling; rebuild once it has resolved.
@@ -128,7 +131,10 @@ export default class MotifPlugin extends Plugin {
 	}
 
 	onunload() {
-		document.getElementById("storyloom-hide-codex")?.remove();
+		for (const [root, observer] of this.explorerObservers) {
+			observer.disconnect();
+			root.querySelectorAll(".sl-hidden-folder").forEach((el) => el.removeClass("sl-hidden-folder"));
+		}
 		for (const b of [document.body, ...this.popoutBodies()]) {
 			for (const type of Object.keys(this.settings.entityColors)) b.style.removeProperty(`--storyloom-${type}`);
 			b.style.removeProperty("--sl-scale");
@@ -322,19 +328,19 @@ export default class MotifPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		const data = (await this.loadData()) ?? (await this.legacyData()) ?? {};
+		const data = ((await this.loadData()) ?? (await this.legacyData()) ?? {}) as Partial<MotifSettings>;
 		this.settings = { ...DEFAULT_SETTINGS, ...data, entityColors: { ...DEFAULT_SETTINGS.entityColors, ...(data.entityColors ?? {}) } };
 	}
 
 	/** Settings saved under the plugin's old id (Storyloom), carried over the first time Motif loads. */
-	private async legacyData(): Promise<Record<string, any> | null> {
+	private async legacyData(): Promise<Record<string, unknown> | null> {
 		const path = normalizePath(`${this.app.vault.configDir}/plugins/storyloom/data.json`);
 		try {
 			if (!(await this.app.vault.adapter.exists(path))) return null;
-			const data = JSON.parse(await this.app.vault.adapter.read(path));
+			const data: unknown = JSON.parse(await this.app.vault.adapter.read(path));
 			if (data && typeof data === "object") {
 				await this.saveData(data);
-				return data;
+				return data as Record<string, unknown>;
 			}
 		} catch {
 			// Unreadable old settings: start fresh.
@@ -416,7 +422,7 @@ export default class MotifPlugin extends Plugin {
 	}
 
 	async setChapterStatus(file: TFile, status: ChapterStatus) {
-		await this.app.fileManager.processFrontMatter(file, (fm) => {
+		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 			fm.status = status;
 		});
 	}
@@ -471,7 +477,7 @@ export default class MotifPlugin extends Plugin {
 				}
 			for (const { c, to } of moves) {
 				const f = this.index.fileFor(c.path);
-				if (f) await this.app.fileManager.processFrontMatter(f, (fm) => (fm.chapter = to));
+				if (f) await this.app.fileManager.processFrontMatter(f, (fm: Record<string, unknown>) => (fm.chapter = to));
 			}
 			let skipped = 0;
 			for (const { file, name } of renames) {
@@ -493,14 +499,26 @@ export default class MotifPlugin extends Plugin {
 		(leaf?.view as CodexView | undefined)?.select?.(e.name);
 	}
 
-	/** The codex lives behind its own button; optionally hide its folder from the file explorer. */
+	/**
+	 * The codex lives behind its own button; optionally hide its folder from the file explorer.
+	 * The explorer redraws folders as the vault changes, so each explorer is watched and re-marked.
+	 */
 	applyCodexFolderVisibility() {
-		const id = "storyloom-hide-codex";
-		document.getElementById(id)?.remove();
-		if (!this.settings.hideCodexFolder) return;
-		const folder = normalizePath(this.settings.codexFolder).replace(/["\\]/g, "\\$&");
-		const style = document.head.createEl("style", { attr: { id } });
-		style.textContent = `.nav-folder:has(> .nav-folder-title[data-path="${folder}"]) { display: none; }`;
+		const folder = normalizePath(this.settings.codexFolder);
+		for (const leaf of this.app.workspace.getLeavesOfType("file-explorer")) {
+			const root = leaf.view.containerEl;
+			root.querySelectorAll(".sl-hidden-folder").forEach((el) => el.removeClass("sl-hidden-folder"));
+			if (this.settings.hideCodexFolder) {
+				root.querySelectorAll<HTMLElement>(".nav-folder-title").forEach((t) => {
+					if (t.dataset.path === folder) t.parentElement?.addClass("sl-hidden-folder");
+				});
+			}
+			if (!this.explorerObservers.has(root)) {
+				const observer = new MutationObserver(debounce(() => this.applyCodexFolderVisibility(), 50, true));
+				observer.observe(root, { childList: true, subtree: true });
+				this.explorerObservers.set(root, observer);
+			}
+		}
 	}
 
 	addTimelineEntry(e: Entity, chapter: number) {
@@ -743,7 +761,7 @@ export default class MotifPlugin extends Plugin {
 					icon: "save",
 					cta: true,
 					run: async (text) => {
-						await this.app.fileManager.processFrontMatter(file, (fm) => {
+						await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 							fm.summary = text.replace(/\s+/g, " ").trim();
 						});
 						new Notice("Motif: saved the summary to the chapter's properties.");
@@ -891,7 +909,7 @@ export default class MotifPlugin extends Plugin {
 			return;
 		}
 		const unchecked = !!file && !!this.index.chapterForPath(file.path) && !this.settings.chapterNotes[file.path];
-		const frag = document.createDocumentFragment();
+		const frag = createFragment();
 		frag.createSpan({ text: "Motif: AI review is on. Chapters are proofread when you sync them." });
 		if (unchecked && file) {
 			const b = frag.createEl("button", { text: "Run AI review now", cls: "storyloom-notice-btn mod-cta" });
@@ -1000,7 +1018,7 @@ export default class MotifPlugin extends Plugin {
 		const key = `${prev.path}:${hash}`;
 		if (hash === synced || this.reminded.has(key)) return;
 		this.reminded.add(key);
-		const frag = document.createDocumentFragment();
+		const frag = createFragment();
 		frag.createSpan({ text: `“${this.index.chapterForPath(prev.path)?.title}” changed since it was last synced.` });
 		const b = frag.createEl("button", { text: "Sync chapter", cls: "storyloom-notice-btn mod-cta" });
 		const notice = new Notice(frag, 12000);
@@ -1083,7 +1101,7 @@ export default class MotifPlugin extends Plugin {
 	/** A notice for an AI error, with an "Open settings" button when that's where the fix is. */
 	errorNotice(e: unknown) {
 		const msg = friendlyError(e);
-		const frag = document.createDocumentFragment();
+		const frag = createFragment();
 		frag.createSpan({ text: `Motif: ${msg}` });
 		if (isSettingsError(msg)) {
 			const b = frag.createEl("button", { text: "Open settings", cls: "storyloom-notice-btn" });
@@ -1104,7 +1122,7 @@ export default class MotifPlugin extends Plugin {
 		const tpl = await readTemplate(this.app, this.settings.templatesFolder, "chapter");
 		const body = (tpl ?? "---\ntype: chapter\nchapter: \ntitle: \npov: \nsummary: \"\"\nstatus: draft\n---\n\n").replace(/\{\{\s*(title|name)\s*\}\}/g, title);
 		const file = await this.app.vault.create(path, body);
-		await this.app.fileManager.processFrontMatter(file, (fm) => {
+		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 			fm.type = "chapter";
 			fm.chapter = n;
 			fm.title = title;
@@ -1226,7 +1244,7 @@ export function parseKey(spec: string): { modifiers: Modifier[]; key: string } |
 
 /** The CodeMirror view behind an Obsidian editor. */
 export function cmOf(editor: Editor): EditorView | null {
-	return ((editor as unknown as { cm?: EditorView }).cm ?? null) as EditorView | null;
+	return (editor as unknown as { cm?: EditorView }).cm ?? null;
 }
 
 /** Select the first occurrence of a quote (whitespace-insensitive). */

@@ -79,11 +79,15 @@ Four views that share one tab bar and swap in place, so they feel like one app.
 3. Open the **`My Book/`** folder as a vault in Obsidian, and choose **Trust author and enable plugins**.
 4. Open `Start Here.md` and take the tour of a little detective story that's already set up.
 
-**Option 2: add it to your own vault.**
+**Option 2: install with BRAT (automatic updates).**
+1. Install **BRAT** from **Settings → Community plugins → Browse**, and enable it.
+2. Run **BRAT: Add a beta plugin for testing** from the command palette and paste `codebyashton/storyloom`.
+3. Enable **Motif** under **Settings → Community plugins**. The setup guide takes it from there.
+
+**Option 3: install by hand.**
 1. Grab `main.js`, `manifest.json` and `styles.css` from the [latest release](../../releases), or build them with `npm install && npm run build`.
 2. Put them in `<your vault>/.obsidian/plugins/motif/`.
 3. Enable **Motif** under **Settings → Community plugins**.
-4. The setup guide takes it from there.
 
 > Motif isn't marked desktop-only, but it's built and tested on desktop. The **Claude Code** provider needs desktop, because it runs the Claude Code app on your computer.
 
@@ -148,7 +152,11 @@ How to read these lines:
 - Later timeline lines override earlier ones, `—` clears a value, and `knows` keeps adding up.
 - Names and aliases are matched as whole words.
 
-## 🔒 Privacy
+## 🔒 Privacy and disclosures
+
+- **Network use.** Motif sends the text it needs (the passage or chapter you're working on, plus book context such as codex entries, chapter summaries and your style guide) to the AI provider you choose, and only when you use an AI feature. Nothing is sent anywhere else. There's no telemetry, analytics or tracking.
+- **Accounts and payment.** The AI providers are third-party services. Anthropic, OpenAI and OpenRouter need an account and an API key and bill you for usage; the Claude Code provider uses your Claude subscription. Ollama and LM Studio are free and run on your own machine.
+- **Files outside your vault.** The Claude Code provider (desktop only) runs the Claude Code program installed on your computer. For each request it writes the book context to a temporary file in your system's temp folder and deletes it afterwards. No other feature reads or writes outside your vault.
 
 - Your notes stay in your vault.
 - Requests go only to the provider you choose.

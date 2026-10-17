@@ -5,7 +5,7 @@ import type { EditorView } from "@codemirror/view";
  * can be much narrower (sidebars open), and the card would be clipped at its edge.
  */
 export function fitInEditor(view: EditorView, dom: HTMLElement) {
-	const tip = (dom.closest(".cm-tooltip") as HTMLElement | null) ?? dom;
+	const tip = dom.closest<HTMLElement>(".cm-tooltip") ?? dom;
 	const box = view.scrollDOM.getBoundingClientRect();
 	const r = tip.getBoundingClientRect();
 	let dx = 0;

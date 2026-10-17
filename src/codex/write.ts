@@ -15,7 +15,7 @@ export function formatTimelineLine(chapter: number, fields: Record<string, strin
 		return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
 	});
 	const parts = [`- ch ${chapter}`];
-	for (const k of keys) parts.push(`${k}: ${fields[k] === null ? "—" : clean(fields[k] as string)}`);
+	for (const k of keys) parts.push(`${k}: ${fields[k] === null ? "—" : clean(fields[k])}`);
 	if (note && note.trim()) parts.push(`note: ${clean(note)}`);
 	return parts.join(" | ");
 }

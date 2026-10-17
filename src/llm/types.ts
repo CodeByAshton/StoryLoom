@@ -81,8 +81,8 @@ export function isRetryable(e: unknown): boolean {
 /** Pull a readable message out of a provider error body. */
 export function errorDetail(text: string): string {
 	try {
-		const j = JSON.parse(text);
-		const m = j?.error?.message ?? j?.message ?? (typeof j?.error === "string" ? j.error : undefined);
+		const j = JSON.parse(text) as { error?: string | { message?: unknown }; message?: unknown } | null;
+		const m = (typeof j?.error === "object" ? j.error?.message : undefined) ?? j?.message ?? (typeof j?.error === "string" ? j.error : undefined);
 		if (typeof m === "string") return m;
 	} catch {
 		/* not JSON */
