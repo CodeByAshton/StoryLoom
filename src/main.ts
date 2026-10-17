@@ -205,7 +205,7 @@ export default class MotifPlugin extends Plugin {
 				}
 				const r = this.reviewButtons.get(view);
 				if (r) {
-					r.toggleClass("is-active", this.settings.writingNotes);
+					r.toggleClass("sl-on", this.settings.writingNotes);
 					r.setAttr("aria-label", this.settings.writingNotes ? "AI review is on: spelling, grammar and word choice are checked when you sync. Click to turn off." : "AI review is off. Click to turn on.");
 				}
 				this.headerButtons.get(view)?.toggleClass("is-stale", isChapter && this.isStale(view.file?.path));

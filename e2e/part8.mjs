@@ -115,10 +115,10 @@ ok(/2 writing notes/.test(await page.locator(".status-bar .sl-status").innerText
 const clearNotices = () => page.locator(".notice").evaluateAll((ns) => ns.forEach((n) => n.remove()));
 await clearNotices();
 const reviewBtn = page.locator(".workspace-leaf.mod-active .view-action.sl-header-review");
-ok((await reviewBtn.count()) === 1 && (await reviewBtn.getAttribute("class")).includes("is-active"), "chapter header has an AI review switch, on by default");
+ok((await reviewBtn.count()) === 1 && (await reviewBtn.getAttribute("class")).includes("sl-on"), "chapter header has an AI review switch, on by default");
 await reviewBtn.click();
 await sleep(500);
-ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 0 && !(await reviewBtn.getAttribute("class")).includes("is-active") && !/notes/.test(await page.locator(".status-bar .sl-status").innerText()), "turning AI review off hides the notes");
+ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 0 && !(await reviewBtn.getAttribute("class")).includes("sl-on") && !/notes/.test(await page.locator(".status-bar .sl-status").innerText()), "turning AI review off hides the notes");
 await clearNotices();
 await reviewBtn.click();
 await sleep(500);

@@ -114,6 +114,10 @@ export class SetupModal extends Modal {
 			});
 		}
 		this.providerDetail(detail, status);
+		// Start with focus on the chosen card, so focus and selection never point at two different cards.
+		window.requestAnimationFrame(() => {
+			if (!detail.contains(document.activeElement)) (grid.querySelector(".sl-setup-choice.is-selected") as HTMLElement | null)?.focus();
+		});
 		this.footer(body, { label: "Continue", onClick: () => this.go(1) }, "Skip for now");
 	}
 

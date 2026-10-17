@@ -398,7 +398,8 @@ body.sl-red-spelling .sl-wn-spelling { text-decoration-color: color-mix(in srgb,
 .view-action.sl-header-sync.is-stale::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--text-normal); box-shadow: 0 0 0 2px var(--background-primary); }
 /* AI review switch: muted when off, full strength when on. */
 .view-action.sl-header-review { color: var(--text-muted); }
-.view-action.sl-header-review.is-active { color: var(--text-normal); }
+/* "On" uses its own class: Obsidian paints .is-active header buttons with the accent color. */
+.view-action.sl-header-review.sl-on { color: var(--text-normal); }
 
 /* ---- Status bar ---- */
 .sl-status { display: inline-flex; align-items: center; gap: 6px; }
