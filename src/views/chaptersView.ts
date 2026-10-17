@@ -118,7 +118,7 @@ export class ChaptersView extends ItemView {
 		else this.renderBoard(body, chapters, scans);
 		this.markNow();
 		const cards = Array.from(body.querySelectorAll<HTMLElement>(".sl-ch-card"));
-		const target = this.focusNext !== null ? cards[this.focusNext] : cards.find((c) => c.dataset.path === focused);
+		const target = this.focusNext !== null ? cards[this.focusNext] : cards.find((c) => !!focused && c.dataset.path === focused);
 		this.focusNext = null;
 		target?.focus();
 	}
