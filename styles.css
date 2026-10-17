@@ -1454,3 +1454,5 @@ body.theme-dark .sl-tl-avatar { color: #fff; background: hsl(var(--hue) 34% 42%)
 /* AI review switch in a chapter's header: accent when on, faint when off. */
 .view-action.sl-header-review { color: var(--text-faint); }
 .view-action.sl-header-review.is-active { color: var(--text-accent); }
+/* Suggestion lists on inputs: no native ▼ glyph (suggestions still appear as you type). */
+.storyloom-glass-modal input[list]::-webkit-calendar-picker-indicator { display: none !important; }
