@@ -2,7 +2,7 @@
  * "Claude Code" provider: runs the user's own, unmodified `claude` CLI in print mode, so requests are
  * covered by whatever that install is signed in with (for example a Claude Pro/Max subscription).
  *
- * Storyloom never reads, stores or forwards Claude credentials; signing in happens in Claude Code itself.
+ * Motif never reads, stores or forwards Claude credentials; signing in happens in Claude Code itself.
  * This module is pure apart from the injected process runner (see claudeCodeNode.ts), so it can be tested.
  */
 import { CACHE_MARK, LLMError, type ChatMessage, type CompleteRequest, type LLMClient, type OnText } from "./types";
@@ -138,7 +138,7 @@ export function claudeCodeError(r: ClaudeCodeResult): LLMError {
 		return new LLMError("auth", `Claude Code isn't signed in (or the sign-in expired). Open a terminal, run \`claude\`, sign in, then try again. (${msg})`, r.status);
 	}
 	if (r.status === 429 || /usage limit|rate limit|limit reached/i.test(msg)) {
-		return new LLMError("rate_limit", `Your Claude plan's usage limit was reached. It resets on Claude's schedule; switch to an API key in Settings → Storyloom if you need to keep going. (${msg})`, r.status);
+		return new LLMError("rate_limit", `Your Claude plan's usage limit was reached. It resets on Claude's schedule; switch to an API key in Settings → Motif if you need to keep going. (${msg})`, r.status);
 	}
 	if (/model/i.test(msg) && /not found|invalid|unknown|not available/i.test(msg)) {
 		return new LLMError("not_found", `Claude Code couldn't use that model. Check the model name in settings (e.g. sonnet or opus). (${msg})`, r.status);
@@ -160,10 +160,10 @@ export class ClaudeCodeClient implements LLMClient {
 
 	async stream(req: CompleteRequest, onText: OnText, signal?: AbortSignal): Promise<string> {
 		const host = this.host;
-		if (!host) throw new LLMError("config", "The Claude Code provider only works in Obsidian on desktop. Choose another provider in Settings → Storyloom.");
+		if (!host) throw new LLMError("config", "The Claude Code provider only works in Obsidian on desktop. Choose another provider in Settings → Motif.");
 		const binary = await host.resolveBinary(this.opts.binary);
 		if (!binary) {
-			throw new LLMError("config", "Couldn't find Claude Code on this computer. Install it (claude.com/claude-code), or set its full path in Settings → Storyloom.");
+			throw new LLMError("config", "Couldn't find Claude Code on this computer. Install it (claude.com/claude-code), or set its full path in Settings → Motif.");
 		}
 		const sysFile = await host.writeTemp(claudeCodeSystem(req.system));
 		try {
@@ -207,7 +207,7 @@ export class ClaudeCodeClient implements LLMClient {
 			});
 			proc.stderr.on("data", (c) => (stderr += toText(c)));
 			proc.on("error", (err) =>
-				done(() => reject(new LLMError("config", `Couldn't start Claude Code (${binary}): ${err.message}. Check its path in Settings → Storyloom.`))),
+				done(() => reject(new LLMError("config", `Couldn't start Claude Code (${binary}): ${err.message}. Check its path in Settings → Motif.`))),
 			);
 			proc.on("close", (code) =>
 				done(() => {
@@ -217,7 +217,7 @@ export class ClaudeCodeClient implements LLMClient {
 					if (parser.text.trim()) return resolve(parser.text);
 					const detail = (r?.text || stderr).trim().split("\n").slice(-3).join(" ");
 					if (/unknown option|unknown argument/i.test(detail)) {
-						return reject(new LLMError("config", `Your Claude Code is too old for Storyloom. Run \`claude update\` in a terminal. (${detail})`));
+						return reject(new LLMError("config", `Your Claude Code is too old for Motif. Run \`claude update\` in a terminal. (${detail})`));
 					}
 					reject(detail ? claudeCodeError({ isError: true, text: detail }) : new LLMError("empty", `Claude Code exited without an answer (code ${code}).`));
 				}),

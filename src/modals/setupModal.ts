@@ -2,7 +2,7 @@ import { Modal, Platform, setIcon } from "obsidian";
 import { claudeCodeStatus } from "../llm/claudeCodeNode";
 import { providerConfig, PROVIDERS, type ProviderId } from "../llm/client";
 import { friendlyError } from "../llm/types";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { applyScaffold, planScaffold } from "../scaffold";
 import { glass, openSettings } from "../ui";
 
@@ -21,7 +21,7 @@ export class SetupModal extends Modal {
 	private step: Step = 0;
 	private bookTitle = "";
 
-	constructor(private plugin: StoryloomPlugin) {
+	constructor(private plugin: MotifPlugin) {
 		super(plugin.app);
 		glass(this);
 		this.modalEl.addClass("sl-setup");
@@ -81,8 +81,8 @@ export class SetupModal extends Modal {
 	// ---------- Step 1: connect ----------
 
 	private connect(body: HTMLElement) {
-		body.createEl("h2", { text: "Welcome to Storyloom" });
-		body.createEl("p", { cls: "sl-setup-lead", text: "First, choose how Storyloom talks to an AI. You can change this any time in settings." });
+		body.createEl("h2", { text: "Welcome to Motif" });
+		body.createEl("p", { cls: "sl-setup-lead", text: "First, choose how Motif talks to an AI. You can change this any time in settings." });
 
 		const s = this.plugin.settings;
 		const choices: Choice[] = [
@@ -135,7 +135,7 @@ export class SetupModal extends Modal {
 		};
 
 		if (s.provider === "claudecode") {
-			detail.createEl("p", { cls: "storyloom-muted", text: "Storyloom runs the Claude Code app you already have, so it uses whatever plan Claude Code is signed in with. Storyloom never sees your Claude login. Not installed or signed in? Install Claude Code, run `claude` once in a terminal, then check again." });
+			detail.createEl("p", { cls: "storyloom-muted", text: "Motif runs the Claude Code app you already have, so it uses whatever plan Claude Code is signed in with. Motif never sees your Claude login. Not installed or signed in? Install Claude Code, run `claude` once in a terminal, then check again." });
 		} else if (s.provider === "anthropic") {
 			const i = field("API key", cfg.apiKey, "sk-ant-…", (v) => void save({ apiKey: v }), true);
 			window.setTimeout(() => i.focus(), 0);
@@ -194,7 +194,7 @@ export class SetupModal extends Modal {
 			this.footer(body, { label: "Continue", onClick: () => this.go(2) });
 			return;
 		}
-		body.createEl("p", { cls: "sl-setup-lead", text: "Storyloom keeps everything as plain Markdown notes. It will add whatever's missing below and won't touch anything that already exists." });
+		body.createEl("p", { cls: "sl-setup-lead", text: "Motif keeps everything as plain Markdown notes. It will add whatever's missing below and won't touch anything that already exists." });
 		const row = body.createDiv({ cls: "sl-setup-field" });
 		row.createEl("label", { text: "Book title" });
 		const input = row.createEl("input", { type: "text", value: this.bookTitle });
@@ -230,9 +230,9 @@ export class SetupModal extends Modal {
 		const mod = Platform.isMacOS ? "⌘" : "Ctrl";
 		const tips: [string, string, string][] = [
 			["text-cursor-input", `Select text and press ${mod}+K`, "Ask the AI to rewrite it. Tab accepts, Esc discards. With nothing selected it writes at the cursor."],
-			["feather", "The Storyloom button in the left ribbon", "Opens Chapters, Codex, Timeline, Graph and more, plus quick actions."],
+			["feather", "The Motif button in the left ribbon", "Opens Chapters, Codex, Timeline, Graph and more, plus quick actions."],
 			["users", "Names are underlined in your chapters", "Hover one to see that character's state as of the chapter you're in."],
-			["refresh-cw", "Sync a chapter when you finish it", "Storyloom reads it and records what changed in the codex: who moved, who learned what. Want something different? Change the chapter and sync again."],
+			["refresh-cw", "Sync a chapter when you finish it", "Motif reads it and records what changed in the codex: who moved, who learned what. Want something different? Change the chapter and sync again."],
 		];
 		const list = body.createDiv({ cls: "sl-setup-tips" });
 		for (const [, title, desc] of tips) {

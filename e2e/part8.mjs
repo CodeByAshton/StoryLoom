@@ -1,4 +1,4 @@
-// Polish: setup guide, the Storyloom menu, view tabs, status bar, empty states, scaffolding. Run with KEEP_SETUP=1.
+// Polish: setup guide, the Motif menu, view tabs, status bar, empty states, scaffolding. Run with KEEP_SETUP=1.
 import { launch, shot } from "./launch.mjs";
 process.env.KEEP_SETUP = "1";
 const { app, page, logs } = await launch();
@@ -7,7 +7,7 @@ const sleep = (ms) => page.waitForTimeout(ms);
 const exists = (p) => page.evaluate((p) => !!window.app.vault.getAbstractFileByPath(p), p);
 const read = (p) => page.evaluate(async (p) => { const f = window.app.vault.getAbstractFileByPath(p); return f ? window.app.vault.read(f) : null; }, p);
 const activeType = () => page.evaluate(() => window.app.workspace.getMostRecentLeaf()?.view.getViewType());
-for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) break; await sleep(300); }
+for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.motif?.index?.ready).catch(() => false)) break; await sleep(300); }
 
 // ---- Setup guide on first run ----
 await page.waitForSelector(".modal.sl-setup", { timeout: 8000 }).catch(() => {});
@@ -16,7 +16,7 @@ ok((await page.locator(".sl-setup-step.is-active").innerText()).includes("Connec
 await sleep(400);
 await shot(page, "p8-setup-1");
 await page.locator(".sl-setup-choice", { hasText: "Local model" }).click();
-ok(await page.evaluate(() => window.app.plugins.plugins.storyloom.settings.provider) === "ollama", "picking a card sets the provider");
+ok(await page.evaluate(() => window.app.plugins.plugins.motif.settings.provider) === "ollama", "picking a card sets the provider");
 ok((await page.locator(".sl-setup-choice.is-selected").count()) === 1, "exactly one card selected");
 await page.locator(".sl-setup-test").click();
 await page.waitForSelector(".sl-setup-result.is-ok, .sl-setup-result.is-error", { timeout: 15000 }).catch(() => {});
@@ -37,7 +37,7 @@ await shot(page, "p8-setup-3");
 await page.locator(".sl-setup-footer button.mod-cta", { hasText: "Open chapters" }).click();
 await sleep(800);
 ok((await page.locator(".modal.sl-setup").count()) === 0 && (await activeType()) === "storyloom-chapters", "finishing opens Chapters");
-ok(await page.evaluate(() => window.app.plugins.plugins.storyloom.settings.onboarded) === true, "setup is remembered");
+ok(await page.evaluate(() => window.app.plugins.plugins.motif.settings.onboarded) === true, "setup is remembered");
 
 // ---- Tabs between views, in the same pane ----
 const leaves = () => page.evaluate(() => ["storyloom-chapters", "storyloom-codex", "storyloom-timeline", "storyloom-graph"].map((t) => window.app.workspace.getLeavesOfType(t).length).join(","));
@@ -60,8 +60,8 @@ await sleep(300);
 ok((await page.locator(".storyloom-graph-stage .sl-empty").count()) === 0, "empty state goes away when types come back");
 
 // ---- One ribbon button with a menu ----
-ok((await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').count()) === 1 && (await page.locator('.side-dock-ribbon-action[aria-label="Storyloom: Sync chapter"]').count()) === 1, "ribbon: one Storyloom menu button plus Sync chapter");
-await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').click();
+ok((await page.locator('.side-dock-ribbon-action[aria-label="Motif"]').count()) === 1 && (await page.locator('.side-dock-ribbon-action[aria-label="Motif: Sync chapter"]').count()) === 1, "ribbon: one Motif menu button plus Sync chapter");
+await page.locator('.side-dock-ribbon-action[aria-label="Motif"]').click();
 await sleep(300);
 const items = await page.locator(".menu .menu-item-title").allInnerTexts();
 ok(["Chapters", "Codex", "Story timeline", "Story graph", "Cast", "Story assistant", "New chapter", "New character", "Setup guide", "Settings"].every((x) => items.includes(x)), `menu lists views and actions: ${items.join(", ")}`);
@@ -75,7 +75,7 @@ await page.evaluate(() => window.app.workspace.openLinkText("Manuscript/03 - The
 await sleep(1200);
 const status = () => page.locator(".status-bar .sl-status").innerText().catch(() => "");
 ok(/Chapter 3 of 3\s*The Harbor/.test(await status()), `status bar shows the chapter: ${await status()}`);
-await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; const f = p.activeMarkdownFile(); await p.markStateSynced(f, await window.app.vault.read(f)); });
+await page.evaluate(async () => { const p = window.app.plugins.plugins.motif; const f = p.activeMarkdownFile(); await p.markStateSynced(f, await window.app.vault.read(f)); });
 await sleep(800);
 ok((await page.locator(".status-bar .sl-status .sl-status-dot").count()) === 0, "no dot while the story state is up to date");
 await page.evaluate(() => { const e = window.app.workspace.activeEditor.editor; e.replaceRange(" She left.", { line: e.lastLine(), ch: e.getLine(e.lastLine()).length }); });
@@ -143,12 +143,12 @@ await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").first().hove
 await page.waitForSelector(".sl-wn-card", { timeout: 4000 }).catch(() => {});
 await page.locator(".sl-wn-card button", { hasText: "Dismiss" }).click();
 await sleep(500);
-ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 0 && (await page.evaluate((p) => window.app.plugins.plugins.storyloom.notesFor(p).length, ch3)) === 0, "Dismiss removes a note for good");
+ok((await page.locator(".workspace-leaf.mod-active .cm-content .sl-wn").count()) === 0 && (await page.evaluate((p) => window.app.plugins.plugins.motif.notesFor(p).length, ch3)) === 0, "Dismiss removes a note for good");
 void fixed;
 
 // Pretend an earlier sync wrote a line the chapter no longer supports, then re-sync from the ribbon.
 await page.evaluate(async ([elias, ch3]) => {
-	const p = window.app.plugins.plugins.storyloom;
+	const p = window.app.plugins.plugins.motif;
 	const f = window.app.vault.getAbstractFileByPath(elias);
 	const stale = "- ch 3 | status: Asleep at his desk";
 	await window.app.vault.process(f, (t) => t.replace("## Timeline\n", `## Timeline\n${stale}\n`));
@@ -157,7 +157,7 @@ await page.evaluate(async ([elias, ch3]) => {
 }, [elias, ch3]);
 await page.evaluate((p) => window.app.workspace.openLinkText(p, "", false), ch3);
 await sleep(500);
-await page.locator('.side-dock-ribbon-action[aria-label="Storyloom: Sync chapter"]').click();
+await page.locator('.side-dock-ribbon-action[aria-label="Motif: Sync chapter"]').click();
 await sleep(2500);
 const resynced = (await read(elias)) ?? "";
 ok(!/Asleep at his desk/.test(resynced), "re-sync removed the line the chapter no longer supports");
@@ -165,7 +165,7 @@ ok(ch3Lines(resynced).length === ch3Lines(after3).length, `re-sync replaced its 
 ok(/- ch 2 \| /.test(resynced) || !/- ch 2 \| /.test(before3), "hand-written lines for other chapters stay");
 
 // ---- Layout: codex detail never overlaps the grid; inline panel stays inside the editor ----
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-codex"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-codex"));
 await sleep(600);
 await page.locator(".sl-cx-card").first().click();
 await sleep(600);
@@ -176,8 +176,8 @@ const cx = await page.evaluate(() => {
 });
 ok(cx.hidden || cx.gridRight <= cx.detailLeft + 1, `codex detail doesn't overlap the cards ${JSON.stringify(cx)}`);
 await page.locator(".sl-cx-detail .sl-cx-close").click().catch(() => {});
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-cast"));
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-codex"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-cast"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-codex"));
 await sleep(800);
 const clipped = await page.evaluate(() => [...document.querySelectorAll(".sl-cx-card")].filter((c) => c.scrollHeight > c.offsetHeight + 1).length);
 ok(clipped === 0, `codex cards are never cut off in a narrow pane (${clipped} clipped)`);
@@ -215,10 +215,10 @@ await sleep(300);
 await page.evaluate(async () => {
 	const v = window.app.vault;
 	for (const p of ["Manuscript", "Codex", "Templates", "Book.md"]) { const f = v.getAbstractFileByPath(p); if (f) await v.delete(f, true); }
-	await window.app.plugins.plugins.storyloom.index.rebuild();
+	await window.app.plugins.plugins.motif.index.rebuild();
 });
 await sleep(1200);
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-codex"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-codex"));
 await sleep(600);
 ok(/Your codex is empty/.test(await page.locator(".sl-cx .sl-empty").innerText().catch(() => "")), "codex empty state");
 ok((await page.locator(".sl-cx .sl-empty button", { hasText: "New character" }).count()) === 1, "codex empty state offers New character");
@@ -230,7 +230,7 @@ await shot(page, "p8-empty-chapters");
 await page.locator(".sl-ch .sl-nav-tab", { hasText: "Timeline" }).click();
 await sleep(600);
 ok(/Nothing on the timeline yet/.test(await page.locator(".sl-tl .sl-empty").innerText().catch(() => "")), "timeline empty state");
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-cast"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-cast"));
 await sleep(800);
 ok(/No cast yet/.test(await page.locator(".storyloom-cast .sl-empty").innerText().catch(() => "")), "cast empty state");
 

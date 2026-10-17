@@ -8,7 +8,7 @@ export async function launch() {
 	page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
 	page.on("pageerror", (e) => logs.push(`[pageerror] ${e.message}`));
 	for (let i = 0; i < 40; i++) {
-		const loaded = await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom).catch(() => false);
+		const loaded = await page.evaluate(() => !!window.app?.plugins?.plugins?.motif).catch(() => false);
 		if (loaded) break;
 		const trust = page.getByText("Trust author and enable plugins");
 		if (await trust.count()) await trust.first().click().catch(() => {});
@@ -18,7 +18,7 @@ export async function launch() {
 	if (!process.env.KEEP_SETUP) {
 		await page.waitForTimeout(400);
 		await page.evaluate(async () => {
-			const p = window.app.plugins.plugins.storyloom;
+			const p = window.app.plugins.plugins.motif;
 			if (!p) return;
 			p.settings.onboarded = true;
 			await p.saveSettings();

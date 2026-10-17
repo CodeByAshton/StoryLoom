@@ -1,7 +1,7 @@
 import { StateEffect, type Extension } from "@codemirror/state";
 import { closeHoverTooltips, Decoration, EditorView, hoverTooltip, ViewPlugin, type DecorationSet, type Tooltip, type ViewUpdate } from "@codemirror/view";
 import { editorInfoField } from "obsidian";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { fitInEditor } from "./fit";
 import { frontmatterEnd } from "./highlight";
 import { locateNotes, NOTE_KINDS, type LocatedNote } from "../notes/model";
@@ -9,7 +9,7 @@ import { locateNotes, NOTE_KINDS, type LocatedNote } from "../notes/model";
 /** Dispatched to every editor when a chapter's writing notes change. */
 export const refreshNotes = StateEffect.define<null>();
 
-function located(plugin: StoryloomPlugin, view: EditorView): LocatedNote[] {
+function located(plugin: MotifPlugin, view: EditorView): LocatedNote[] {
 	const path = view.state.field(editorInfoField, false)?.file?.path;
 	if (!path) return [];
 	const notes = plugin.notesFor(path);
@@ -21,12 +21,12 @@ function located(plugin: StoryloomPlugin, view: EditorView): LocatedNote[] {
 }
 
 /** The writing note under a position, if any (the entity hover card stays out of the way there). */
-export function noteAt(plugin: StoryloomPlugin, view: EditorView, pos: number): LocatedNote | undefined {
+export function noteAt(plugin: MotifPlugin, view: EditorView, pos: number): LocatedNote | undefined {
 	return located(plugin, view).find((l) => pos >= l.from && pos <= l.to);
 }
 
 /** Wavy underlines under each note (like a spell checker), and a card with Fix / Dismiss on hover. */
-export function writingNotesExtension(plugin: StoryloomPlugin): Extension {
+export function writingNotesExtension(plugin: MotifPlugin): Extension {
 	const marks = new Map<string, Decoration>();
 	const markFor = (kind: string) => {
 		let m = marks.get(kind);
@@ -72,7 +72,7 @@ export function writingNotesExtension(plugin: StoryloomPlugin): Extension {
 	return [underline, hover];
 }
 
-function renderNoteCard(plugin: StoryloomPlugin, view: EditorView, path: string, hit: LocatedNote): HTMLElement {
+function renderNoteCard(plugin: MotifPlugin, view: EditorView, path: string, hit: LocatedNote): HTMLElement {
 	const { note } = hit;
 	const kind = NOTE_KINDS[note.kind];
 	const dom = createDiv({ cls: `storyloom-hover sl-wn-card is-${note.kind}` });

@@ -1,7 +1,7 @@
 ---
 type: location
 aliases: [the harbor, the docks]
-storyloom_sample: true
+motif_sample: true
 ---
 
 # Old Harbor

@@ -1,7 +1,7 @@
 ---
 type: location
 aliases: [Blackwood, the manor]
-storyloom_sample: true
+motif_sample: true
 ---
 
 # Blackwood Manor

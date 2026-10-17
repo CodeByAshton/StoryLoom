@@ -94,7 +94,7 @@ export function errorFromStatus(status: number, text: string, providerName: stri
 	const detail = errorDetail(text);
 	switch (true) {
 		case status === 401 || status === 403:
-			return new LLMError("auth", `${providerName} rejected the API key. Check it in Settings → Storyloom. (${detail})`, status);
+			return new LLMError("auth", `${providerName} rejected the API key. Check it in Settings → Motif. (${detail})`, status);
 		case status === 404:
 			return new LLMError("not_found", `Model "${model}" was not found by ${providerName}. Check the model name in settings. (${detail})`, status);
 		case status === 429:

@@ -1,6 +1,6 @@
 # Roadmap
 
-What's planned for future builds of Storyloom.
+What's planned for future builds of Motif.
 
 ## Next build
 

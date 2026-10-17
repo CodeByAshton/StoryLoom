@@ -88,7 +88,7 @@ export class AnthropicClient implements LLMClient {
 
 	async stream(req: CompleteRequest, onText: OnText, signal?: AbortSignal): Promise<string> {
 		if (!this.fetchFn) throw new StreamUnavailable("no fetch");
-		if (!this.opts.apiKey) throw new LLMError("config", "No Anthropic API key set. Add one in Settings → Storyloom.");
+		if (!this.opts.apiKey) throw new LLMError("config", "No Anthropic API key set. Add one in Settings → Motif.");
 		let withFallback = this.opts.refusalFallback !== false;
 		for (let attempt = 0; attempt < 2; attempt++) {
 			const r = buildAnthropicRequest(this.opts, req, withFallback, true);
@@ -107,7 +107,7 @@ export class AnthropicClient implements LLMClient {
 	}
 
 	async complete(req: CompleteRequest): Promise<string> {
-		if (!this.opts.apiKey) throw new LLMError("config", "No Anthropic API key set. Add one in Settings → Storyloom.");
+		if (!this.opts.apiKey) throw new LLMError("config", "No Anthropic API key set. Add one in Settings → Motif.");
 		let withFallback = this.opts.refusalFallback !== false;
 		for (let attempt = 0; attempt < 2; attempt++) {
 			const res = await send(this.http, buildAnthropicRequest(this.opts, req, withFallback), "Anthropic");

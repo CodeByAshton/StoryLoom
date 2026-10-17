@@ -1,4 +1,4 @@
-/* Storyloom — a monochrome, typography-driven system on top of Obsidian's theme variables.
+/* Motif — a monochrome, typography-driven system on top of Obsidian's theme variables.
 
    - Hierarchy comes from type: size, weight (regular / semibold) and three grays
      (--text-normal, --text-muted, --text-faint for placeholders and decoration only).
@@ -117,7 +117,7 @@ body.theme-dark {
 .storyloom-glass-btn:not(.is-icon) .storyloom-glass-icon,
 .storyloom-glass-row > .storyloom-glass-icon, .storyloom-glass-head > .storyloom-glass-icon.is-accent { display: none; }
 
-/* ---- Buttons inside Storyloom: secondary = hairline outline, primary = inverse ---- */
+/* ---- Buttons inside Motif: secondary = hairline outline, primary = inverse ---- */
 :is(.sl-tl, .sl-ch, .sl-cx, .storyloom-graph, .storyloom-cast, .storyloom-chat, .storyloom-hover, .storyloom-glass-panel) button:not(.clickable-icon):not(.mod-cta) {
 	background: transparent;
 	border: none;
@@ -164,7 +164,7 @@ body.theme-dark {
 	background: var(--sl-raised) !important;
 	border: 1px solid var(--sl-hairline) !important;
 }
-/* CodeMirror's hover wrapper around a Storyloom card: no background, border or shadow of its own. */
+/* CodeMirror's hover wrapper around a Motif card: no background, border or shadow of its own. */
 .cm-tooltip.storyloom-hover-host, .cm-tooltip:has(> .storyloom-hover) { background: transparent !important; border: none !important; box-shadow: none !important; border-radius: var(--sl-r-pop); padding: 0; }
 
 /* ---- Inline edit: the floating panel ---- */
@@ -1029,7 +1029,7 @@ details.storyloom-cast-section > summary:hover { background: var(--sl-wash); col
 .storyloom-timeline-preview.is-empty { color: var(--text-faint); font-family: var(--font-interface); }
 
 /* =====================================================================
-   Modals: the pop-up shell (every Storyloom dialog and picker).
+   Modals: the pop-up shell (every Motif dialog and picker).
    The !important here wins over Obsidian's and themes' modal, field and button styles.
    ===================================================================== */
 
@@ -1178,7 +1178,7 @@ details.storyloom-cast-section > summary:hover { background: var(--sl-wash); col
    Accessibility
    ===================================================================== */
 
-/* Focus rings on every Storyloom control: a neutral outline, so no box-shadow override can remove it. */
+/* Focus rings on every Motif control: a neutral outline, so no box-shadow override can remove it. */
 :is(
 	.sl-nav-tab, .sl-tl-segmented button, .sl-cx-chip, .storyloom-chip, .sl-cx-new, .sl-empty-actions button,
 	.storyloom-glass-btn, .storyloom-glass-chip, .storyloom-ask-pill-btn, .storyloom-card-btn,

@@ -9,9 +9,9 @@ const ok = (cond, msg) => console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`);
 const sleep = (ms) => page.waitForTimeout(ms);
 const open = (p) => page.evaluate(async (p) => { await window.app.workspace.openLinkText(p, "", false); }, p);
 const doc = () => page.evaluate(() => window.app.workspace.activeEditor.editor.getValue());
-for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) break; await sleep(300); }
+for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.motif?.index?.ready).catch(() => false)) break; await sleep(300); }
 const useClaudeCode = (bin) => page.evaluate(async (bin) => {
-	const p = window.app.plugins.plugins.storyloom;
+	const p = window.app.plugins.plugins.motif;
 	p.settings.provider = "claudecode";
 	p.settings.providers.claudecode = { apiKey: "", baseUrl: bin, model: "sonnet" };
 	await p.saveSettings();
@@ -21,7 +21,7 @@ const select = () => page.evaluate((para) => { const e = window.app.workspace.ac
 
 // Settings: provider choice and sign-in check.
 await useClaudeCode(FAKE);
-await page.evaluate(() => { window.app.setting.open(); window.app.setting.openTabById("storyloom"); });
+await page.evaluate(() => { window.app.setting.open(); window.app.setting.openTabById("motif"); });
 await sleep(600);
 await page.locator(".vertical-tab-content button", { hasText: "Check" }).click();
 await page.waitForFunction(() => /signed in with/i.test(document.querySelector(".vertical-tab-content")?.innerText ?? ""), null, { timeout: 8000 }).catch(() => {});
@@ -63,13 +63,13 @@ await page.keyboard.press("Enter");
 await page.waitForSelector(".storyloom-glass-panel[data-phase=error]", { timeout: 60000 }).catch(() => {});
 const err = await page.locator(".storyloom-glass-error").innerText().catch(() => "");
 await shot(page, "p5-real-cli-error");
-ok(/Claude Code isn't signed in.*Invalid API key/s.test(err), `real CLI: Storyloom's flags are accepted and its auth failure is readable: ${JSON.stringify(err.slice(0, 160))}`);
+ok(/Claude Code isn't signed in.*Invalid API key/s.test(err), `real CLI: Motif's flags are accepted and its auth failure is readable: ${JSON.stringify(err.slice(0, 160))}`);
 await page.keyboard.press("Escape");
 await sleep(300);
 
 // Missing install.
 await useClaudeCode("/nonexistent/claude");
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:continue-writing"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:continue-writing"));
 await sleep(400);
 await page.keyboard.press("Enter");
 await page.waitForSelector(".storyloom-result-modal .storyloom-error", { timeout: 8000 }).catch(() => {});
@@ -81,10 +81,10 @@ await sleep(300);
 
 // Glass modals.
 await useClaudeCode(FAKE);
-// Every Storyloom pop-up shares one material: a solid surface with a hairline border and a soft shadow.
+// Every Motif pop-up shares one material: a solid surface with a hairline border and a soft shadow.
 const glassCount = () => page.evaluate(() => { const m = document.querySelector(".modal.storyloom-glass-modal, .prompt.storyloom-glass-modal"); if (!m) return "none"; const cs = getComputedStyle(m); return cs.boxShadow !== "none" && parseFloat(cs.borderTopWidth) > 0 ? "styled" : "unstyled"; });
 await select();
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:rewrite-selection"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:rewrite-selection"));
 await sleep(500);
 const pickerGlass = await glassCount();
 await shot(page, "p5-picker");
@@ -94,10 +94,10 @@ await page.waitForSelector(".storyloom-result-item", { timeout: 10000 }).catch((
 await sleep(400);
 const modalGlass = await glassCount();
 await shot(page, "p5-rewrite-modal");
-ok(pickerGlass === "styled" && modalGlass === "styled", `pickers and result pop-ups share the Storyloom pop-up style (${pickerGlass} / ${modalGlass})`);
+ok(pickerGlass === "styled" && modalGlass === "styled", `pickers and result pop-ups share the Motif pop-up style (${pickerGlass} / ${modalGlass})`);
 await page.keyboard.press("Escape");
 await sleep(300);
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:word-count"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:word-count"));
 await sleep(500);
 await shot(page, "p5-wordcount");
 await page.keyboard.press("Escape");

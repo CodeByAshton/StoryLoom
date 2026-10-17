@@ -1,12 +1,12 @@
 import { hoverTooltip, type Tooltip } from "@codemirror/view";
 import { editorInfoField } from "obsidian";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { renderEntityPeek } from "../views/props";
 import { frontmatterEnd, shouldHighlight } from "./highlight";
 import { noteAt } from "./writingNotes";
 import { fitInEditor } from "./fit";
 
-export function entityHover(plugin: StoryloomPlugin) {
+export function entityHover(plugin: MotifPlugin) {
 	return hoverTooltip(
 		(view, pos): Tooltip | null => {
 			const re = plugin.index.nameRegex;

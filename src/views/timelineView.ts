@@ -1,7 +1,7 @@
 import { debounce, ItemView, setIcon, type WorkspaceLeaf } from "obsidian";
 import { stripFrontmatter } from "../codex/parse";
 import type { ChapterInfo, Entity } from "../codex/types";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { renderEmpty } from "./empty";
 import { plural, renderMeta, renderNav } from "./nav";
 import { wordCount } from "../util";
@@ -29,7 +29,7 @@ export class TimelineView extends ItemView {
 
 	constructor(
 		leaf: WorkspaceLeaf,
-		private plugin: StoryloomPlugin,
+		private plugin: MotifPlugin,
 	) {
 		super(leaf);
 	}
@@ -114,7 +114,7 @@ export class TimelineView extends ItemView {
 			renderEmpty(root, {
 				icon: this.mode === "characters" ? "users" : "map-pin",
 				title: `No ${this.mode} yet`,
-				body: `Add a ${type} to the codex, or sync a chapter and Storyloom will suggest them.`,
+				body: `Add a ${type} to the codex, or sync a chapter and Motif will suggest them.`,
 				actions: [{ label: `New ${type}`, icon: "plus", cta: true, onClick: () => void this.plugin.newEntity(type) }],
 			});
 			return;

@@ -5,9 +5,9 @@ const ok = (cond, msg) => console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`);
 const sleep = (ms) => page.waitForTimeout(ms);
 const open = (p) => page.evaluate(async (p) => { await window.app.workspace.openLinkText(p, "", false); }, p);
 const doc = () => page.evaluate(() => window.app.workspace.activeEditor.editor.getValue());
-for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) break; await sleep(300); }
+for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.motif?.index?.ready).catch(() => false)) break; await sleep(300); }
 const setProvider = (provider, cfg) => page.evaluate(async ([provider, cfg]) => {
-	const p = window.app.plugins.plugins.storyloom;
+	const p = window.app.plugins.plugins.motif;
 	p.settings.provider = provider;
 	p.settings.providers[provider] = { ...(p.settings.providers[provider] ?? {}), ...cfg };
 	await p.saveSettings();
@@ -59,7 +59,7 @@ await sleep(300);
 
 // Fallback: a server without CORS can't stream from inside Obsidian; the request still succeeds.
 await setProvider("custom", { apiKey: "", baseUrl: "http://localhost:11435/v1", model: "m" });
-await page.evaluate(() => { const e = window.app.workspace.activeEditor.editor; e.setCursor({ line: e.lastLine(), ch: 0 }); window.app.commands.executeCommandById("storyloom:continue-writing"); });
+await page.evaluate(() => { const e = window.app.workspace.activeEditor.editor; e.setCursor({ line: e.lastLine(), ch: 0 }); window.app.commands.executeCommandById("motif:continue-writing"); });
 await sleep(400);
 await page.keyboard.press("Enter");
 await page.waitForSelector(".storyloom-result-text", { timeout: 10000 }).catch(() => {});
@@ -70,7 +70,7 @@ await sleep(300);
 
 // Continue writing streams into the modal (CORS server).
 await setProvider("ollama", { apiKey: "", baseUrl: "http://localhost:11434/v1" });
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:continue-writing"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:continue-writing"));
 await sleep(400);
 await page.keyboard.press("Enter");
 await page.waitForSelector(".storyloom-result-live", { timeout: 5000 }).catch(() => {});
@@ -80,7 +80,7 @@ await page.keyboard.press("Escape");
 await sleep(300);
 
 // Typing in a chapter no longer refreshes the whole plugin.
-await page.evaluate(() => { const p = window.app.plugins.plugins.storyloom; window.__changes = 0; p.index.on("changed", () => window.__changes++); });
+await page.evaluate(() => { const p = window.app.plugins.plugins.motif; window.__changes = 0; p.index.on("changed", () => window.__changes++); });
 await page.evaluate(async () => {
 	const f = window.app.vault.getAbstractFileByPath("Manuscript/01 - The Manor.md");
 	for (let i = 0; i < 3; i++) { await window.app.vault.process(f, (t) => t + "\nMore prose."); await new Promise((r) => setTimeout(r, 300)); }
@@ -93,10 +93,10 @@ const fmChanges = await page.evaluate(() => window.__changes);
 ok(proseChanges === 0 && fmChanges === 1, `prose edits don't broadcast index changes (${proseChanges}); a title change does (${fmChanges - proseChanges})`);
 
 // Stale indicator in the Cast panel.
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-cast"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-cast"));
 await open("Manuscript/02 - Lamplight.md");
 await sleep(800);
-await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; const f = window.app.vault.getAbstractFileByPath("Manuscript/02 - Lamplight.md"); await p.markStateSynced(f, await window.app.vault.read(f)); });
+await page.evaluate(async () => { const p = window.app.plugins.plugins.motif; const f = window.app.vault.getAbstractFileByPath("Manuscript/02 - Lamplight.md"); await p.markStateSynced(f, await window.app.vault.read(f)); });
 await sleep(600);
 const before = await page.locator(".storyloom-cast .sl-tag.is-strong").count();
 await page.evaluate(async () => { const f = window.app.vault.getAbstractFileByPath("Manuscript/02 - Lamplight.md"); await window.app.vault.process(f, (t) => t + "\nShe slept badly."); });
@@ -106,7 +106,7 @@ await shot(page, "p4-stale");
 ok(before === 0 && after === 1, "Cast flags a chapter edited since its last story-state update");
 
 // Structured timeline entry.
-await page.evaluate(() => { const p = window.app.plugins.plugins.storyloom; p.addTimelineEntry(p.index.entities.get("Elias Crane"), 2); });
+await page.evaluate(() => { const p = window.app.plugins.plugins.motif; p.addTimelineEntry(p.index.entities.get("Elias Crane"), 2); });
 await page.waitForSelector(".storyloom-timeline-modal");
 const inputs = page.locator(".storyloom-timeline-modal input[type=text]");
 await inputs.nth(0).fill("old harbor");
@@ -136,7 +136,7 @@ const btn = page.locator(".storyloom-glass-btn", { hasText: "Open settings" });
 ok((await btn.count()) === 1, "missing API key offers an Open settings button");
 await btn.click().catch(() => {});
 await sleep(700);
-ok((await page.evaluate(() => window.app.setting.activeTab?.id)) === "storyloom" && (await page.locator(".modal.mod-settings").count()) === 1, "it opens Storyloom's settings tab");
+ok((await page.evaluate(() => window.app.setting.activeTab?.id)) === "motif" && (await page.locator(".modal.mod-settings").count()) === 1, "it opens Motif's settings tab");
 await page.keyboard.press("Escape");
 
 // The CORS block on :11435 is the deliberate fallback test; Chromium always logs it.

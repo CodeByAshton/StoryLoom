@@ -4,9 +4,9 @@ const { app, page, logs } = await launch();
 const ok = (cond, msg) => console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`);
 const sleep = (ms) => page.waitForTimeout(ms);
 const read = (p) => page.evaluate(async (p) => { const f = window.app.vault.getAbstractFileByPath(p); return f ? window.app.vault.read(f) : null; }, p);
-for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) break; await sleep(300); }
+for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.motif?.index?.ready).catch(() => false)) break; await sleep(300); }
 
-await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').click();
+await page.locator('.side-dock-ribbon-action[aria-label="Motif"]').click();
 await page.locator(".menu .menu-item", { hasText: /^Chapters$/ }).click();
 await page.waitForSelector(".sl-ch-card[data-path]");
 await sleep(600);
@@ -39,7 +39,7 @@ ok(tl[0].startsWith("- ch 1 | location: [[Old Harbor]]") && tl[1].startsWith("- 
 ok(mara.includes("reluctant ally (ch 2-3)") && mara.includes("rival (ch 1+)"), "relationship ranges follow their chapters");
 await sleep(800);
 const now = await page.evaluate(() => {
-	const p = window.app.plugins.plugins.storyloom;
+	const p = window.app.plugins.plugins.motif;
 	const s = (ch) => p.index.resolve(p.index.entities.get("Mara Winston"), ch).fields.location;
 	return [s(1), p.index.chapters.map((c) => `${c.chapter}:${c.title}`).join(",")];
 });

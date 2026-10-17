@@ -2,7 +2,7 @@
 type: character
 aliases: [Elias, Crane]
 role: Supporting
-storyloom_sample: true
+motif_sample: true
 ---
 
 # Elias Crane

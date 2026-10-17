@@ -1,9 +1,9 @@
 {
-  "id": "storyloom",
-  "name": "Storyloom",
+  "id": "motif",
+  "name": "Motif",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
-  "description": "AI writing tools and story-state tracking (characters, locations, relationships, and where everyone is in every chapter), using your own API key.",
-  "author": "Storyloom",
+  "description": "An AI writing studio for novelists: Sudowrite-style writing tools, a codex that tracks where every character is in every chapter, and AI review. Bring your own AI.",
+  "author": "Motif",
   "isDesktopOnly": false
 }

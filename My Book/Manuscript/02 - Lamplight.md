@@ -5,7 +5,7 @@ title: Lamplight
 pov: "[[Mara Winston]]"
 summary: "That night Mara searches the study alone and finds a pawnbroker's stamp pressed into the blotter. A figure in the doorway shoots her in the left shoulder and escapes through the garden. Arthur arrives too late to see the shooter and insists the thief must have fled toward Old Harbor. By morning constables are posted at the manor."
 status: draft
-storyloom_sample: true
+motif_sample: true
 ---
 
 Mara waited until the house was asleep before she went back to the study.

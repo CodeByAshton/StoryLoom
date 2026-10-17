@@ -2,11 +2,11 @@ import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import { PROVIDERS, providerConfig, type ClientSettings, type ProviderConfig, type ProviderId } from "./llm/client";
 import { claudeCodeStatus } from "./llm/claudeCodeNode";
 import { ENTITY_TYPES, type EntityType } from "./codex/types";
-import type StoryloomPlugin from "./main";
+import type MotifPlugin from "./main";
 import type { SyncedLine } from "./codex/write";
 import type { ChapterNotes } from "./notes/model";
 
-export interface StoryloomSettings extends ClientSettings {
+export interface MotifSettings extends ClientSettings {
 	temperature: number;
 	maxTokens: number;
 	continueWords: number;
@@ -34,12 +34,12 @@ export interface StoryloomSettings extends ClientSettings {
 	syncedLines: Record<string, SyncedLine[]>;
 	/** The setup wizard has been shown. */
 	onboarded: boolean;
-	/** One Storyloom ribbon button with a menu, or a button per view. */
+	/** One Motif ribbon button with a menu, or a button per view. */
 	separateRibbonButtons: boolean;
 	statusBar: boolean;
 	/** Show the proposed codex changes for approval before a chapter sync writes them. */
 	reviewStateChanges: boolean;
-	/** Size of Storyloom's own text (panels, views, cards, pop-ups), relative to the default. */
+	/** Size of Motif's own text (panels, views, cards, pop-ups), relative to the default. */
 	textSize: "small" | "default" | "large";
 	/** A faint red underline for spelling notes; every other writing note stays gray. */
 	redSpelling: boolean;
@@ -49,7 +49,7 @@ export interface StoryloomSettings extends ClientSettings {
 	chapterNotes: Record<string, ChapterNotes>;
 }
 
-export const DEFAULT_SETTINGS: StoryloomSettings = {
+export const DEFAULT_SETTINGS: MotifSettings = {
 	provider: "anthropic",
 	providers: {},
 	effort: "medium",
@@ -93,10 +93,10 @@ export const DEFAULT_SETTINGS: StoryloomSettings = {
 	chapterNotes: {},
 };
 
-export class StoryloomSettingTab extends PluginSettingTab {
+export class MotifSettingTab extends PluginSettingTab {
 	constructor(
 		app: App,
-		private plugin: StoryloomPlugin,
+		private plugin: MotifPlugin,
 	) {
 		super(app, plugin);
 	}
@@ -135,7 +135,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		else {
 			const keyDesc = document.createDocumentFragment();
 			keyDesc.appendText(PROVIDERS[s.provider].needsKey ? "Required. " : "Optional for local servers. ");
-			keyDesc.appendText("Stored locally and unencrypted in this vault's .obsidian/plugins/storyloom/data.json. Don't sync or commit that file.");
+			keyDesc.appendText("Stored locally and unencrypted in this vault's .obsidian/plugins/motif/data.json. Don't sync or commit that file.");
 			new Setting(containerEl)
 				.setName("API key")
 				.setDesc(keyDesc)
@@ -164,7 +164,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 					b.setDisabled(true).setButtonText("Testing…");
 					try {
 						const out = await this.plugin.testConnection();
-						new Notice(`Storyloom: connected. The model replied “${out}”.`);
+						new Notice(`Motif: connected. The model replied “${out}”.`);
 					} catch (e) {
 						this.plugin.errorNotice(e);
 					} finally {
@@ -232,13 +232,13 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName("Appearance").setHeading();
 		new Setting(containerEl)
 			.setName("Text size")
-			.setDesc("The size of Storyloom's text in its views, panels and pop-ups. Your chapters follow Obsidian's own font size.")
+			.setDesc("The size of Motif's text in its views, panels and pop-ups. Your chapters follow Obsidian's own font size.")
 			.addDropdown((d) =>
 				d
 					.addOptions({ small: "Small", default: "Default", large: "Large" })
 					.setValue(s.textSize)
 					.onChange(async (v) => {
-						s.textSize = v as StoryloomSettings["textSize"];
+						s.textSize = v as MotifSettings["textSize"];
 						await this.plugin.saveSettings();
 					}),
 			);
@@ -246,8 +246,8 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		this.toggleSetting("Underline codex names", "Underline character, location and lore names in chapters. Hover one to see it as of that chapter.", "highlightEntities");
 		this.toggleSetting("Underline outside chapters", "Also underline codex names in notes that aren't chapters.", "highlightOutsideManuscript");
 		this.toggleSetting("Status bar", "Show the current chapter, its writing notes and whether it needs syncing. Click it for chapter actions.", "statusBar");
-		this.toggleSetting("Separate ribbon buttons", "A ribbon button for each view instead of one Storyloom button with a menu. Takes effect after reloading the plugin.", "separateRibbonButtons");
-		new Setting(containerEl).setName("Graph colors").setDesc("Storyloom is black and white except where color carries information: the story graph uses these, and the timeline gives each place its own muted tone.");
+		this.toggleSetting("Separate ribbon buttons", "A ribbon button for each view instead of one Motif button with a menu. Takes effect after reloading the plugin.", "separateRibbonButtons");
+		new Setting(containerEl).setName("Graph colors").setDesc("Motif is black and white except where color carries information: the story graph uses these, and the timeline gives each place its own muted tone.");
 		for (const type of ENTITY_TYPES) {
 			new Setting(containerEl).setName(`${type.charAt(0).toUpperCase() + type.slice(1)}`).addColorPicker((c) =>
 				c.setValue(s.entityColors[type]).onChange(async (v) => {
@@ -262,7 +262,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 		this.numberSetting("Max output tokens", "The longest answer the AI may give. Thinking models need headroom.", "maxTokens", 256, 64000);
 		this.numberSetting("Context budget", "How many characters of book context go with each request.", "contextBudget", 4000, 2000000);
 		this.toggleSetting("Stream responses", "Show text as it's written. Turns itself off for the session if a provider blocks it (e.g. a local server without CORS enabled).", "stream");
-		this.toggleSetting("Save chats", "Keep Story assistant conversations in .storyloom/chats/.", "saveChats");
+		this.toggleSetting("Save chats", "Keep Story assistant conversations in .motif/chats/.", "saveChats");
 		this.toggleSetting("Show the prompt before sending", "Preview everything that will be sent to the AI before each request.", "showContextBeforeSending");
 		this.toggleSetting("Debug mode", "Log context sizes and requests to the developer console.", "debug");
 	}
@@ -270,7 +270,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 	private claudeCodeSettings(containerEl: HTMLElement, cfg: ProviderConfig, update: (p: Partial<ProviderConfig>) => Promise<void>) {
 		const info = containerEl.createDiv({ cls: "storyloom-provider-note" });
 		info.createEl("p", {
-			text: "Storyloom runs the Claude Code app installed on this computer, so requests use whatever Claude Code is signed in with, such as your Pro or Max subscription. Storyloom never sees or stores your Claude login. Usage counts toward your plan's limits.",
+			text: "Motif runs the Claude Code app installed on this computer, so requests use whatever Claude Code is signed in with, such as your Pro or Max subscription. Motif never sees or stores your Claude login. Usage counts toward your plan's limits.",
 		});
 		info.createEl("p", {
 			cls: "storyloom-muted",

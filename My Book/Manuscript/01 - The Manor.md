@@ -5,7 +5,7 @@ title: The Manor
 pov: "[[Mara Winston]]"
 summary: "Mara Winston arrives at Blackwood Manor in the rain to meet Arthur Vane, who hires her to recover a stolen family ledger. The study has been ransacked but the safe was opened with a key, not forced. Arthur claims the ledger records old household accounts; Mara suspects it is a Syndicate debt book and that her own name is in it. She takes the case."
 status: draft
-storyloom_sample: true
+motif_sample: true
 ---
 
 The rain had been at it since noon, patient as a debt collector. Mara stood under the dripping eaves of Blackwood Manor and counted the lit windows. Seven. A house that burned that much oil was either very rich or very frightened.

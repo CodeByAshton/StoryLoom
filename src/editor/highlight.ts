@@ -1,7 +1,7 @@
 import { RangeSetBuilder, StateEffect, type Extension } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { editorInfoField } from "obsidian";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 
 /** Dispatched to every editor when the codex changes, so decorations rebuild. */
 export const refreshEntities = StateEffect.define<null>();
@@ -12,7 +12,7 @@ export function frontmatterEnd(doc: string): number {
 	return m ? m[0].length : 0;
 }
 
-export function shouldHighlight(plugin: StoryloomPlugin, view: EditorView): boolean {
+export function shouldHighlight(plugin: MotifPlugin, view: EditorView): boolean {
 	if (!plugin.settings.highlightEntities) return false;
 	const file = view.state.field(editorInfoField, false)?.file;
 	if (!file) return false;
@@ -20,7 +20,7 @@ export function shouldHighlight(plugin: StoryloomPlugin, view: EditorView): bool
 	return plugin.settings.highlightOutsideManuscript;
 }
 
-export function entityHighlighter(plugin: StoryloomPlugin): Extension {
+export function entityHighlighter(plugin: MotifPlugin): Extension {
 	const marks = new Map<string, Decoration>();
 	const markFor = (type: string, name: string) => {
 		const key = `${type}\u0000${name}`;

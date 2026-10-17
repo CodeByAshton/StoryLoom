@@ -1,6 +1,6 @@
 import { debounce, ItemView, setIcon, type WorkspaceLeaf } from "obsidian";
 import { ENTITY_TYPES, type Entity, type EntityType } from "../codex/types";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { renderEmpty } from "./empty";
 import { renderNav } from "./nav";
 import { renderEntityPeek } from "./props";
@@ -54,7 +54,7 @@ export class GraphView extends ItemView {
 
 	constructor(
 		leaf: WorkspaceLeaf,
-		private plugin: StoryloomPlugin,
+		private plugin: MotifPlugin,
 	) {
 		super(leaf);
 	}

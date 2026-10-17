@@ -2,7 +2,7 @@
 type: character
 aliases: [Mara, Winston]
 role: Protagonist
-storyloom_sample: true
+motif_sample: true
 ---
 
 # Mara Winston

@@ -3,7 +3,7 @@ import { stripFrontmatter } from "../codex/parse";
 import type { Entity } from "../codex/types";
 import { chatSystem } from "../context/prompts";
 import { friendlyError, type ChatMessage } from "../llm/types";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { addSettingsButton } from "../ui";
 
 export const CHAT_VIEW = "storyloom-chat";
@@ -29,7 +29,7 @@ export class ChatView extends ItemView {
 
 	constructor(
 		leaf: WorkspaceLeaf,
-		private plugin: StoryloomPlugin,
+		private plugin: MotifPlugin,
 	) {
 		super(leaf);
 	}
@@ -301,9 +301,9 @@ export class ChatView extends ItemView {
 	}
 
 	private async save() {
-		const dir = normalizePath(".storyloom/chats");
+		const dir = normalizePath(".motif/chats");
 		const adapter = this.app.vault.adapter;
-		if (!(await adapter.exists(".storyloom"))) await adapter.mkdir(".storyloom");
+		if (!(await adapter.exists(".motif"))) await adapter.mkdir(".motif");
 		if (!(await adapter.exists(dir))) await adapter.mkdir(dir);
 		const md = this.history.map((m) => `## ${m.role === "user" ? "You" : "Assistant"}\n\n${m.content}`).join("\n\n");
 		await adapter.write(`${dir}/${this.chatId}.md`, md + "\n");

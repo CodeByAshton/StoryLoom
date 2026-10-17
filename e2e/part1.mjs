@@ -8,14 +8,14 @@ const sleep = (ms) => page.waitForTimeout(ms);
 logs.length = 0;
 await page.reload();
 for (let i = 0; i < 40; i++) {
-	if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) break;
+	if (await page.evaluate(() => !!window.app?.plugins?.plugins?.motif?.index?.ready).catch(() => false)) break;
 	await sleep(500);
 }
 await sleep(1500);
 const errs = logs.filter((l) => /^\[(error|pageerror)\]/.test(l) && !/bus\.cc|favicon/i.test(l));
 ok(errs.length === 0, `(2) loads with no console errors ${errs.length ? JSON.stringify(errs) : ""}`);
-const warns = logs.filter((l) => /storyloom/i.test(l));
-if (warns.length) console.log("   storyloom logs:", warns);
+const warns = logs.filter((l) => /motif/i.test(l));
+if (warns.length) console.log("   motif logs:", warns);
 
 async function hoverCard(path, name) {
 	await open(path);
@@ -45,7 +45,7 @@ ok((await page.locator(".cm-content .storyloom-entity").count()) === 0, "(4.1) n
 
 // (4) Graph: scrub 1 → 3.
 await page.mouse.move(5, 5);
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-graph"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-graph"));
 await sleep(1500);
 const graphState = () =>
 	page.evaluate(() => ({
@@ -75,7 +75,7 @@ ok(JSON.stringify(g1.nodes) === JSON.stringify(g3.nodes), `(4) node positions st
 ok(g3.label === "Chapter 3 — The Harbor", `(4) scrubber label: ${g3.label}`);
 
 // (5) Timeline.
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-timeline"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-timeline"));
 await sleep(1500);
 await shot(page, "05-timeline");
 const lanes = await page.evaluate(() => {
@@ -95,7 +95,7 @@ ok(JSON.stringify(lanes["Mara Winston"]) === JSON.stringify({ pills: ["Blackwood
 ok(JSON.stringify(lanes["Elias Crane"]) === JSON.stringify({ pills: ["Old Harbor@2/5"], dots: "··•" }), "(5) Elias stays at Old Harbor; mentioned only in ch 3");
 
 // (8) Hand-edit a timeline line; hover card and cast panel update within a second.
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-cast"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-cast"));
 await open("Manuscript/03 - The Harbor.md");
 await sleep(1200);
 const castBefore = await page.locator(".storyloom-cast").innerText();

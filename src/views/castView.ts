@@ -1,7 +1,7 @@
 import { debounce, ItemView, TFile, type WorkspaceLeaf } from "obsidian";
 import { stripFrontmatter, stripWikilinks } from "../codex/parse";
 import type { Entity } from "../codex/types";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { renderEntityBlock, renderProps, tag } from "./props";
 import { proseHash, wordCount } from "../util";
 import { renderEmpty } from "./empty";
@@ -16,7 +16,7 @@ export class CastView extends ItemView {
 
 	constructor(
 		leaf: WorkspaceLeaf,
-		private plugin: StoryloomPlugin,
+		private plugin: MotifPlugin,
 	) {
 		super(leaf);
 	}

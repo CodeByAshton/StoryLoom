@@ -4,7 +4,7 @@ import { Decoration, EditorView, keymap, showTooltip, ViewPlugin, type Decoratio
 import { editorInfoField, Scope, setIcon } from "obsidian";
 import { cleanProse, inlineEditPrompt, REWRITE_PRESETS } from "../context/prompts";
 import { friendlyError } from "../llm/types";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { diffWords, similarity } from "./diff";
 import { isSettingsError, openSettings } from "../ui";
 
@@ -62,7 +62,7 @@ export class InlineEditController {
 	/** One in-flight request per editor, so working in one pane never cancels another. */
 	private aborts = new WeakMap<EditorView, AbortController>();
 
-	constructor(private plugin: StoryloomPlugin) {}
+	constructor(private plugin: MotifPlugin) {}
 
 	get(view: EditorView) {
 		return view.state.field(inlineEditField, false) ?? null;
@@ -241,7 +241,7 @@ class GlassPanel implements TooltipView {
 	constructor(
 		private view: EditorView,
 		private ctrl: InlineEditController,
-		private plugin: StoryloomPlugin,
+		private plugin: MotifPlugin,
 	) {
 		this.dom = createDiv({ cls: "storyloom-glass storyloom-glass-panel" });
 		this.dom.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -420,7 +420,7 @@ class GlassPanel implements TooltipView {
 }
 
 /** The panel's tooltip object stays the same for a whole session, so CM keeps one view and we morph it. */
-function panelTooltipField(ctrl: InlineEditController, plugin: StoryloomPlugin) {
+function panelTooltipField(ctrl: InlineEditController, plugin: MotifPlugin) {
 	return StateField.define<{ key: string; tooltip: Tooltip } | null>({
 		create: () => null,
 		update(prev, tr) {
@@ -455,7 +455,7 @@ function selectionMarks(state: EditorState): DecorationSet {
 const showAsk = StateEffect.define<number | null>();
 
 /** Appears once the selection settles (not while dragging), above the start of the selection. */
-function askPill(plugin: StoryloomPlugin, ctrl: InlineEditController): Extension {
+function askPill(plugin: MotifPlugin, ctrl: InlineEditController): Extension {
 	const field = StateField.define<Tooltip | null>({
 		create: () => null,
 		update(t, tr) {
@@ -526,7 +526,7 @@ function askPill(plugin: StoryloomPlugin, ctrl: InlineEditController): Extension
 	return [field, watcher];
 }
 
-export function inlineEditExtension(plugin: StoryloomPlugin, ctrl: InlineEditController): Extension {
+export function inlineEditExtension(plugin: MotifPlugin, ctrl: InlineEditController): Extension {
 	const marks = EditorView.decorations.compute([inlineEditField], (state) => selectionMarks(state));
 	const keys = Prec.highest(
 		keymap.of([

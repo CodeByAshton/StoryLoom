@@ -1,7 +1,7 @@
 ---
 type: lore
 aliases: [the ledger, The ledger]
-storyloom_sample: true
+motif_sample: true
 ---
 
 # The Ledger

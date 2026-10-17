@@ -8,7 +8,7 @@ import { extractJson, JsonExtractError } from "./llm/json";
 import { withRetry } from "./llm/retry";
 import { LLMError, StreamUnavailable, type ChatMessage, type LLMClient, type OnText } from "./llm/types";
 import { previewPrompt } from "./modals/instructionModal";
-import type { StoryloomSettings } from "./settings";
+import type { MotifSettings } from "./settings";
 
 export interface ContextRequest {
 	file: TFile | null;
@@ -28,7 +28,7 @@ export class AIService {
 	constructor(
 		private app: App,
 		private index: CodexIndex,
-		private settings: () => StoryloomSettings,
+		private settings: () => MotifSettings,
 		private client: () => LLMClient,
 	) {}
 
@@ -70,7 +70,7 @@ export class AIService {
 			asOf,
 			budget: s.contextBudget,
 		});
-		if (s.debug) console.log(`[Storyloom] context ${built.text.length} chars`, built.sections, built.truncated ? "(truncated)" : "");
+		if (s.debug) console.log(`[Motif] context ${built.text.length} chars`, built.sections, built.truncated ? "(truncated)" : "");
 		return built;
 	}
 
@@ -84,7 +84,7 @@ export class AIService {
 			if (!ok) throw new LLMError("aborted", "Cancelled.");
 		}
 		const messages: ChatMessage[] = [...(opts.history ?? []), { role: "user", content: prompt.user }];
-		if (s.debug) console.log("[Storyloom] request", { system: prompt.system.length, user: prompt.user.length });
+		if (s.debug) console.log("[Motif] request", { system: prompt.system.length, user: prompt.user.length });
 		return { system: prompt.system, messages, maxTokens: opts.maxTokens ?? s.maxTokens, temperature: opts.temperature ?? s.temperature };
 	}
 
@@ -120,7 +120,7 @@ export class AIService {
 			} catch (e) {
 				if (!(e instanceof StreamUnavailable)) throw e;
 				this.noStream.add(key);
-				if (s.debug) console.warn("[Storyloom] streaming unavailable, falling back:", e.message);
+				if (s.debug) console.warn("[Motif] streaming unavailable, falling back:", e.message);
 			}
 		}
 		const text = await withRetry(() => client.complete(req), s.debug, () => !opts.signal?.aborted);
@@ -135,7 +135,7 @@ export class AIService {
 			return validate(extractJson(first));
 		} catch (e) {
 			if (!(e instanceof JsonExtractError)) throw e;
-			if (this.settings().debug) console.warn("[Storyloom] JSON retry:", e.message, first);
+			if (this.settings().debug) console.warn("[Motif] JSON retry:", e.message, first);
 			const second = await this.complete(
 				{ system: prompt.system, user: `${JSON_RETRY}\n${schema}` },
 				{ temperature: 0, history: [{ role: "user", content: prompt.user }, { role: "assistant", content: first }] },

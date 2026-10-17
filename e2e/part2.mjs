@@ -6,13 +6,13 @@ const open = (p) => page.evaluate(async (p) => { await window.app.workspace.open
 const sleep = (ms) => page.waitForTimeout(ms);
 const requests = () => readFileSync(new URL("./requests.jsonl", import.meta.url), "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
 const setProvider = (provider, cfg) => page.evaluate(async ([provider, cfg]) => {
-	const p = window.app.plugins.plugins.storyloom;
+	const p = window.app.plugins.plugins.motif;
 	p.settings.provider = provider;
 	p.settings.providers[provider] = { ...(p.settings.providers[provider] ?? {}), ...cfg };
 	await p.saveSettings();
 }, [provider, cfg]);
 const doc = () => page.evaluate(() => window.app.workspace.activeEditor.editor.getValue());
-const ready = async () => { for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) return; await sleep(300); } };
+const ready = async () => { for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.motif?.index?.ready).catch(() => false)) return; await sleep(300); } };
 await ready();
 
 // (9) Ollama selected, no key → requests go to the local endpoint.
@@ -23,7 +23,7 @@ await sleep(800);
 await page.evaluate(() => {
 	const e = window.app.workspace.activeEditor.editor;
 	e.setCursor({ line: e.lastLine(), ch: e.getLine(e.lastLine()).length });
-	window.app.commands.executeCommandById("storyloom:continue-writing");
+	window.app.commands.executeCommandById("motif:continue-writing");
 });
 await sleep(500);
 await page.keyboard.type("she heads for the night boats");
@@ -44,7 +44,7 @@ ok(post.length > pre.length && /The fog pressed in\./.test(post.slice(pre.length
 
 // (7) Invalid key → readable error, no crash.
 await setProvider("custom", { apiKey: "bad", baseUrl: "http://localhost:11434/v1", model: "test" });
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:continue-writing"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:continue-writing"));
 await sleep(400);
 await page.keyboard.press("Enter");
 await page.waitForSelector(".storyloom-result-modal .storyloom-error", { timeout: 20000 }).catch(() => {});

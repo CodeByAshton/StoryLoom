@@ -1,9 +1,0 @@
-{
-  "id": "storyloom",
-  "name": "Storyloom",
-  "version": "0.1.0",
-  "minAppVersion": "1.5.0",
-  "description": "AI writing tools and story-state tracking (characters, locations, relationships, and where everyone is in every chapter), using your own API key.",
-  "author": "Storyloom",
-  "isDesktopOnly": false
-}

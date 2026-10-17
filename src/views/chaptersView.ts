@@ -1,7 +1,7 @@
 import { debounce, ItemView, TFile, type WorkspaceLeaf } from "obsidian";
 import { stripFrontmatter, stripWikilinks } from "../codex/parse";
 import type { ChapterInfo } from "../codex/types";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { renderEmpty } from "./empty";
 import { plural, renderMeta, renderNav } from "./nav";
 import { proseHash, wordCount } from "../util";
@@ -33,7 +33,7 @@ export class ChaptersView extends ItemView {
 
 	constructor(
 		leaf: WorkspaceLeaf,
-		private plugin: StoryloomPlugin,
+		private plugin: MotifPlugin,
 	) {
 		super(leaf);
 	}

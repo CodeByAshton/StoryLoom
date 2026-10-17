@@ -6,15 +6,15 @@ const open = (p) => page.evaluate(async (p) => { await window.app.workspace.open
 const sleep = (ms) => page.waitForTimeout(ms);
 const read = (p) => page.evaluate(async (p) => { const f = window.app.vault.getAbstractFileByPath(p); return f ? window.app.vault.read(f) : null; }, p);
 const cmd = (id) => page.evaluate((id) => window.app.commands.executeCommandById(id), id);
-for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) break; await sleep(300); }
-await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; p.settings.provider = "ollama"; p.settings.providers.ollama = { apiKey: "", baseUrl: "http://localhost:11434/v1", model: "x" }; p.settings.reviewStateChanges = true; await p.saveSettings(); });
+for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.motif?.index?.ready).catch(() => false)) break; await sleep(300); }
+await page.evaluate(async () => { const p = window.app.plugins.plugins.motif; p.settings.provider = "ollama"; p.settings.providers.ollama = { apiKey: "", baseUrl: "http://localhost:11434/v1", model: "x" }; p.settings.reviewStateChanges = true; await p.saveSettings(); });
 
 // (6) Update story state.
 await open("Manuscript/03 - The Harbor.md");
 await sleep(800);
 const files = ["Codex/Characters/Mara Winston.md", "Codex/Characters/Elias Crane.md", "Codex/Characters/Arthur Vane.md"];
 const before = Object.fromEntries(await Promise.all(files.map(async (f) => [f, await read(f)])));
-await cmd("storyloom:update-story-state");
+await cmd("motif:update-story-state");
 await page.waitForSelector(".storyloom-review-modal", { timeout: 10000 });
 await sleep(300);
 await shot(page, "06-review");
@@ -58,7 +58,7 @@ console.log(elias.split("## Relationships")[1]);
 // Run again: nothing new should be written.
 await sleep(1000);
 const snapshot = Object.fromEntries(await Promise.all([...files, "Codex/Characters/Captain Rook.md"].map(async (f) => [f, await read(f)])));
-await cmd("storyloom:update-story-state");
+await cmd("motif:update-story-state");
 await page.waitForSelector(".storyloom-review-modal", { timeout: 10000 });
 await sleep(300);
 const rows2 = await page.evaluate(() => [...document.querySelectorAll(".storyloom-review-group")].map((g) => g.innerText.replace(/\n+/g, " | ")));
@@ -73,7 +73,7 @@ ok(changed.length === 0 && rows2.some((r) => r.startsWith("Arthur Vane")), `(6) 
 ok((snapshot2["Codex/Characters/Arthur Vane.md"].match(/- ch 3/g) ?? []).length === 2, "(6) applying the remaining Arthur change once adds exactly one line");
 
 // Summarize → save to frontmatter.
-await cmd("storyloom:summarize-chapter");
+await cmd("motif:summarize-chapter");
 await page.waitForSelector(".storyloom-result-text", { timeout: 8000 });
 await page.getByRole("button", { name: "Save as chapter summary" }).click();
 await sleep(800);
@@ -81,7 +81,7 @@ const ch3 = await read("Manuscript/03 - The Harbor.md");
 ok(/summary: The fog pressed in/.test(ch3), "summary written to frontmatter");
 
 // Continuity check: clicking an issue jumps to the line.
-await cmd("storyloom:continuity-check");
+await cmd("motif:continuity-check");
 await page.waitForSelector(".storyloom-issue", { timeout: 8000 });
 await shot(page, "continuity");
 await page.locator(".storyloom-issue").first().click();
@@ -90,7 +90,7 @@ const sel = await page.evaluate(() => window.app.workspace.activeEditor.editor.g
 ok(sel === "Elias Crane sat at a high desk", `continuity issue click selects the quoted line (${JSON.stringify(sel)})`);
 
 // Chat with an @mention.
-await cmd("storyloom:open-chat");
+await cmd("motif:open-chat");
 await sleep(800);
 await page.locator(".storyloom-chat-input").click();
 await page.keyboard.type("Where is @Elia");
@@ -107,20 +107,20 @@ ok(sug[0]?.includes("Elias Crane") && inputVal.includes("@[[Elias Crane]]"), `@ 
 ok(/Full note: Elias Crane/.test(lastReq.body.messages[0].content) && /\[\[Elias Crane\]\] in chapter 2/.test(lastReq.body.messages.at(-1).content), "mentioned entity added to context in full");
 
 // New chapter, word count, export.
-await cmd("storyloom:new-chapter");
+await cmd("motif:new-chapter");
 await sleep(400);
 await page.keyboard.type("The Night Boats");
 await page.keyboard.press("Enter");
 await sleep(1200);
 const ch4 = await read("Manuscript/04 - The Night Boats.md");
 ok(ch4 && /chapter: 4/.test(ch4) && /title: The Night Boats/.test(ch4) && /type: chapter/.test(ch4), "New chapter auto-numbers to 4 from the template");
-await cmd("storyloom:export-manuscript");
+await cmd("motif:export-manuscript");
 await sleep(1200);
 const exp = await page.evaluate(async () => { const f = window.app.vault.getFiles().find((f) => f.path.startsWith("Exports/")); return f ? window.app.vault.read(f) : ""; });
-ok(/^# The Blackwood Ledger/.test(exp) && /## Chapter 1: The Manor/.test(exp) && /## Chapter 4: The Night Boats/.test(exp) && !/storyloom_sample/.test(exp), "Export manuscript: ordered, headings, frontmatter stripped");
+ok(/^# The Blackwood Ledger/.test(exp) && /## Chapter 1: The Manor/.test(exp) && /## Chapter 4: The Night Boats/.test(exp) && !/motif_sample/.test(exp), "Export manuscript: ordered, headings, frontmatter stripped");
 
 // (10) Clear sample content.
-await cmd("storyloom:clear-sample-content");
+await cmd("motif:clear-sample-content");
 await page.waitForSelector(".modal button.mod-warning", { timeout: 5000 });
 await shot(page, "10-clear");
 await page.locator(".modal button.mod-warning").click();
@@ -130,7 +130,7 @@ console.log("   remaining:", JSON.stringify(remaining));
 const has = (p) => remaining.includes(p);
 ok(["Book.md", "Start Here.md", "Templates/Chapter.md", "Templates/Character.md", "Templates/Location.md", "Templates/Lore.md"].every(has), "(10) templates, Book.md and Start Here kept");
 ok(!remaining.some((p) => p.startsWith("Codex/Characters/Mara") || p.startsWith("Manuscript/01")), "(10) sample chapters and codex removed");
-const settingsKept = await page.evaluate(() => window.app.plugins.plugins.storyloom.settings.provider);
+const settingsKept = await page.evaluate(() => window.app.plugins.plugins.motif.settings.provider);
 ok(settingsKept === "ollama", "(10) settings intact");
 const errs = logs.filter((l) => /^\[(error|pageerror)\]/.test(l));
 ok(errs.length === 0, `no console errors ${errs.length ? JSON.stringify(errs) : ""}`);

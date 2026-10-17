@@ -3,17 +3,17 @@ import { launch, shot } from "./launch.mjs";
 const { app, page, logs } = await launch();
 const ok = (cond, msg) => console.log(`${cond ? "PASS" : "FAIL"}  ${msg}`);
 const sleep = (ms) => page.waitForTimeout(ms);
-for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.storyloom?.index?.ready).catch(() => false)) break; await sleep(300); }
+for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !!window.app?.plugins?.plugins?.motif?.index?.ready).catch(() => false)) break; await sleep(300); }
 const explorerShows = (folder) => page.evaluate((f) => { const t = document.querySelector(`.nav-folder-title[data-path="${f}"]`); return !!t && getComputedStyle(t.closest(".nav-folder")).display !== "none"; }, folder);
 
 ok(!(await explorerShows("Codex")) && (await explorerShows("Manuscript")), "Codex folder is hidden from the file explorer; Manuscript isn't");
-ok((await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').count()) === 1, "One Storyloom ribbon button");
-await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; p.settings.hideCodexFolder = false; await p.saveSettings(); });
+ok((await page.locator('.side-dock-ribbon-action[aria-label="Motif"]').count()) === 1, "One Motif ribbon button");
+await page.evaluate(async () => { const p = window.app.plugins.plugins.motif; p.settings.hideCodexFolder = false; await p.saveSettings(); });
 await sleep(300);
 ok(await explorerShows("Codex"), "turning the setting off shows the folder again");
-await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; p.settings.hideCodexFolder = true; await p.saveSettings(); });
+await page.evaluate(async () => { const p = window.app.plugins.plugins.motif; p.settings.hideCodexFolder = true; await p.saveSettings(); });
 
-await page.locator('.side-dock-ribbon-action[aria-label="Storyloom"]').click();
+await page.locator('.side-dock-ribbon-action[aria-label="Motif"]').click();
 await page.locator(".menu .menu-item", { hasText: /^Codex$/ }).click();
 await page.waitForSelector(".sl-cx-card");
 ok((await page.locator(".sl-cx-card").count()) === 6, "Codex shows a card per entity");
@@ -39,12 +39,12 @@ ok((await page.evaluate(() => window.app.workspace.getActiveFile()?.path)) === "
 await shot(page, "p6-codex");
 
 // Timeline → codex.
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-timeline"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-timeline"));
 await page.waitForSelector(".sl-tl-name");
 await page.locator(".sl-tl-name", { hasText: "Arthur Vane" }).click();
 await sleep(600);
 ok((await page.locator(".sl-cx-detail-name").innerText().catch(() => "")) === "Arthur Vane", "clicking a name on the timeline opens it in the codex");
-await page.evaluate(() => window.app.commands.executeCommandById("storyloom:open-timeline"));
+await page.evaluate(() => window.app.commands.executeCommandById("motif:open-timeline"));
 await sleep(500);
 await page.locator(".sl-tl-segmented button", { hasText: "Locations" }).click();
 await sleep(600);

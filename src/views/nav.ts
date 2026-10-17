@@ -1,6 +1,6 @@
 import { setIcon, type WorkspaceLeaf } from "obsidian";
 
-/** The four main Storyloom views. Kept as strings so views can import this without cycles. */
+/** The four main Motif views. Kept as strings so views can import this without cycles. */
 export const MAIN_VIEWS = [
 	{ type: "storyloom-chapters", label: "Chapters", icon: "layout-grid" },
 	{ type: "storyloom-codex", label: "Codex", icon: "library" },

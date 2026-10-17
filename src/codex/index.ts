@@ -64,7 +64,7 @@ export class CodexIndex extends Events {
 	}
 
 	/**
-	 * Re-index one file, and only broadcast if what Storyloom derives from it changed.
+	 * Re-index one file, and only broadcast if what Motif derives from it changed.
 	 * Typing in a chapter autosaves every couple of seconds; the prose itself isn't indexed,
 	 * so those saves cost one fingerprint comparison instead of a full refresh of every view.
 	 */
@@ -116,7 +116,7 @@ export class CodexIndex extends Events {
 	}
 
 	private addEntity(file: TFile, fm: Record<string, unknown>, text: string) {
-		const warn = (m: string) => console.warn(`[Storyloom] ${file.path}: ${m}`);
+		const warn = (m: string) => console.warn(`[Motif] ${file.path}: ${m}`);
 		const entity: Entity = {
 			name: file.basename,
 			path: file.path,
@@ -159,7 +159,7 @@ export class CodexIndex extends Events {
 			for (const n of [e.name, ...e.aliases]) if (!this.names.has(n)) this.names.set(n, e.name);
 		}
 		this.nameRegex = buildNameRegex(Array.from(this.names.keys()));
-		if (this.settings().debug) console.log(`[Storyloom] index: ${this.entities.size} entities, ${this.chapters.length} chapters`);
+		if (this.settings().debug) console.log(`[Motif] index: ${this.entities.size} entities, ${this.chapters.length} chapters`);
 		this.emitChanged();
 	}
 

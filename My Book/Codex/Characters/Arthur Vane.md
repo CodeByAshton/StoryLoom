@@ -2,7 +2,7 @@
 type: character
 aliases: [Arthur, Vane]
 role: Client
-storyloom_sample: true
+motif_sample: true
 ---
 
 # Arthur Vane

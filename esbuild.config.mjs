@@ -5,7 +5,7 @@ import { builtinModules } from "module";
 const prod = process.argv[2] === "production";
 
 const context = await esbuild.context({
-	banner: { js: "/* Storyloom — bundled by esbuild. See the repository for sources. */" },
+	banner: { js: "/* Motif — bundled by esbuild. See the repository for sources. */" },
 	entryPoints: ["src/main.ts"],
 	bundle: true,
 	external: [

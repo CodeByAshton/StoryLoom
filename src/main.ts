@@ -42,7 +42,7 @@ import { ResultModal } from "./modals/resultModal";
 import { approvedFrom, buildReviewRows, StateReviewModal } from "./modals/stateReviewModal";
 import { TimelineEntryModal } from "./modals/timelineEntryModal";
 import { SetupModal } from "./modals/setupModal";
-import { DEFAULT_SETTINGS, StoryloomSettingTab, type StoryloomSettings } from "./settings";
+import { DEFAULT_SETTINGS, MotifSettingTab, type MotifSettings } from "./settings";
 import { CAST_VIEW, CastView } from "./views/castView";
 import { CHAT_VIEW, ChatView } from "./views/chatView";
 import { CODEX_VIEW, CodexView } from "./views/codexView";
@@ -58,7 +58,7 @@ const http: HttpFn = async (req) => {
 	return { status: res.status, text: res.text };
 };
 
-export const SAMPLE_FLAG = "storyloom_sample";
+export const SAMPLE_FLAG = "motif_sample";
 
 const VIEWS: { type: string; name: string; icon: string; where: "tab" | "right" }[] = [
 	{ type: CHAPTERS_VIEW, name: "Chapters", icon: "layout-grid", where: "tab" },
@@ -69,8 +69,8 @@ const VIEWS: { type: string; name: string; icon: string; where: "tab" | "right" 
 	{ type: CHAT_VIEW, name: "Story assistant", icon: "message-circle", where: "right" },
 ];
 
-export default class StoryloomPlugin extends Plugin {
-	settings!: StoryloomSettings;
+export default class MotifPlugin extends Plugin {
+	settings!: MotifSettings;
 	index!: CodexIndex;
 	ai!: AIService;
 	inline!: InlineEditController;
@@ -95,16 +95,16 @@ export default class StoryloomPlugin extends Plugin {
 		this.registerEditorExtension([entityHighlighter(this), entityHover(this), inlineEditExtension(this, this.inline), writingNotesExtension(this)]);
 
 		if (this.settings.separateRibbonButtons) {
-			for (const v of VIEWS) this.addRibbonIcon(v.icon, `Storyloom: ${v.name}`, () => void this.openView(v.type, v.where));
+			for (const v of VIEWS) this.addRibbonIcon(v.icon, `Motif: ${v.name}`, () => void this.openView(v.type, v.where));
 		} else {
-			this.addRibbonIcon("feather", "Storyloom", (ev) => this.storyloomMenu().showAtMouseEvent(ev));
+			this.addRibbonIcon("feather", "Motif", (ev) => this.motifMenu().showAtMouseEvent(ev));
 		}
 		// Sync is the one action you take after every chapter, so it gets its own button in the sidebar.
-		this.addRibbonIcon("refresh-cw", "Storyloom: Sync chapter", () => void this.syncActiveChapter());
+		this.addRibbonIcon("refresh-cw", "Motif: Sync chapter", () => void this.syncActiveChapter());
 		this.setupStatusBar();
 		this.setupHeaderSync();
 
-		this.addSettingTab(new StoryloomSettingTab(this.app, this));
+		this.addSettingTab(new MotifSettingTab(this.app, this));
 		this.registerInlineEditKey();
 		this.registerCommands();
 		this.registerEditorMenu();
@@ -151,8 +151,8 @@ export default class StoryloomPlugin extends Plugin {
 		this.register(() => this.app.keymap.popScope(scope));
 	}
 
-	/** Everything Storyloom opens, in one menu: the ribbon button, and the status bar's "More". */
-	storyloomMenu(): Menu {
+	/** Everything Motif opens, in one menu: the ribbon button, and the status bar's "More". */
+	motifMenu(): Menu {
 		const menu = new Menu();
 		for (const v of VIEWS) menu.addItem((i) => i.setTitle(v.name).setIcon(v.icon).onClick(() => void this.openView(v.type, v.where)));
 		menu.addSeparator();
@@ -169,7 +169,7 @@ export default class StoryloomPlugin extends Plugin {
 	/** Sync the chapter you're working in (from the ribbon or a note's header). */
 	async syncActiveChapter() {
 		const file = this.activeMarkdownFile();
-		if (!file || !this.index.chapterForPath(file.path)) return new Notice("Storyloom: open a chapter to sync it.");
+		if (!file || !this.index.chapterForPath(file.path)) return new Notice("Motif: open a chapter to sync it.");
 		await this.updateStoryState(file);
 	}
 
@@ -394,9 +394,9 @@ export default class StoryloomPlugin extends Plugin {
 	 */
 	async reorderChapters(order: string[]) {
 		const chapters = order.map((p) => this.index.chapterForPath(p)).filter((c): c is NonNullable<typeof c> => !!c);
-		if (chapters.length !== this.index.chapters.length) return new Notice("Storyloom: the chapter list changed; try again.");
-		if (new Set(chapters.map((c) => c.chapter)).size !== chapters.length) return new Notice("Storyloom: two chapters share a number. Give each chapter its own number, then reorder.");
-		if ([...this.running].some((k) => k.startsWith("state:"))) return new Notice("Storyloom: a chapter is syncing. Reorder when it's done.");
+		if (chapters.length !== this.index.chapters.length) return new Notice("Motif: the chapter list changed; try again.");
+		if (new Set(chapters.map((c) => c.chapter)).size !== chapters.length) return new Notice("Motif: two chapters share a number. Give each chapter its own number, then reorder.");
+		if ([...this.running].some((k) => k.startsWith("state:"))) return new Notice("Motif: a chapter is syncing. Reorder when it's done.");
 		const map = reorderMapping(chapters.map((c) => c.chapter));
 		if (!map.size) return;
 
@@ -449,7 +449,7 @@ export default class StoryloomPlugin extends Plugin {
 				await this.app.fileManager.renameFile(file, dest); // the rename handler moves everything keyed by path
 			}
 			await this.saveData(this.settings);
-			new Notice(`Storyloom: reordered ${moves.length} chapters and updated ${lines} codex line${lines === 1 ? "" : "s"}.${skipped ? ` ${skipped} file${skipped === 1 ? "" : "s"} kept ${skipped === 1 ? "its" : "their"} name because the new name was taken.` : ""}`);
+			new Notice(`Motif: reordered ${moves.length} chapters and updated ${lines} codex line${lines === 1 ? "" : "s"}.${skipped ? ` ${skipped} file${skipped === 1 ? "" : "s"} kept ${skipped === 1 ? "its" : "their"} name because the new name was taken.` : ""}`);
 		});
 	}
 
@@ -581,18 +581,18 @@ export default class StoryloomPlugin extends Plugin {
 				if (!file) return;
 				const sel = editor.somethingSelected();
 				menu.addSeparator();
-				const add = (title: string, icon: string, fn: () => void) => menu.addItem((i) => i.setTitle(title).setIcon(icon).setSection("storyloom").onClick(fn));
-				add(sel ? "Storyloom: Ask AI…" : "Storyloom: Write here…", "sparkles", () => {
+				const add = (title: string, icon: string, fn: () => void) => menu.addItem((i) => i.setTitle(title).setIcon(icon).setSection("motif").onClick(fn));
+				add(sel ? "Motif: Ask AI…" : "Motif: Write here…", "sparkles", () => {
 					const cm = cmOf(editor);
 					if (cm) this.inline.open(cm);
 				});
-				add("Storyloom: Continue writing", "pen-line", () => void this.continueWriting(editor, file));
+				add("Motif: Continue writing", "pen-line", () => void this.continueWriting(editor, file));
 				if (sel) {
-					add("Storyloom: Rewrite selection", "replace", () => void this.rewrite(editor, file));
-					add("Storyloom: Describe", "eye", () => void this.describe(editor, file));
-					add("Storyloom: Expand", "unfold-vertical", () => void this.expand(editor, file));
+					add("Motif: Rewrite selection", "replace", () => void this.rewrite(editor, file));
+					add("Motif: Describe", "eye", () => void this.describe(editor, file));
+					add("Motif: Expand", "unfold-vertical", () => void this.expand(editor, file));
 				}
-				add("Storyloom: Brainstorm", "lightbulb", () => void this.brainstorm(editor, file));
+				add("Motif: Brainstorm", "lightbulb", () => void this.brainstorm(editor, file));
 			}),
 		);
 	}
@@ -712,7 +712,7 @@ export default class StoryloomPlugin extends Plugin {
 						await this.app.fileManager.processFrontMatter(file, (fm) => {
 							fm.summary = text.replace(/\s+/g, " ").trim();
 						});
-						new Notice("Storyloom: saved the summary to the chapter's properties.");
+						new Notice("Motif: saved the summary to the chapter's properties.");
 					},
 				},
 			],
@@ -756,11 +756,11 @@ export default class StoryloomPlugin extends Plugin {
 			this.refreshHeaderSync();
 		}
 		return this.once(`notes:${file.path}`, "checking this chapter", async () => {
-			const notice = new Notice("Storyloom: checking the writing…", 0);
+			const notice = new Notice("Motif: checking the writing…", 0);
 			try {
 				const notes = await this.proofread(file, await this.fileText(file, editor));
 				notice.hide();
-				new Notice(notes.length ? `Storyloom: ${notes.length} writing note${notes.length === 1 ? "" : "s"} underlined. Hover one to fix or dismiss it.` : "Storyloom: no writing notes. Nice and clean.");
+				new Notice(notes.length ? `Motif: ${notes.length} writing note${notes.length === 1 ? "" : "s"} underlined. Hover one to fix or dismiss it.` : "Motif: no writing notes. Nice and clean.");
 			} catch (e) {
 				notice.hide();
 				this.errorNotice(e);
@@ -777,17 +777,17 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	async updateStoryState(file: TFile) {
-		if (this.running.has("reorder")) return void new Notice("Storyloom: chapters are being reordered. Sync when it's done.");
+		if (this.running.has("reorder")) return void new Notice("Motif: chapters are being reordered. Sync when it's done.");
 		return this.once(`state:${file.path}`, "syncing this chapter", () => this.updateStoryStateNow(file));
 	}
 
 	private async updateStoryStateNow(file: TFile) {
 		const chapter = this.index.chapterForPath(file.path);
 		if (!chapter) {
-			new Notice("Storyloom: this note isn't a chapter. Give it a chapter number in its properties to sync it.");
+			new Notice("Motif: this note isn't a chapter. Give it a chapter number in its properties to sync it.");
 			return;
 		}
-		const notice = new Notice(`Storyloom: syncing chapter ${chapter.chapter}…`, 0);
+		const notice = new Notice(`Motif: syncing chapter ${chapter.chapter}…`, 0);
 		try {
 			const text = await this.fileText(file, this.editorFor(file) ?? undefined);
 			const ctx = await this.ai.context({ file, text, asOf: chapter.chapter - 1 });
@@ -828,7 +828,7 @@ export default class StoryloomPlugin extends Plugin {
 			].filter(Boolean);
 			const what = parts.length ? `Recorded ${parts.join(", ")}${res.touched.length ? ` (${res.touched.join(", ")})` : ""}.` : "Nothing new to record.";
 			const noteText = reviewError ? ` AI review couldn't run: ${reviewError}` : notes === null ? "" : notes.length ? ` ${notes.length} writing note${notes.length === 1 ? "" : "s"} underlined in the chapter.` : " No writing notes.";
-			new Notice(`Storyloom: synced chapter ${chapter.chapter}. ${what}${replaced ? ` Replaced ${replaced} line${replaced === 1 ? "" : "s"} from the last sync.` : ""}${noteText}`, 8000);
+			new Notice(`Motif: synced chapter ${chapter.chapter}. ${what}${replaced ? ` Replaced ${replaced} line${replaced === 1 ? "" : "s"} from the last sync.` : ""}${noteText}`, 8000);
 		} catch (e) {
 			notice.hide();
 			this.errorNotice(e);
@@ -850,12 +850,12 @@ export default class StoryloomPlugin extends Plugin {
 		this.refreshHeaderSync();
 		const file = this.activeMarkdownFile();
 		if (!on) {
-			new Notice("Storyloom: AI review is off. Your writing notes are kept and come back when you turn it on.");
+			new Notice("Motif: AI review is off. Your writing notes are kept and come back when you turn it on.");
 			return;
 		}
 		const unchecked = !!file && !!this.index.chapterForPath(file.path) && !this.settings.chapterNotes[file.path];
 		const frag = document.createDocumentFragment();
-		frag.createSpan({ text: "Storyloom: AI review is on. Chapters are proofread when you sync them." });
+		frag.createSpan({ text: "Motif: AI review is on. Chapters are proofread when you sync them." });
 		if (unchecked && file) {
 			const b = frag.createEl("button", { text: "Check writing now", cls: "storyloom-notice-btn mod-cta" });
 			b.addEventListener("click", () => void this.checkWriting(file, this.editorFor(file) ?? undefined));
@@ -902,7 +902,7 @@ export default class StoryloomPlugin extends Plugin {
 	nextNote(editor: Editor, file: TFile) {
 		const all = this.visibleNotes(file.path, editor.getValue());
 		if (!all.length) {
-			new Notice("Storyloom: no writing notes in this chapter.");
+			new Notice("Motif: no writing notes in this chapter.");
 			return;
 		}
 		const cur = editor.posToOffset(editor.getCursor("to"));
@@ -938,7 +938,7 @@ export default class StoryloomPlugin extends Plugin {
 	private running = new Set<string>();
 	private async once(key: string, label: string, fn: () => Promise<void>) {
 		if (this.running.has(key)) {
-			new Notice(`Storyloom: already ${label}…`);
+			new Notice(`Motif: already ${label}…`);
 			return;
 		}
 		this.running.add(key);
@@ -1024,7 +1024,7 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	private async extractEntitiesNow(file: TFile) {
-		const notice = new Notice("Storyloom: looking for new names…", 0);
+		const notice = new Notice("Motif: looking for new names…", 0);
 		try {
 			const text = await this.fileText(file, this.editorFor(file) ?? undefined);
 			const ctx = await this.ai.context({ file, text });
@@ -1035,7 +1035,7 @@ export default class StoryloomPlugin extends Plugin {
 			const rows = await EntityReviewModal.review(this.app, fresh);
 			if (!rows?.length) return;
 			await createEntities(this.app, this.index, this.settings, rows);
-			new Notice(`Storyloom: created ${rows.length} note${rows.length === 1 ? "" : "s"}.`);
+			new Notice(`Motif: created ${rows.length} note${rows.length === 1 ? "" : "s"}.`);
 		} catch (e) {
 			notice.hide();
 			this.errorNotice(e);
@@ -1046,7 +1046,7 @@ export default class StoryloomPlugin extends Plugin {
 	errorNotice(e: unknown) {
 		const msg = friendlyError(e);
 		const frag = document.createDocumentFragment();
-		frag.createSpan({ text: `Storyloom: ${msg}` });
+		frag.createSpan({ text: `Motif: ${msg}` });
 		if (isSettingsError(msg)) {
 			const b = frag.createEl("button", { text: "Open settings", cls: "storyloom-notice-btn" });
 			b.addEventListener("click", () => openSettings(this.app));
@@ -1169,7 +1169,7 @@ export default class StoryloomPlugin extends Plugin {
 		});
 		if (!ok) return;
 		for (const f of files) await this.app.fileManager.trashFile(f);
-		new Notice(`Storyloom: moved ${files.length} sample notes to the trash.`);
+		new Notice(`Motif: moved ${files.length} sample notes to the trash.`);
 	}
 }
 

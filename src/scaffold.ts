@@ -1,7 +1,7 @@
-/** Sets up a vault for Storyloom: folders, a Book note and templates. Never overwrites anything. */
+/** Sets up a vault for Motif: folders, a Book note and templates. Never overwrites anything. */
 import { normalizePath, type App } from "obsidian";
 import { ensureFolder } from "./codex/apply";
-import type { StoryloomSettings } from "./settings";
+import type { MotifSettings } from "./settings";
 
 export const TEMPLATES: Record<string, string> = {
 	Chapter: `---\ntype: chapter\nchapter:\ntitle: "{{title}}"\npov: ""\nsummary: ""\nstatus: draft\n---\n\n`,
@@ -37,7 +37,7 @@ export interface ScaffoldPlan {
 }
 
 /** What's missing. Pure apart from the existence check passed in. */
-export function planScaffold(s: Pick<StoryloomSettings, "manuscriptFolder" | "codexFolder" | "templatesFolder" | "bookPath">, exists: (path: string) => boolean, bookTitle = "My Book"): ScaffoldPlan {
+export function planScaffold(s: Pick<MotifSettings, "manuscriptFolder" | "codexFolder" | "templatesFolder" | "bookPath">, exists: (path: string) => boolean, bookTitle = "My Book"): ScaffoldPlan {
 	const folders = [s.manuscriptFolder, `${s.codexFolder}/Characters`, `${s.codexFolder}/Locations`, `${s.codexFolder}/Lore`, s.templatesFolder]
 		.map((f) => normalizePath(f))
 		.filter((f) => !exists(f));

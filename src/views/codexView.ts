@@ -2,7 +2,7 @@ import { debounce, ItemView, Menu, setIcon, type WorkspaceLeaf } from "obsidian"
 import { stripWikilinks } from "../codex/parse";
 import { resolveState, sortedTimeline } from "../codex/state";
 import { ENTITY_TYPES, type Entity, type EntityType } from "../codex/types";
-import type StoryloomPlugin from "../main";
+import type MotifPlugin from "../main";
 import { renderEmpty } from "./empty";
 import { renderProps, stateRows, tag, type PropRow } from "./props";
 import { renderNav } from "./nav";
@@ -26,7 +26,7 @@ export class CodexView extends ItemView {
 
 	constructor(
 		leaf: WorkspaceLeaf,
-		private plugin: StoryloomPlugin,
+		private plugin: MotifPlugin,
 	) {
 		super(leaf);
 	}
@@ -130,7 +130,7 @@ export class CodexView extends ItemView {
 				renderEmpty(grid, {
 					icon: "library",
 					title: "Your codex is empty",
-					body: "The codex holds your characters, locations and lore. Storyloom uses it to underline names, show who's where, and give the AI context.",
+					body: "The codex holds your characters, locations and lore. Motif uses it to underline names, show who's where, and give the AI context.",
 					actions: [
 						{ label: "New character", icon: "user", cta: true, onClick: () => void this.plugin.newEntity("character") },
 						{ label: "New location", icon: "map-pin", onClick: () => void this.plugin.newEntity("location") },

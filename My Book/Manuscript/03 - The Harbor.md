@@ -5,7 +5,7 @@ title: The Harbor
 pov: "[[Mara Winston]]"
 summary: ""
 status: draft
-storyloom_sample: true
+motif_sample: true
 ---
 
 Old Harbor smelled of tar and fish and other people's secrets. Mara walked the length of the quay with her arm in its sling and her collar up, and let the fog hide her.

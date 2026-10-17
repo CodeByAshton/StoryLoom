@@ -3,7 +3,7 @@ node_modules/
 *.log
 .DS_Store
 # API keys live here; never commit them
-**/.obsidian/plugins/storyloom/data.json
+**/.obsidian/plugins/motif/data.json
 My Book/.obsidian/workspace.json
 My Book/.obsidian/workspace-mobile.json
 e2e/node_modules
