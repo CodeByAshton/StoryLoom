@@ -66,8 +66,10 @@ console.log("   second run groups:", JSON.stringify(rows2));
 await page.getByRole("button", { name: "Apply" }).click();
 await sleep(1500);
 const snapshot2 = Object.fromEntries(await Promise.all(Object.keys(snapshot).map(async (f) => [f, await read(f)])));
-const changed = Object.keys(snapshot).filter((f) => snapshot[f] !== snapshot2[f] && f !== "Codex/Characters/Arthur Vane.md");
-ok(changed.length === 0 && rows2.length === 1 && rows2[0].startsWith("Arthur Vane"), `(6) second run proposes only the previously unchecked item and duplicates nothing ${changed.join()}`);
+// A re-sync replaces what the last sync wrote, so Elias's lines come back for review and are re-written in place.
+const lines = (t) => (t ?? "").split("\n").filter((l) => /^- /.test(l)).sort().join("\n");
+const changed = Object.keys(snapshot).filter((f) => lines(snapshot[f]) !== lines(snapshot2[f]) && f !== "Codex/Characters/Arthur Vane.md");
+ok(changed.length === 0 && rows2.some((r) => r.startsWith("Arthur Vane")), `(6) re-sync offers the previously unchecked item and duplicates nothing ${changed.join()}`);
 ok((snapshot2["Codex/Characters/Arthur Vane.md"].match(/- ch 3/g) ?? []).length === 2, "(6) applying the remaining Arthur change once adds exactly one line");
 
 // Summarize → save to frontmatter.
