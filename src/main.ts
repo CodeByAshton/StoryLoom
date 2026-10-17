@@ -135,6 +135,7 @@ export default class MotifPlugin extends Plugin {
 			observer.disconnect();
 			root.querySelectorAll(".sl-hidden-folder").forEach((el) => el.removeClass("sl-hidden-folder"));
 		}
+		this.explorerObservers.clear();
 		for (const b of [document.body, ...this.popoutBodies()]) {
 			for (const type of Object.keys(this.settings.entityColors)) b.style.removeProperty(`--storyloom-${type}`);
 			b.style.removeProperty("--sl-scale");
@@ -504,21 +505,28 @@ export default class MotifPlugin extends Plugin {
 	 * The explorer redraws folders as the vault changes, so each explorer is watched and re-marked.
 	 */
 	applyCodexFolderVisibility() {
-		const folder = normalizePath(this.settings.codexFolder);
-		for (const leaf of this.app.workspace.getLeavesOfType("file-explorer")) {
-			const root = leaf.view.containerEl;
-			root.querySelectorAll(".sl-hidden-folder").forEach((el) => el.removeClass("sl-hidden-folder"));
-			if (this.settings.hideCodexFolder) {
-				root.querySelectorAll<HTMLElement>(".nav-folder-title").forEach((t) => {
-					if (t.dataset.path === folder) t.parentElement?.addClass("sl-hidden-folder");
-				});
-			}
-			if (!this.explorerObservers.has(root)) {
-				const observer = new MutationObserver(debounce(() => this.applyCodexFolderVisibility(), 50, true));
+		const hide = this.settings.hideCodexFolder;
+		const roots = new Set(this.app.workspace.getLeavesOfType("file-explorer").map((l) => l.view.containerEl));
+		// Stop watching explorers that were closed (or everything, when the setting is off).
+		for (const [root, observer] of this.explorerObservers) {
+			if (hide && roots.has(root)) continue;
+			observer.disconnect();
+			this.explorerObservers.delete(root);
+		}
+		for (const root of roots) {
+			this.markCodexFolder(root);
+			if (hide && !this.explorerObservers.has(root)) {
+				// Runs before the next paint, so a redrawn folder row is never shown (or measured) unhidden.
+				const observer = new MutationObserver(() => this.markCodexFolder(root));
 				observer.observe(root, { childList: true, subtree: true });
 				this.explorerObservers.set(root, observer);
 			}
 		}
+	}
+
+	private markCodexFolder(root: HTMLElement) {
+		const folder = this.settings.hideCodexFolder ? normalizePath(this.settings.codexFolder) : null;
+		root.querySelectorAll<HTMLElement>(".nav-folder-title").forEach((t) => t.parentElement?.toggleClass("sl-hidden-folder", t.dataset.path === folder));
 	}
 
 	addTimelineEntry(e: Entity, chapter: number) {
