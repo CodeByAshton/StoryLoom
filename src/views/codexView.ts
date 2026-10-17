@@ -7,6 +7,7 @@ import { renderEmpty } from "./empty";
 import { avatar, renderProps, stateRows, tag, type PropRow } from "./props";
 import { renderNav } from "./nav";
 import { huePalette, initials } from "./timelineModel";
+import { focusable } from "../ui";
 
 export const CODEX_VIEW = "storyloom-codex";
 
@@ -141,7 +142,7 @@ export class CodexView extends ItemView {
 				renderEmpty(grid, {
 					icon: "library",
 					title: "Your codex is empty",
-					body: "The codex holds your characters, places and lore. Storyloom uses it to underline names, show who's where, and give the AI context.",
+					body: "The codex holds your characters, locations and lore. Storyloom uses it to underline names, show who's where, and give the AI context.",
 					actions: [
 						{ label: "New character", icon: "user", cta: true, onClick: () => void this.plugin.newEntity("character") },
 						{ label: "New location", icon: "map-pin", onClick: () => void this.plugin.newEntity("location") },
@@ -152,7 +153,7 @@ export class CodexView extends ItemView {
 		}
 		list.forEach((e, i) => {
 			const s = resolveState(e, Infinity);
-			const card = grid.createDiv({ cls: `sl-cx-card storyloom-type-${e.type}${this.selected === e.name ? " is-selected" : ""}` });
+			const card = focusable(grid.createDiv({ cls: `sl-cx-card storyloom-type-${e.type}${this.selected === e.name ? " is-selected" : ""}` }));
 			card.style.animationDelay = `${Math.min(i, 20) * 22}ms`;
 			const head = card.createDiv({ cls: "sl-cx-card-head" });
 			const av = head.createDiv({ cls: "sl-tl-avatar", text: initials(e.name) });
@@ -221,6 +222,7 @@ export class CodexView extends ItemView {
 				const row = rel.createDiv({ cls: "sl-cx-rel" });
 				const target = this.plugin.index.getEntity(r.target);
 				const name = row.createSpan({ cls: `sl-cx-rel-target${target ? " is-link" : ""}`, text: r.target });
+				if (target) focusable(name);
 				if (target) name.addEventListener("click", () => this.select(target.name));
 				row.createSpan({ cls: "sl-cx-rel-label", text: r.label });
 				const range = !Number.isFinite(r.range.from) && r.range.to === Infinity ? "always" : r.range.to === Infinity ? `from ch ${r.range.from}` : `ch ${Number.isFinite(r.range.from) ? r.range.from : 1}–${r.range.to}`;
@@ -238,6 +240,7 @@ export class CodexView extends ItemView {
 				const label = item.createDiv({ cls: "sl-cx-tl-ch", text: `Ch ${entry.chapter}` });
 				if (ch) {
 					label.addClass("is-link");
+					focusable(label);
 					label.setAttr("aria-label", ch.title);
 					label.addEventListener("click", () => {
 						const f = this.plugin.index.fileFor(ch.path);

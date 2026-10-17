@@ -211,7 +211,7 @@ export class SetupModal extends Modal {
 			r.createSpan({ cls: "sl-setup-plan-path", text: path });
 			r.createSpan({ cls: "storyloom-muted", text: note });
 		};
-		const notes: Record<string, string> = { [s.manuscriptFolder]: "your chapters", [`${s.codexFolder}/Characters`]: "people", [`${s.codexFolder}/Locations`]: "places", [`${s.codexFolder}/Lore`]: "everything else", [s.templatesFolder]: "for new notes" };
+		const notes: Record<string, string> = { [s.manuscriptFolder]: "your chapters", [`${s.codexFolder}/Characters`]: "people", [`${s.codexFolder}/Locations`]: "locations", [`${s.codexFolder}/Lore`]: "everything else", [s.templatesFolder]: "for new notes" };
 		for (const f of plan.folders) item("folder", f + "/", notes[f] ?? "");
 		for (const f of plan.files) item("file-text", f.path, f.path === s.bookPath ? "premise, style guide and voice sample" : "template");
 

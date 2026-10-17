@@ -6,6 +6,7 @@ import { renderEntityBlock, renderProps, tag } from "./props";
 import { proseHash, wordCount } from "../util";
 import { renderEmpty } from "./empty";
 import { huePalette } from "./timelineModel";
+import { focusable } from "../ui";
 
 export const CAST_VIEW = "storyloom-cast";
 
@@ -83,10 +84,10 @@ export class CastView extends ItemView {
 				...(chapter.pov ? [{ icon: "eye", name: "POV", value: (c: HTMLElement) => c.setText(stripWikilinks(chapter.pov ?? "")) }] : []),
 				...(this.plugin.settings.writingNotes ? [{
 					icon: "spell-check",
-					name: "Writing notes",
+					name: "AI review",
 					value: (c: HTMLElement) => {
 						if (!noteCount) return void c.createSpan({ cls: "sl-prop-empty", text: this.plugin.settings.chapterNotes[file?.path ?? ""] || synced ? "None" : "Sync to check" });
-						const t = tag(c, `${noteCount} to look at`, "is-warn sl-clickable");
+						const t = focusable(tag(c, `${noteCount} to review`, "is-warn sl-clickable"));
 						t.setAttr("aria-label", "Go to the next writing note");
 						t.addEventListener("click", () => {
 							const editor = this.plugin.activeEditor();
@@ -94,7 +95,7 @@ export class CastView extends ItemView {
 						});
 					},
 				}] : []),
-				{ icon: "refresh-cw", name: "Synced", value: (c: HTMLElement) => (stale ? tag(c, "Edited since sync", "is-warn") : tag(c, synced ? "Up to date" : "Never", synced ? "is-ok" : "is-neutral")) },
+				{ icon: "refresh-cw", name: "Synced", value: (c: HTMLElement) => (stale ? tag(c, "Edited since last sync", "is-warn") : tag(c, synced ? "Up to date" : "Not synced yet", synced ? "is-ok" : "is-neutral")) },
 			]);
 		} else header.createDiv({ cls: "sl-cast-meta", text: "Open a chapter to see everyone as of that point in the story." });
 
@@ -114,7 +115,7 @@ export class CastView extends ItemView {
 			renderEmpty(root, {
 				icon: "users",
 				title: "No cast yet",
-				body: "Characters, places and lore you add to the codex show up here, with where they are and what they know as of the open chapter.",
+				body: "Characters, locations and lore you add to the codex show up here, with where they are and what they know as of the open chapter.",
 				actions: [
 					{ label: "New character", icon: "user", cta: true, onClick: () => void this.plugin.newEntity("character") },
 					{ label: "Open codex", icon: "library", onClick: () => void this.plugin.openView("storyloom-codex", "tab") },

@@ -143,7 +143,7 @@ export class AIService {
 			try {
 				return validate(extractJson(second));
 			} catch (e2) {
-				throw new LLMError("bad_request", `The model's answer wasn't usable JSON, even after a retry. ${e2 instanceof Error ? e2.message : ""}`);
+				throw new LLMError("bad_request", "The AI's answer couldn't be read, even after a retry. Try again.");
 			}
 		}
 	}

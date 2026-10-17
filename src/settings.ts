@@ -135,7 +135,7 @@ export class StoryloomSettingTab extends PluginSettingTab {
 				.setDesc(keyDesc)
 				.addText((t) => {
 					t.inputEl.type = "password";
-					t.setPlaceholder(PROVIDERS[s.provider].needsKey ? "sk-..." : "(none)")
+					t.setPlaceholder(PROVIDERS[s.provider].needsKey ? "sk-…" : "(none)")
 						.setValue(cfg.apiKey)
 						.onChange((v) => update({ apiKey: v.trim() }));
 				});
@@ -193,27 +193,17 @@ export class StoryloomSettingTab extends PluginSettingTab {
 				);
 		}
 
-		this.numberSetting("Temperature", "0–1. Higher is more surprising. Newer Claude models ignore this.", "temperature", 0, 2, true);
-		this.numberSetting("Max output tokens", "Upper bound per response. Thinking models need headroom.", "maxTokens", 256, 64000);
-		this.numberSetting("Continue length (words)", "Target length for Continue writing.", "continueWords", 50, 3000);
-		this.numberSetting("Context budget (characters)", "How much book context is sent with each request.", "contextBudget", 4000, 2000000);
+		new Setting(containerEl).setName("Sync and AI review").setHeading();
+		this.toggleSetting("AI review", "Proofread each chapter when you sync it: spelling, grammar, word choice, run-on sentences and repetition. Hover a writing note to fix or dismiss it.", "writingNotes");
+		this.toggleSetting("Remind me to sync", "When you leave a chapter you've changed since its last sync, offer to sync it.", "remindStateUpdate");
+		this.toggleSetting("Review codex changes", "Approve each change before Sync chapter saves it to the codex. When off, changes are saved right away.", "reviewStateChanges");
 
-		new Setting(containerEl).setName("Book").setHeading();
-		this.textSetting("Manuscript folder", "Chapter notes live here.", "manuscriptFolder");
-		this.textSetting("Codex folder", "Characters, locations and lore live under here.", "codexFolder");
-		this.toggleSetting("Hide the Codex folder in the file explorer", "Browse it with the Codex button in the ribbon instead. The notes stay in your vault as plain Markdown.", "hideCodexFolder");
-		this.textSetting("Templates folder", "Chapter, Character, Location and Lore templates.", "templatesFolder");
-		this.textSetting("Book note", "Premise, style guide and ## Voice sample.", "bookPath");
-
-		new Setting(containerEl).setName("Editor").setHeading();
-		this.toggleSetting("Highlight entities", "Underline character, location and lore names in chapters.", "highlightEntities");
-		this.toggleSetting("Highlight outside the manuscript", "Also highlight in non-chapter notes.", "highlightOutsideManuscript");
-		this.toggleSetting("Show “Ask AI” button", "A small button near selections of three or more words.", "askAiButton");
-		this.textSetting("Inline edit key", "Opens inline edit while you are in a note, e.g. Mod-k or Mod-Shift-e (Mod is Cmd on macOS, Ctrl elsewhere). Takes priority over Obsidian's own Mod-k (insert link) inside the editor. Leave empty to turn off. Reload the plugin after changing.", "inlineEditKey");
-
+		new Setting(containerEl).setName("Writing").setHeading();
+		this.toggleSetting("Show the Ask AI button", "A small button appears above selections of three or more words.", "askAiButton");
+		this.textSetting("Ask AI shortcut", "Opens Ask AI in the editor, e.g. Mod-k or Mod-Shift-e (Mod is Cmd on macOS, Ctrl elsewhere). Replaces Obsidian's Mod-k (insert link) in notes. Leave empty to turn off. Takes effect after reloading the plugin.", "inlineEditKey");
 		new Setting(containerEl)
-			.setName("Quick actions")
-			.setDesc("Chips shown in the inline edit box, one per line.")
+			.setName("Ask AI shortcuts")
+			.setDesc("One-tap instructions shown in the Ask AI panel, one per line.")
 			.addTextArea((t) => {
 				t.setValue(s.quickChips.join("\n")).onChange(async (v) => {
 					s.quickChips = v
@@ -224,9 +214,22 @@ export class StoryloomSettingTab extends PluginSettingTab {
 				});
 				t.inputEl.rows = 6;
 			});
+		this.numberSetting("Continue length", "About how many words Continue writing adds.", "continueWords", 50, 3000);
 
+		new Setting(containerEl).setName("Book").setHeading();
+		this.textSetting("Manuscript folder", "Where your chapter notes live.", "manuscriptFolder");
+		this.textSetting("Codex folder", "Where your characters, locations and lore live.", "codexFolder");
+		this.toggleSetting("Hide the Codex folder", "Keep it out of the file explorer and browse it in the Codex view instead. The notes stay in your vault as plain Markdown.", "hideCodexFolder");
+		this.textSetting("Templates folder", "Templates for new chapters, characters, locations and lore.", "templatesFolder");
+		this.textSetting("Book note", "The note with your premise, style guide and voice sample.", "bookPath");
+
+		new Setting(containerEl).setName("Appearance").setHeading();
+		this.toggleSetting("Underline codex names", "Underline character, location and lore names in chapters. Hover one to see it as of that chapter.", "highlightEntities");
+		this.toggleSetting("Underline outside chapters", "Also underline codex names in notes that aren't chapters.", "highlightOutsideManuscript");
+		this.toggleSetting("Status bar", "Show the current chapter, its writing notes and whether it needs syncing. Click it for chapter actions.", "statusBar");
+		this.toggleSetting("Separate ribbon buttons", "A ribbon button for each view instead of one Storyloom button with a menu. Takes effect after reloading the plugin.", "separateRibbonButtons");
 		for (const type of ENTITY_TYPES) {
-			new Setting(containerEl).setName(`Color: ${type}`).addColorPicker((c) =>
+			new Setting(containerEl).setName(`${type.charAt(0).toUpperCase() + type.slice(1)} color`).addColorPicker((c) =>
 				c.setValue(s.entityColors[type]).onChange(async (v) => {
 					s.entityColors[type] = v;
 					await this.plugin.saveSettings();
@@ -234,17 +237,13 @@ export class StoryloomSettingTab extends PluginSettingTab {
 			);
 		}
 
-		new Setting(containerEl).setName("Interface").setHeading();
-		this.toggleSetting("Separate ribbon buttons", "Show a ribbon button for each view instead of one Storyloom button with a menu. Reload the plugin after changing.", "separateRibbonButtons");
-		this.toggleSetting("Status bar", "Show the current chapter, its word count and whether its story state is up to date. Click it for chapter actions.", "statusBar");
-
 		new Setting(containerEl).setName("Advanced").setHeading();
-		this.toggleSetting("Remind me to sync", "When you leave a chapter you've edited since it was last synced, offer to sync it.", "remindStateUpdate");
-		this.toggleSetting("AI review", "When you sync a chapter, also proofread it: spelling, grammar, words used with the wrong meaning, run-on sentences, repetition. Notes are underlined in the chapter; hover one to fix or dismiss it.", "writingNotes");
-		this.toggleSetting("Review changes before syncing", "Off: Sync chapter writes what it finds straight to the codex (the chapters are the source of truth). On: approve each change first.", "reviewStateChanges");
+		this.numberSetting("Temperature", "0 to 1. Higher is more surprising. Newer Claude models ignore this.", "temperature", 0, 2, true);
+		this.numberSetting("Max output tokens", "The longest answer the AI may give. Thinking models need headroom.", "maxTokens", 256, 64000);
+		this.numberSetting("Context budget", "How many characters of book context go with each request.", "contextBudget", 4000, 2000000);
 		this.toggleSetting("Stream responses", "Show text as it's written. Turns itself off for the session if a provider blocks it (e.g. a local server without CORS enabled).", "stream");
-		this.toggleSetting("Save chats", "Keep Story Assistant conversations in .storyloom/chats/.", "saveChats");
-		this.toggleSetting("Show context before sending", "Preview the full prompt in a modal before each request.", "showContextBeforeSending");
+		this.toggleSetting("Save chats", "Keep Story assistant conversations in .storyloom/chats/.", "saveChats");
+		this.toggleSetting("Show the prompt before sending", "Preview everything that will be sent to the AI before each request.", "showContextBeforeSending");
 		this.toggleSetting("Debug mode", "Log context sizes and requests to the developer console.", "debug");
 	}
 

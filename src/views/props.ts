@@ -2,7 +2,8 @@ import { setIcon } from "obsidian";
 import { stripWikilinks } from "../codex/parse";
 import { resolveState } from "../codex/state";
 import type { Entity } from "../codex/types";
-import { initials } from "./timelineModel";
+import { huePalette, initials } from "./timelineModel";
+import { focusable } from "../ui";
 
 /**
  * Notion-style building blocks for side panels: property rows (icon · name · value), small tags and
@@ -86,12 +87,12 @@ export function stateRows(e: Entity, asOf: number, handlers: EntityRowHandlers =
 	if (s.relationships.length) {
 		rows.push({
 			icon: "link",
-			name: "Relations",
+			name: "Relationships",
 			value: (cell) => {
 				cell.addClass("is-text");
 				for (const r of s.relationships) {
 					const line = cell.createDiv({ cls: "sl-prop-line" });
-					const t = line.createSpan({ cls: "sl-prop-link", text: r.target });
+					const t = focusable(line.createSpan({ cls: "sl-prop-link", text: r.target }));
 					if (handlers.openLink) t.addEventListener("click", () => handlers.openLink?.(r.target));
 					line.createSpan({ cls: "sl-prop-muted", text: ` ${r.label}` });
 				}
@@ -110,6 +111,7 @@ export function renderEntityBlock(parent: HTMLElement, e: Entity, asOf: number, 
 	const name = head.createSpan({ cls: "sl-ent-name", text: e.name });
 	if (h.openNote) {
 		name.addClass("is-link");
+		focusable(name);
 		name.addEventListener("click", () => h.openNote?.(e));
 	}
 	tag(head, e.role || cap(e.type), "is-type");
@@ -127,5 +129,51 @@ export function renderEntityBlock(parent: HTMLElement, e: Entity, asOf: number, 
 	const rows = stateRows(e, asOf, h);
 	if (rows.length) renderProps(block, rows);
 	else block.createDiv({ cls: "sl-ent-none", text: Number.isFinite(asOf) ? `Nothing recorded by chapter ${asOf}.` : "Nothing recorded yet." });
+	return block;
+}
+
+/** Hues the timeline, Cast and Codex use: people and places each get evenly spaced colours. */
+export function hueOf(all: Entity[], e: Entity): number {
+	return huePalette(all.filter((x) => x.type === e.type).map((x) => x.name), e.type === "character" ? 25 : 205)(e.name);
+}
+
+/**
+ * The floating card shown on hover (editor, timeline, graph): the same rows as the Cast panel, plus
+ * "as of chapter N", the latest note, a short description and actions.
+ */
+export function renderEntityPeek(parent: HTMLElement, e: Entity, asOf: number, opts: { hue: number; handlers?: EntityRowHandlers }): HTMLElement {
+	const h = opts.handlers ?? {};
+	const s = resolveState(e, asOf);
+	const block = parent.createDiv({ cls: `sl-ent is-peek storyloom-type-${e.type}` });
+	const head = block.createDiv({ cls: "sl-ent-head" });
+	avatar(head, e.name, opts.hue);
+	const name = head.createSpan({ cls: "sl-ent-name", text: e.name });
+	if (h.openNote) {
+		name.addClass("is-link");
+		focusable(name);
+		name.addEventListener("click", () => h.openNote?.(e));
+	}
+	tag(head, e.role || cap(e.type), "is-type");
+	block.createDiv({ cls: "sl-ent-meta", text: Number.isFinite(asOf) ? `As of chapter ${asOf}` : "Latest" });
+	const rows = stateRows(e, asOf, h);
+	if (s.notes.length) rows.push({ icon: FIELD_ICONS.note, name: "Latest", value: (c) => { c.addClass("is-text"); c.setText(`Ch ${s.notes[0].chapter}: ${stripWikilinks(s.notes[0].text)}`); } });
+	if (rows.length) renderProps(block, rows);
+	else block.createDiv({ cls: "sl-ent-none", text: Number.isFinite(asOf) ? `Nothing recorded by chapter ${asOf}.` : "Nothing recorded yet." });
+	if (e.description) block.createDiv({ cls: "sl-ent-desc", text: stripWikilinks(e.description).split("\n").filter((l) => l.trim()).join(" ") });
+	if (h.openNote || h.addTimeline) {
+		const bar = block.createDiv({ cls: "sl-ent-actions" });
+		const button = (label: string, icon: string, fn: () => void) => {
+			const b = bar.createEl("button", { cls: "storyloom-card-btn" });
+			setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), icon);
+			b.createSpan({ text: label });
+			b.addEventListener("mousedown", (ev) => ev.preventDefault());
+			b.addEventListener("click", (ev) => {
+				ev.stopPropagation();
+				fn();
+			});
+		};
+		if (h.openNote) button("Open note", "file-text", () => h.openNote?.(e));
+		if (h.addTimeline) button("Add timeline entry", "plus", () => h.addTimeline?.(e));
+	}
 	return block;
 }

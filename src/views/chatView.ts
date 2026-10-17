@@ -284,7 +284,7 @@ export class ChatView extends ItemView {
 		setIcon(copy, "copy");
 		copy.addEventListener("click", async () => {
 			await navigator.clipboard.writeText(text);
-			new Notice("Copied");
+			new Notice("Copied.");
 		});
 		const ins = bar.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Insert into note" } });
 		setIcon(ins, "text-cursor-input");

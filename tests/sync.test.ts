@@ -81,3 +81,12 @@ describe("remapLine", () => {
 	it("renumbers a single relationship range", () => expect(remapLine("- [[Arthur Vane]]: rival (ch 3+)", map)).toBe("- [[Arthur Vane]]: rival (ch 1+)"));
 	it("leaves other lines alone", () => expect(remapLine("hello", map)).toBe("hello"));
 });
+
+describe("revertSynced undoes in reverse order", () => {
+	it("reopens then removes a relationship that the same sync added and then closed", () => {
+		// The sync added "ally (ch 5+)", then a later change closed it to "(ch 5-5)".
+		const text = "## Relationships\n- [[B]]: ally (ch 5-5)\n- [[B]]: rival (ch 6+)\n";
+		const entries = [{ line: "- [[B]]: ally (ch 5+)" }, { line: "- [[B]]: ally (ch 5-5)", restore: "- [[B]]: ally (ch 5+)" }, { line: "- [[B]]: rival (ch 6+)" }];
+		expect(revertSynced(text, entries).text).toBe("## Relationships\n");
+	});
+});

@@ -70,6 +70,19 @@ const status = await read("Manuscript/03 - Lamplight.md");
 ok(/status: final/.test(status) && (await page.locator('.sl-ch-col.is-final .sl-ch-card[data-path="Manuscript/03 - Lamplight.md"]').count()) === 1, "dragging to the Final column sets status: final");
 await shot(page, "p7-board");
 
+// Keyboard: focus the first card in the outline and press Alt+→ to move it one place.
+await page.locator(".sl-tl-segmented button", { hasText: "Outline" }).click();
+await sleep(600);
+const first = page.locator(".sl-ch-grid .sl-ch-card[data-path]").first();
+const firstTitle = await first.locator(".sl-ch-card-title").innerText();
+await first.focus();
+await page.keyboard.press("Alt+ArrowRight");
+await page.waitForSelector(".modal.storyloom-glass-modal", { timeout: 5000 }).catch(() => {});
+const kb = await page.locator(".modal.storyloom-glass-modal").innerText().catch(() => "");
+ok(new RegExp(`“${firstTitle}”: chapter 1 → 2`).test(kb), `Alt+→ on a focused card proposes moving it one place (${firstTitle})`);
+await page.locator(".modal button", { hasText: "Cancel" }).click();
+await sleep(300);
+
 const errs = logs.filter((l) => /^\[(error|pageerror)\]/.test(l));
 ok(errs.length === 0, `no console errors ${errs.length ? JSON.stringify(errs) : ""}`);
 await app.close();

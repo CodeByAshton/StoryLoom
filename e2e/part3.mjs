@@ -27,7 +27,7 @@ const scroll = await page.evaluate(async () => {
 	clones.forEach((x) => x.classList.add("e2e-clone"));
 	c.scrollTop = 0;
 	await new Promise((r) => setTimeout(r, 50));
-	const apply = [...document.querySelectorAll(".storyloom-review-modal button")].find((b) => b.textContent === "Apply").getBoundingClientRect();
+	const apply = [...document.querySelectorAll(".storyloom-review-modal button")].find((b) => b.textContent === "Save to codex").getBoundingClientRect();
 	const modal = document.querySelector(".storyloom-review-modal").getBoundingClientRect();
 	return { scrolls: c.scrollHeight > c.clientHeight + 100, overflow: getComputedStyle(c).overflowY, applyVisible: apply.bottom <= modal.bottom && apply.bottom <= window.innerHeight && apply.top >= modal.top };
 });
@@ -44,7 +44,7 @@ await page.evaluate(() => {
 	cb.checked = false;
 	cb.dispatchEvent(new Event("change"));
 });
-await page.getByRole("button", { name: "Apply" }).click();
+await page.getByRole("button", { name: "Save to codex" }).click();
 await sleep(1500);
 const after = Object.fromEntries(await Promise.all(files.map(async (f) => [f, await read(f)])));
 const rook = await read("Codex/Characters/Captain Rook.md");
@@ -63,7 +63,7 @@ await page.waitForSelector(".storyloom-review-modal", { timeout: 10000 });
 await sleep(300);
 const rows2 = await page.evaluate(() => [...document.querySelectorAll(".storyloom-review-group")].map((g) => g.innerText.replace(/\n+/g, " | ")));
 console.log("   second run groups:", JSON.stringify(rows2));
-await page.getByRole("button", { name: "Apply" }).click();
+await page.getByRole("button", { name: "Save to codex" }).click();
 await sleep(1500);
 const snapshot2 = Object.fromEntries(await Promise.all(Object.keys(snapshot).map(async (f) => [f, await read(f)])));
 // A re-sync replaces what the last sync wrote, so Elias's lines come back for review and are re-written in place.

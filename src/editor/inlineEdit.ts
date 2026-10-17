@@ -59,7 +59,8 @@ export function preserveWhitespace(original: string, replacement: string): strin
 }
 
 export class InlineEditController {
-	private abort: AbortController | null = null;
+	/** One in-flight request per editor, so working in one pane never cancels another. */
+	private aborts = new WeakMap<EditorView, AbortController>();
 
 	constructor(private plugin: StoryloomPlugin) {}
 
@@ -93,7 +94,7 @@ export class InlineEditController {
 
 	close(view: EditorView) {
 		if (!this.get(view)) return false;
-		this.abort?.abort();
+		this.aborts.get(view)?.abort();
 		ghostOut(view);
 		this.set(view, null);
 		view.focus();
@@ -122,7 +123,7 @@ export class InlineEditController {
 	}
 
 	stop(view: EditorView) {
-		this.abort?.abort();
+		this.aborts.get(view)?.abort();
 		const cur = this.get(view);
 		if (cur?.phase === "loading") this.set(view, { ...cur, id: ++seq, phase: "input" });
 	}
@@ -167,8 +168,9 @@ export class InlineEditController {
 			after,
 			insert: st.insert && !refining,
 		});
-		this.abort?.abort();
-		const abort = (this.abort = new AbortController());
+		this.aborts.get(view)?.abort();
+		const abort = new AbortController();
+		this.aborts.set(view, abort);
 		// Stream into the panel, at most one update per frame.
 		let pending: string | null = null;
 		const flush = () => {
@@ -344,7 +346,7 @@ class GlassPanel implements TooltipView {
 				}
 				e.stopPropagation();
 			});
-			glassButton(row, { icon: "arrow-up", primary: true, title: "Run (Enter)", onClick: () => void this.ctrl.run(v, input.value) });
+			glassButton(row, { icon: "arrow-up", primary: true, title: "Send (Enter)", onClick: () => void this.ctrl.run(v, input.value) });
 			const chips = root.createDiv({ cls: "storyloom-glass-chips" });
 			this.plugin.settings.quickChips.forEach((c, i) => {
 				const chip = chips.createEl("button", { cls: "storyloom-glass-chip", text: c });
@@ -552,6 +554,7 @@ export function inlineEditExtension(plugin: StoryloomPlugin, ctrl: InlineEditCon
 				if (pending && !this.scope) {
 					this.scope = new Scope(plugin.app.scope);
 					this.scope.register(["Mod"], "Enter", () => {
+						if (!this.view.hasFocus && !this.view.dom.contains(document.activeElement)) return true; // not ours: let it through
 						ctrl.accept(this.view);
 						return false;
 					});

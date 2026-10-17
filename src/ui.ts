@@ -24,3 +24,16 @@ export function glass(modal: { modalEl: HTMLElement; containerEl: HTMLElement })
 	modal.modalEl.addClass("storyloom-glass-modal");
 	modal.containerEl.addClass("storyloom-glass-container");
 }
+
+/** Make a clickable element reachable and usable from the keyboard (Tab, then Enter or Space). */
+export function focusable<T extends HTMLElement>(el: T, label?: string): T {
+	el.tabIndex = 0;
+	el.setAttr("role", "button");
+	if (label) el.setAttr("aria-label", label);
+	el.addEventListener("keydown", (ev) => {
+		if (ev.target !== el || (ev.key !== "Enter" && ev.key !== " ")) return;
+		ev.preventDefault();
+		el.click();
+	});
+	return el;
+}

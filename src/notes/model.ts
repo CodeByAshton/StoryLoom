@@ -85,4 +85,21 @@ export function locateNotes(text: string, notes: WritingNote[], offset = 0): Loc
 	return out.sort((a, b) => a.from - b.from);
 }
 
+const WORD = /[\p{L}\p{N}']/u;
+
+/**
+ * Notes safe to show and fix: the quote occurs exactly once in the chapter and starts and ends on word
+ * boundaries. A bare "lose" would also match inside "closed"; one fix there would write "cloosed".
+ */
+export function reliableNotes(text: string, notes: WritingNote[]): WritingNote[] {
+	return notes.filter((n) => {
+		const i = text.indexOf(n.quote);
+		if (i === -1 || text.indexOf(n.quote, i + 1) !== -1) return false;
+		const before = text[i - 1] ?? " ";
+		const after = text[i + n.quote.length] ?? " ";
+		const edgeOk = (inner: string | undefined, outer: string) => !(inner && WORD.test(inner) && WORD.test(outer));
+		return edgeOk(n.quote[0], before) && edgeOk(n.quote[n.quote.length - 1], after);
+	});
+}
+
 export const WRITING_NOTES_SCHEMA = `{"notes": [{"quote": "exact text from the chapter", "kind": "spelling|grammar|word-choice|punctuation|run-on|repetition|clarity", "message": "short explanation", "suggestion": "replacement for the quote, or empty"}]}`;

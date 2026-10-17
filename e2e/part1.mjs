@@ -25,8 +25,8 @@ async function hoverCard(path, name) {
 	await page.mouse.move(5, 5);
 	await sleep(200);
 	await el.hover();
-	await page.waitForSelector(".storyloom-hover .storyloom-card", { timeout: 4000 }).catch(() => {});
-	const txt = await page.locator(".storyloom-hover .storyloom-card").first().innerText().catch(() => "");
+	await page.waitForSelector(".storyloom-hover .sl-ent", { timeout: 4000 }).catch(() => {});
+	const txt = await page.locator(".storyloom-hover .sl-ent").first().innerText().catch(() => "");
 	return txt;
 }
 

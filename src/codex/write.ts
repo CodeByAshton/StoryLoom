@@ -82,7 +82,8 @@ export function revertSynced(markdown: string, entries: Pick<SyncedLine, "line" 
 	const lines = markdown.split("\n");
 	let reverted = 0;
 	const drop = new Set<number>();
-	for (const e of entries) {
+	// Undo in reverse: a line added and then closed by the same sync must be reopened before it's removed.
+	for (const e of [...entries].reverse()) {
 		const i = lines.findIndex((l, idx) => !drop.has(idx) && l.trim() === e.line.trim());
 		if (i === -1) continue; // edited by hand since: leave it
 		if (e.restore !== undefined) lines[i] = e.restore;

@@ -36,3 +36,14 @@ describe("locateNotes", () => {
 	});
 	it("applies an offset", () => expect(locateNotes("abc", [n("b")], 10)[0]).toMatchObject({ from: 11, to: 12 }));
 });
+
+import { reliableNotes } from "../src/notes/model";
+
+describe("reliableNotes (Fix must never touch the wrong text)", () => {
+	const n = (quote: string) => ({ quote, kind: "word-choice" as const, message: "m", suggestion: "x" });
+	const text = "She closed the door. Don't lose it, she said. The lose ends were tied.";
+	it("drops quotes found inside another word", () => expect(reliableNotes("She closed the door.", [n("lose")])).toEqual([]));
+	it("drops quotes that occur more than once", () => expect(reliableNotes(text, [n("lose")])).toEqual([]));
+	it("keeps a unique quote on word boundaries", () => expect(reliableNotes(text, [n("The lose ends")]).map((x) => x.quote)).toEqual(["The lose ends"]));
+	it("allows punctuation at the edges", () => expect(reliableNotes(text, [n("lose it, she said.")]).length).toBe(1));
+});

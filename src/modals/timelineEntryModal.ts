@@ -11,11 +11,11 @@ export interface TimelineSuggestions {
 }
 
 const FIELDS = [
-	{ key: "location", label: "Location", placeholder: "Where they are now", list: "locations" },
-	{ key: "status", label: "Status", placeholder: "e.g. Injured, Missing, Hopeful" },
-	{ key: "with", label: "With", placeholder: "Who they're with, comma-separated", list: "characters" },
-	{ key: "knows", label: "Learns", placeholder: "Something they find out (adds to what they know)" },
-	{ key: "note", label: "Note", placeholder: "One line on what happens" },
+	{ key: "location", label: "Location", placeholder: "A place", list: "locations" },
+	{ key: "status", label: "Status", placeholder: "e.g. Injured" },
+	{ key: "with", label: "With", placeholder: "Names, comma-separated", list: "characters" },
+	{ key: "knows", label: "Learns", placeholder: "Something they find out" },
+	{ key: "note", label: "Note", placeholder: "What happens" },
 ] as const;
 
 /**
@@ -112,7 +112,7 @@ export class TimelineEntryModal extends Modal {
 			});
 		}
 
-		contentEl.createDiv({ cls: "storyloom-muted", text: "Will add this line (type — to clear a value):" });
+		contentEl.createDiv({ cls: "storyloom-muted", text: "Preview (type — to clear a value):" });
 		contentEl.appendChild(preview);
 		refresh();
 

@@ -3,6 +3,7 @@ import { closeHoverTooltips, Decoration, EditorView, hoverTooltip, ViewPlugin, t
 import { editorInfoField, setIcon } from "obsidian";
 import type StoryloomPlugin from "../main";
 import { fitInEditor } from "./fit";
+import { frontmatterEnd } from "./highlight";
 import { locateNotes, NOTE_KINDS, type LocatedNote } from "../notes/model";
 
 /** Dispatched to every editor when a chapter's writing notes change. */
@@ -12,7 +13,11 @@ function located(plugin: StoryloomPlugin, view: EditorView): LocatedNote[] {
 	const path = view.state.field(editorInfoField, false)?.file?.path;
 	if (!path) return [];
 	const notes = plugin.notesFor(path);
-	return notes.length ? locateNotes(view.state.doc.toString(), notes) : [];
+	if (!notes.length) return [];
+	// Notes belong to the prose: never underline (or fix) a match inside the frontmatter.
+	const doc = view.state.doc.toString();
+	const start = frontmatterEnd(doc);
+	return locateNotes(doc.slice(start), notes, start);
 }
 
 /** The writing note under a position, if any (the entity hover card stays out of the way there). */
@@ -91,8 +96,8 @@ function renderNoteCard(plugin: StoryloomPlugin, view: EditorView, path: string,
 	};
 	if (note.suggestion) {
 		button("Fix", "check", true, () => {
-			// Re-find it: the text may have moved since the card opened.
-			const now = locateNotes(view.state.doc.toString(), [note])[0];
+			// Use the spot that was hovered; only re-find it if the text has moved since the card opened.
+			const now = view.state.doc.sliceString(hit.from, hit.to) === note.quote ? hit : located(plugin, view).find((l) => l.note === note);
 			if (now) view.dispatch({ changes: { from: now.from, to: now.to, insert: note.suggestion }, userEvent: "input.storyloom-fix" });
 			void plugin.removeNote(path, note);
 			view.dispatch({ effects: closeHoverTooltips });

@@ -177,7 +177,7 @@ export class ResultModal extends Modal {
 		if (this.items.length && !this.busy) {
 			this.button(right, "Copy", "copy", async () => {
 				await navigator.clipboard.writeText(this.allText());
-				new Notice("Copied");
+				new Notice("Copied.");
 			});
 			if (!this.opts.perItemButtons || this.items.length === 1) this.editorButtons(right, () => this.allText());
 		}

@@ -17,6 +17,8 @@ export interface FieldRow {
 export interface TimelineGroup {
 	entity: string; // canonical name (or new entity name)
 	known: boolean;
+	/** Proposed as a new codex entry in this same sync. */
+	isNew?: boolean;
 	fields: FieldRow[];
 	note?: { text: string; checked: boolean };
 }
@@ -27,13 +29,15 @@ export interface RelRow {
 	label: string;
 	fromChapter: number;
 	endsPrevious: boolean;
+	/** The "from" entity is already in the codex (otherwise it must be created in this sync). */
+	fromKnown: boolean;
 	checked: boolean;
 }
 
 export interface ApprovedChanges {
 	chapter: number;
 	timeline: { entity: string; fields: Record<string, string | null>; note?: string }[];
-	relationships: Omit<RelRow, "checked">[];
+	relationships: Omit<RelRow, "checked" | "fromKnown">[];
 	newEntities: EntityRow[];
 }
 
@@ -48,11 +52,13 @@ export function buildReviewRows(update: StateUpdate, index: Pick<CodexIndex, "ge
 		const deduped = dedupeTimeline(source, chapter, { fields: t.fields, note: t.note });
 		if (!deduped) continue;
 		const before = resolveState(source, chapter - 1);
-		const g = groups.get(name) ?? { entity: name, known: !!entity || newNames.has(name), fields: [] };
+		// known = already in the codex. Lines for a proposed new entry are on by default but only kept if it's created.
+		const g = groups.get(name) ?? { entity: name, known: !!entity, isNew: !entity && newNames.has(name), fields: [] };
+		const on = g.known || newNames.has(name);
 		for (const [key, value] of Object.entries(deduped.fields)) {
-			g.fields.push({ key, value, previous: before.fields[key], checked: g.known });
+			g.fields.push({ key, value, previous: before.fields[key], checked: on });
 		}
-		if (deduped.note) g.note = { text: deduped.note, checked: g.known };
+		if (deduped.note) g.note = { text: deduped.note, checked: on };
 		groups.set(name, g);
 	}
 	const rels: RelRow[] = [];
@@ -68,6 +74,7 @@ export function buildReviewRows(update: StateUpdate, index: Pick<CodexIndex, "ge
 			label: stripWikilinks(r.label),
 			fromChapter: r.fromChapter && r.fromChapter > 0 ? r.fromChapter : chapter,
 			endsPrevious: !!r.endsPrevious,
+			fromKnown: !!from,
 			checked: !!from || newNames.has(fromName),
 		});
 	}
@@ -93,7 +100,7 @@ export function approvedFrom(chapter: number, rows: ReturnType<typeof buildRevie
 	return {
 		chapter,
 		timeline,
-		relationships: rows.rels.filter((r) => r.checked && r.label.trim()).map(({ checked: _c, ...r }) => r),
+		relationships: rows.rels.filter((r) => r.checked && r.label.trim() && usable(r.from, r.fromKnown)).map(({ checked: _c, fromKnown: _k, ...r }) => r),
 		newEntities: rows.entities.filter((e) => e.checked && e.name.trim()),
 	};
 }
@@ -116,24 +123,25 @@ export class StateReviewModal extends Modal {
 
 	onOpen() {
 		this.modalEl.addClass("storyloom-review-modal");
-		this.titleEl.setText(`Story state changes — chapter ${this.chapter}`);
+		this.titleEl.setText(`Review sync — Chapter ${this.chapter}`);
 		const { groups, rels, entities } = this.rows;
 		const c = this.contentEl;
 		if (!groups.length && !rels.length && !entities.length) {
 			c.createEl("p", { text: "Nothing new to record. The codex already reflects this chapter." });
 		} else {
-			c.createEl("p", { cls: "storyloom-muted", text: "Nothing is written until you click Apply. Uncheck anything you don't want; values are editable." });
+			c.createEl("p", { cls: "storyloom-muted", text: "Uncheck anything you don't want, or edit a value. Nothing is saved until you click Save to codex." });
 		}
 
 		for (const g of groups) {
 			const box = c.createDiv({ cls: "storyloom-review-group" });
 			const h = box.createDiv({ cls: "storyloom-review-entity", text: g.entity });
-			if (!g.known) h.createSpan({ cls: "storyloom-badge", text: "not in codex" });
+			if (g.isNew) h.createSpan({ cls: "storyloom-badge", text: "New" });
+			else if (!g.known) h.createSpan({ cls: "storyloom-badge", text: "Not in codex" });
 			for (const f of g.fields) {
 				const row = box.createDiv({ cls: "storyloom-review-row" });
 				const cb = row.createEl("input", { type: "checkbox" });
 				cb.checked = f.checked;
-				cb.disabled = !g.known;
+				cb.disabled = !g.known && !g.isNew;
 				cb.addEventListener("change", () => (f.checked = cb.checked));
 				row.createSpan({ cls: "storyloom-review-key", text: f.key });
 				const input = row.createEl("input", { type: "text", cls: "storyloom-review-value" });
@@ -146,7 +154,7 @@ export class StateReviewModal extends Modal {
 				const row = box.createDiv({ cls: "storyloom-review-row" });
 				const cb = row.createEl("input", { type: "checkbox" });
 				cb.checked = note.checked;
-				cb.disabled = !g.known;
+				cb.disabled = !g.known && !g.isNew;
 				cb.addEventListener("change", () => (note.checked = cb.checked));
 				row.createSpan({ cls: "storyloom-review-key", text: "note" });
 				const input = row.createEl("input", { type: "text", cls: "storyloom-review-value" });
@@ -173,7 +181,7 @@ export class StateReviewModal extends Modal {
 
 		if (entities.length) {
 			const box = c.createDiv({ cls: "storyloom-review-group" });
-			box.createDiv({ cls: "storyloom-review-entity", text: "New entities" });
+			box.createDiv({ cls: "storyloom-review-entity", text: "New codex entries" });
 			renderEntityRows(box, entities);
 		}
 
@@ -181,7 +189,7 @@ export class StateReviewModal extends Modal {
 			.addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()))
 			.addButton((b) =>
 				b
-					.setButtonText("Apply")
+					.setButtonText("Save to codex")
 					.setCta()
 					.setDisabled(!groups.length && !rels.length && !entities.length)
 					.onClick(() => {

@@ -51,7 +51,8 @@ export async function createEntities(app: App, index: CodexIndex, paths: ApplyPa
  * Write approved changes. Each note is re-read inside `vault.process` and deduped against its
  * current text, so applying the same changes twice writes nothing the second time.
  */
-export async function applyChanges(app: App, index: CodexIndex, paths: ApplyPaths, changes: ApprovedChanges) {
+/** `written` collects every line as it's written (pass your own array to keep the record if a write fails). */
+export async function applyChanges(app: App, index: CodexIndex, paths: ApplyPaths, changes: ApprovedChanges, written: SyncedLine[] = []) {
 	const newCount = changes.newEntities.filter((e) => !index.getEntity(e.name)).length;
 	const created = await createEntities(app, index, paths, changes.newEntities);
 	const pathFor = (name: string) => index.getEntity(name)?.path ?? created.get(name);
@@ -59,8 +60,6 @@ export async function applyChanges(app: App, index: CodexIndex, paths: ApplyPath
 	let lines = 0;
 	let rels = 0;
 	const touched = new Set<string>();
-	/** Everything this sync wrote, so the next sync of this chapter can replace it (no manual clean-up). */
-	const written: SyncedLine[] = [];
 
 	for (const t of changes.timeline) {
 		const file = fileAt(app, pathFor(t.entity));

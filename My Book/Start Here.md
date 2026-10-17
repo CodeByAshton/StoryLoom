@@ -17,12 +17,12 @@ The first time you open this vault, Obsidian asks whether you trust it. Choose *
 
 Everything Storyloom has is behind the **feather button** in the left ribbon. Chapters, Codex, Timeline and Graph also share a tab bar at the top, so you can switch between them in one tab. When you're in a chapter, the status bar at the bottom shows which chapter it is. A dot means you've edited it since it was last synced. Click it for chapter actions.
 
-1. Open **Manuscript → 01 - The Manor**. Character and place names are underlined. Hover one to see where that character is *as of this chapter*.
+1. Open **Manuscript → 01 - The Manor**. Character and location names are underlined. Hover one to see where that character is *as of this chapter*.
 2. Open chapter 3 and hover **Mara** again: she has moved, she's injured, and she knows something new.
 3. Open **Cast** from the feather menu. It shows everyone in the current chapter.
 4. Open the **Story graph** (the **Graph** tab). Drag the chapter slider and watch relationships and meetings change.
 5. Open **Chapters**: a card per chapter with its summary, point of view, cast and word count. Drag cards to reorder chapters (the codex timelines follow automatically), or switch to **Board** and drag chapters between Draft, Revised and Final.
-6. Open the **Story timeline** (the **Timeline** tab): one lane per character, with their location as a coloured bar across the chapters they stay there. Hover any square to see that character as of that chapter; switch to **Locations** to see who is where.
+6. Open the **Story timeline** (the **Timeline** tab): one lane per character, with their location as a colored bar across the chapters they stay there. Hover any square to see that character as of that chapter; switch to **Locations** to see who is where.
 
 ## Using the AI
 
@@ -30,12 +30,12 @@ Everything Storyloom has is behind the **feather button** in the left ribbon. Ch
    - **Claude Code (your Claude subscription)**, if Claude Code is installed on this computer: sign in once by running `claude` in a terminal, then click **Check**. No API key needed; usage counts toward your plan.
    - Or paste an API key (Anthropic, OpenAI, OpenRouter), or point it at Ollama or LM Studio.
    Then click **Test**.
-2. In a chapter, **select a sentence and press Cmd/Ctrl+K**. Type what you want ("make it tenser") and press Enter. Press **Tab** to accept or **Esc** to reject. One undo brings the original back.
+2. In a chapter, **select a sentence and press Cmd/Ctrl+K**. Type what you want ("make it tenser") and press Enter. Press **Tab** to accept or **Esc** to discard. One undo brings the original back.
 3. Right-click in a chapter for more tools: continue writing, rewrite, describe, expand, brainstorm.
 4. When you finish a chapter, click **Sync chapter**: the refresh button in the left ribbon, the same icon in the chapter's header, or the button in the Cast panel. Storyloom reads the chapter and records what changed in the codex: who moved, who learned what, who met whom. If you later rewrite the chapter, sync it again and the record follows.
-5. Sync also does an **AI review** of the writing: typos, grammar, a wrong word, a run-on sentence. Each one gets a wavy underline; hover it to **Fix** or **Dismiss** it. The spell-check icon at the top of the chapter turns AI review on and off.
+5. Sync also runs **AI review**, which proofreads the chapter for typos, grammar, wrong words and run-on sentences. Each writing note gets a wavy underline; hover it to **Fix** or **Dismiss** it. The spell-check icon at the top of the chapter turns AI review on and off.
 
-Inside a note, Cmd/Ctrl+K belongs to Storyloom instead of Obsidian's "Insert Markdown link". You can pick a different key in **Settings → Storyloom → Inline edit key**.
+Inside a note, Cmd/Ctrl+K belongs to Storyloom instead of Obsidian's "Insert Markdown link". You can pick a different key in **Settings → Storyloom → Ask AI shortcut**.
 
 ## How the codex is written
 

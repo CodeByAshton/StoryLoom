@@ -19,7 +19,7 @@
 
 You're on chapter 23. Where was Mara in chapter 9? Does Elias know about the ledger yet? Were those two still friends when the fire happened?
 
-**Storyloom remembers so you don't have to.** Finish a chapter, click **Sync**, and the AI reads it and records what changed: who moved, who learned what, who stopped trusting whom. Hover any name in your manuscript to see that character *as of the chapter you're in*. It also gives you Sudowrite-style writing tools and a proofreader that underlines the "their" that should be "there".
+**Storyloom remembers so you don't have to.** Finish a chapter, click **Sync chapter**, and the AI reads it and records what changed: who moved, who learned what, who stopped trusting whom. Hover any name in your manuscript to see that character *as of the chapter you're in*. It also gives you Sudowrite-style writing tools and a proofreader that underlines the "their" that should be "there".
 
 It's all plain Markdown in your vault. No hidden database, no lock-in, no subscription to us.
 
@@ -31,16 +31,16 @@ Select a passage, press **⌘K** / **Ctrl+K** (or click the little **Ask AI** pi
 <img src="docs/screenshots/inline.png" alt="The Ask AI panel floating over a paragraph, streaming a tighter rewrite with Replace and Discard buttons" width="760">
 
 ### 🔄 Sync chapter: a story bible that writes itself
-When you finish a chapter, hit **Sync**. You'll find it in the ribbon, at the top of every chapter and in the Cast panel. Storyloom reads the chapter and writes the changes into your codex: new locations, injuries, secrets learned, alliances made and broken, and new characters as they show up.
+When you finish a chapter, hit **Sync chapter**. You'll find it in the ribbon, at the top of every chapter and in the Cast panel. Storyloom reads the chapter and writes the changes into your codex: new locations, injuries, secrets learned, alliances made and broken, and new characters as they show up.
 
-- **The chapters are the source of truth.** There's nothing to approve. Rewrite the chapter, sync again, and the codex follows. Storyloom replaces exactly what its last sync wrote and never touches lines you typed by hand.
-- **It's always in sync.** A dot on the Sync button tells you a chapter changed since its last sync.
+- **The chapters are the source of truth.** By default there's nothing to approve. Rewrite the chapter, sync again, and the codex follows. Storyloom replaces exactly what its last sync wrote and never touches lines you typed by hand.
+- **It tells you when it's out of date.** A dot on the Sync chapter button means the chapter changed since its last sync.
 - **It survives reordering.** Drag chapter 7 to position 3 and every timeline line and relationship range follows it.
 
 ### 🔍 AI review: a proofreader that stays in its lane
 While it syncs, Storyloom also proofreads the chapter. It looks for typos, grammar, words used with the wrong meaning (*their/there, affect/effect, peak/peek*), run-on sentences and clunky repetition. **It never touches your story**: no plot opinions, no "have you considered a dragon".
 
-Each note is a wavy underline. Hover it to see what's wrong, then **Fix** it in one click or **Dismiss** it. Turn AI review on or off with the ✓ switch at the top of any chapter.
+Each writing note is a wavy underline. Hover it to see what's wrong, then **Fix** it in one click or **Dismiss** it. Turn AI review on or off with the spell-check button at the top of any chapter.
 
 <img src="docs/screenshots/review.png" alt="A wavy underline under 'Mara walked the length of the quay' with a card explaining the word choice, a before/after preview, and Fix and Dismiss buttons" width="760">
 
@@ -52,9 +52,9 @@ Four views that share one tab bar and swap in place, so they feel like one app.
 
 | | |
 |---|---|
-| **Chapters.** A card per chapter with summary, POV, cast and word count. Drag to reorder (the codex follows), or switch to a **Draft → Revised → Final** board. | **Codex.** Every character, place and piece of lore, with search, type filters and a Notion-style side peek. |
+| **Chapters.** A card per chapter with summary, POV, cast and word count. Drag to reorder, or focus a card and press **Alt+←/→** (the codex follows). You can also switch to a **Draft → Revised → Final** board. | **Codex.** Every character, place and piece of lore, with search, type filters and a Notion-style side peek. |
 | <img src="docs/screenshots/board.png" alt="Chapters board with Draft, Revised and Final columns"> | <img src="docs/screenshots/codex.png" alt="Codex with Mara Winston open in a side peek showing her properties"> |
-| **Timeline.** One lane per character and one column per chapter. Locations are coloured bars across the chapters someone stays put; hover any square to see them at that moment. | **Graph.** Your cast as a network. Drag the chapter slider and watch relationships form and fall apart. |
+| **Timeline.** One lane per character and one column per chapter. Locations are colored bars across the chapters someone stays put; hover any square to see them at that moment. | **Graph.** Your cast as a network. Drag the chapter slider and watch relationships form and fall apart. |
 | <img src="docs/screenshots/timeline.png" alt="Story timeline with location bars across chapters and a hover card"> | <img src="docs/screenshots/graph.png" alt="Story graph with characters, places and relationship lines, and a floating chapter slider"> |
 
 ### 🛠️ And the rest of the toolbox
@@ -107,9 +107,10 @@ Answers stream in as they're written. With Anthropic, your book's stable context
 | Ask AI about a selection | **⌘K** / **Ctrl+K**, or the **Ask AI** pill |
 | Keep or toss the suggestion | **Tab** / **Esc** |
 | Sync the chapter | 🔄 in the ribbon or the chapter's header, or *Sync chapter* in the command palette |
-| Turn AI review on or off | ✓ in the chapter's header, or the Storyloom menu |
+| Turn AI review on or off | The spell-check button at the top of the chapter, or the Storyloom menu |
 | Jump to the next writing note | *Go to next writing note* |
 | See a character as of this chapter | Hover their name. **⌘/Ctrl-click** opens their note. |
+| Move a chapter | Drag its card, or focus it and press **Alt+←/→** |
 | Open everything else | The 🪶 **Storyloom** button in the ribbon |
 
 ## 🗂️ How your story is stored
@@ -165,7 +166,7 @@ Change the chapter, or just edit the codex note: it's Markdown. Lines you write 
 Point the Codex folder setting at a folder you share between books.
 
 **I don't want AI review.**
-Click the ✓ at the top of any chapter. Your existing notes are kept for when you change your mind.
+Click the spell-check button at the top of any chapter. Your writing notes are kept for when you change your mind.
 
 ## 🗺️ Roadmap
 

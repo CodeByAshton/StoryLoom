@@ -1,13 +1,13 @@
 import { debounce, ItemView, setIcon, type WorkspaceLeaf } from "obsidian";
 import { stripFrontmatter } from "../codex/parse";
-import { resolveState } from "../codex/state";
 import type { ChapterInfo, Entity } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEmpty } from "./empty";
 import { plural, renderMeta, renderNav } from "./nav";
 import { wordCount } from "../util";
-import { renderEntityCard } from "./card";
+import { hueOf, renderEntityPeek } from "./props";
 import { huePalette, initials, laneEvents, locationRuns, presentAt } from "./timelineModel";
+import { focusable } from "../ui";
 
 export const TIMELINE_VIEW = "storyloom-timeline";
 
@@ -115,7 +115,7 @@ export class TimelineView extends ItemView {
 			renderEmpty(root, {
 				icon: this.mode === "characters" ? "users" : "map-pin",
 				title: `No ${this.mode} yet`,
-				body: `Add a ${type} to the codex, or run “Extract new entities” on a chapter and Storyloom will suggest them.`,
+				body: `Add a ${type} to the codex, or sync a chapter and Storyloom will suggest them.`,
 				actions: [{ label: `New ${type}`, icon: "plus", cta: true, onClick: () => void this.plugin.newEntity(type) }],
 			});
 			return;
@@ -134,7 +134,7 @@ export class TimelineView extends ItemView {
 		corner.style.gridRow = "1";
 		corner.setText(this.mode === "characters" ? "Character" : "Location");
 		chapters.forEach((c, i) => {
-			const h = grid.createDiv({ cls: "sl-tl-head", attr: { "data-col": String(i) } });
+			const h = focusable(grid.createDiv({ cls: "sl-tl-head", attr: { "data-col": String(i) } }), `Open chapter ${c.chapter}: ${c.title}`);
 			h.style.gridColumn = String(i + 2);
 			h.style.gridRow = "1";
 			h.style.animationDelay = `${i * 30}ms`;
@@ -143,7 +143,7 @@ export class TimelineView extends ItemView {
 			const w = words.get(c.path) ?? 0;
 			const meter = h.createDiv({ cls: "sl-tl-meter" });
 			meter.createDiv({ cls: "sl-tl-meter-fill" }).style.width = `${Math.max(4, (w / maxWords) * 100)}%`;
-			h.createDiv({ cls: "sl-tl-head-words", text: `${w.toLocaleString()} words` });
+			h.createDiv({ cls: "sl-tl-head-words", text: plural(w, "word") });
 			h.addEventListener("click", () => this.openChapter(c));
 		});
 
@@ -158,7 +158,7 @@ export class TimelineView extends ItemView {
 		rows.forEach((e, r) => {
 			const row = r + 2;
 			// Name
-			const name = grid.createDiv({ cls: `sl-tl-name storyloom-type-${e.type}` });
+			const name = focusable(grid.createDiv({ cls: `sl-tl-name storyloom-type-${e.type}` }));
 			name.style.gridRow = String(row);
 			const av = name.createDiv({ cls: "sl-tl-avatar", text: initials(e.name) });
 			av.style.setProperty("--hue", String(hueFor(e.name)));
@@ -223,9 +223,7 @@ export class TimelineView extends ItemView {
 
 	private showTip(e: Entity, chapter: number, anchor: HTMLElement) {
 		this.tip.empty();
-		renderEntityCard(this.tip, e, chapter, { compact: false });
-		const s = resolveState(e, chapter);
-		if (!Object.keys(s.fields).length && !s.relationships.length) this.tip.querySelector(".storyloom-card-empty")?.setText(`Nothing recorded by chapter ${chapter}.`);
+		renderEntityPeek(this.tip, e, chapter, { hue: hueOf(this.plugin.index.sortedEntities(), e) });
 		this.tip.show();
 		const root = this.contentEl.getBoundingClientRect();
 		const a = anchor.getBoundingClientRect();

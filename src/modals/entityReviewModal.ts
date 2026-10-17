@@ -46,18 +46,18 @@ export class EntityReviewModal extends Modal {
 
 	onOpen() {
 		this.modalEl.addClass("storyloom-review-modal");
-		this.titleEl.setText("New entities");
+		this.titleEl.setText("New codex entries");
 		if (!this.rows.length) {
 			this.contentEl.createEl("p", { text: "No new names found in this chapter." });
 		} else {
-			this.contentEl.createEl("p", { cls: "storyloom-muted", text: "Checked entries become notes in the Codex, created from your templates." });
+			this.contentEl.createEl("p", { cls: "storyloom-muted", text: "Checked names become codex entries, created from your templates." });
 			renderEntityRows(this.contentEl.createDiv({ cls: "storyloom-review-group" }), this.rows);
 		}
 		new Setting(this.contentEl)
 			.addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()))
 			.addButton((b) =>
 				b
-					.setButtonText("Create notes")
+					.setButtonText("Add to codex")
 					.setCta()
 					.setDisabled(!this.rows.length)
 					.onClick(() => {

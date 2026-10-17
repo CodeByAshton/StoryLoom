@@ -95,7 +95,7 @@ export class ConfirmModal extends Modal {
 	private ok = false;
 	constructor(
 		app: App,
-		private opts: { title: string; body: string | ((el: HTMLElement) => void); cta: string; warning?: boolean },
+		private opts: { title: string; body: string | ((el: HTMLElement) => void); cta: string; warning?: boolean; /** Information only: one button, no Cancel. */ info?: boolean },
 		private resolve: (v: boolean) => void,
 	) {
 		super(app);
@@ -108,9 +108,9 @@ export class ConfirmModal extends Modal {
 		this.titleEl.setText(this.opts.title);
 		if (typeof this.opts.body === "string") this.contentEl.createEl("p", { text: this.opts.body });
 		else this.opts.body(this.contentEl);
-		new Setting(this.contentEl)
-			.addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()))
-			.addButton((b) => {
+		const row = new Setting(this.contentEl);
+		if (!this.opts.info) row.addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()));
+		row.addButton((b) => {
 				b.setButtonText(this.opts.cta).onClick(() => {
 					this.ok = true;
 					this.close();

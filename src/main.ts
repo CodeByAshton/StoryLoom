@@ -25,11 +25,11 @@ import {
 	summarizePrompt,
 	writingNotesPrompt,
 } from "./context/prompts";
-import { entityHighlighter, refreshEntities } from "./editor/highlight";
+import { entityHighlighter, frontmatterEnd, refreshEntities } from "./editor/highlight";
 import { entityHover } from "./editor/hover";
 import { InlineEditController, inlineEditExtension } from "./editor/inlineEdit";
 import { refreshNotes, writingNotesExtension } from "./editor/writingNotes";
-import { locateNotes, validateWritingNotes, WRITING_NOTES_SCHEMA, type LocatedNote, type WritingNote } from "./notes/model";
+import { locateNotes, reliableNotes, validateWritingNotes, WRITING_NOTES_SCHEMA, type LocatedNote, type WritingNote } from "./notes/model";
 import { createClient } from "./llm/client";
 import type { ClaudeCodeHost } from "./llm/claudeCode";
 import { createClaudeCodeHost } from "./llm/claudeCodeNode";
@@ -110,6 +110,8 @@ export default class StoryloomPlugin extends Plugin {
 		this.registerEditorMenu();
 
 		this.index.on("changed", () => this.onIndexChanged());
+		this.registerEvent(this.app.vault.on("rename", (f, old) => void this.onRename(f.path, old)));
+		this.registerEvent(this.app.vault.on("delete", (f) => void this.onDelete(f.path)));
 		this.registerEvent(this.app.workspace.on("file-open", (f) => void this.onFileOpen(f)));
 		this.app.workspace.onLayoutReady(async () => {
 			await this.index.load((ref) => this.registerEvent(ref));
@@ -211,7 +213,9 @@ export default class StoryloomPlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on("layout-change", refresh));
 		this.registerEvent(this.app.workspace.on("file-open", refresh));
 		this.app.workspace.onLayoutReady(refresh);
-		this.register(() => document.querySelectorAll(".sl-header-sync, .sl-header-review").forEach((el) => el.remove()));
+		this.register(() =>
+			this.app.workspace.iterateAllLeaves((leaf) => leaf.view.containerEl.querySelectorAll(".sl-header-sync, .sl-header-review").forEach((el) => el.remove())),
+		);
 	}
 	private refreshHeaderSync: () => void = () => {};
 
@@ -279,7 +283,7 @@ export default class StoryloomPlugin extends Plugin {
 		el.createSpan({ text: `Chapter ${all.indexOf(ch) + 1} of ${all.length}` });
 		el.createSpan({ cls: "sl-status-title", text: ch.title });
 		const notes = this.visibleNotes(file.path, text).length;
-		if (notes) el.createSpan({ cls: "sl-status-notes", text: `${notes} note${notes === 1 ? "" : "s"}` });
+		if (notes) el.createSpan({ cls: "sl-status-notes", text: `${notes} writing note${notes === 1 ? "" : "s"}` });
 		if (stale) el.createSpan({ cls: "sl-status-dot", attr: { "aria-label": "Edited since it was last synced" } });
 		el.setAttr("aria-label", stale ? "Edited since it was last synced. Click for chapter actions." : "Chapter actions");
 		el.setAttr("data-tooltip-position", "top");
@@ -387,6 +391,8 @@ export default class StoryloomPlugin extends Plugin {
 	async reorderChapters(order: string[]) {
 		const chapters = order.map((p) => this.index.chapterForPath(p)).filter((c): c is NonNullable<typeof c> => !!c);
 		if (chapters.length !== this.index.chapters.length) return new Notice("Storyloom: the chapter list changed; try again.");
+		if (new Set(chapters.map((c) => c.chapter)).size !== chapters.length) return new Notice("Storyloom: two chapters share a number. Give each chapter its own number, then reorder.");
+		if ([...this.running].some((k) => k.startsWith("state:"))) return new Notice("Storyloom: a chapter is syncing. Reorder when it's done.");
 		const map = reorderMapping(chapters.map((c) => c.chapter));
 		if (!map.size) return;
 
@@ -416,34 +422,31 @@ export default class StoryloomPlugin extends Plugin {
 			},
 		});
 		if (!ok) return;
+		await this.once("reorder", "reordering chapters", async () => {
 
-		for (const { file } of notes) await this.app.vault.process(file, (t) => remapNote(t, map).text);
-		// Lines remembered from earlier syncs were renumbered in the notes; keep the record matching.
-		for (const lines of Object.values(this.settings.syncedLines))
-			for (const l of lines) {
-				l.line = remapLine(l.line, map);
-				if (l.restore !== undefined) l.restore = remapLine(l.restore, map);
+			for (const { file } of notes) await this.app.vault.process(file, (t) => remapNote(t, map).text);
+			// Lines remembered from earlier syncs were renumbered in the notes; keep the record matching.
+			for (const lines of Object.values(this.settings.syncedLines))
+				for (const l of lines) {
+					l.line = remapLine(l.line, map);
+					if (l.restore !== undefined) l.restore = remapLine(l.restore, map);
+				}
+			for (const { c, to } of moves) {
+				const f = this.index.fileFor(c.path);
+				if (f) await this.app.fileManager.processFrontMatter(f, (fm) => (fm.chapter = to));
 			}
-		for (const { c, to } of moves) {
-			const f = this.index.fileFor(c.path);
-			if (f) await this.app.fileManager.processFrontMatter(f, (fm) => (fm.chapter = to));
-		}
-		for (const { file, name } of renames) {
-			const dest = normalizePath(`${file.parent?.path ?? ""}/${name}.${file.extension}`);
-			if (this.app.vault.getAbstractFileByPath(dest)) continue;
-			const old = file.path;
-			await this.app.fileManager.renameFile(file, dest);
-			if (this.settings.stateSynced[old]) {
-				this.settings.stateSynced[dest] = this.settings.stateSynced[old];
-				delete this.settings.stateSynced[old];
+			let skipped = 0;
+			for (const { file, name } of renames) {
+				const dest = normalizePath(`${file.parent?.path ?? ""}/${name}.${file.extension}`);
+				if (this.app.vault.getAbstractFileByPath(dest)) {
+					skipped++;
+					continue;
+				}
+				await this.app.fileManager.renameFile(file, dest); // the rename handler moves everything keyed by path
 			}
-			if (this.settings.syncedLines[old]) {
-				this.settings.syncedLines[dest] = this.settings.syncedLines[old];
-				delete this.settings.syncedLines[old];
-			}
-		}
-		await this.saveData(this.settings);
-		new Notice(`Storyloom: reordered ${moves.length} chapters; updated ${lines} codex line${lines === 1 ? "" : "s"}.`);
+			await this.saveData(this.settings);
+			new Notice(`Storyloom: reordered ${moves.length} chapters and updated ${lines} codex line${lines === 1 ? "" : "s"}.${skipped ? ` ${skipped} file${skipped === 1 ? "" : "s"} kept ${skipped === 1 ? "its" : "their"} name because the new name was taken.` : ""}`);
+		});
 	}
 
 	/** Open the Codex view with an entity selected. */
@@ -501,22 +504,22 @@ export default class StoryloomPlugin extends Plugin {
 		editorCmd("continue-writing", "Continue writing", (e, f) => this.continueWriting(e, f));
 		this.addCommand({
 			id: "inline-edit",
-			name: "Inline edit (highlight and instruct)",
+			name: "Ask AI",
 			editorCallback: (editor) => {
 				const cm = cmOf(editor);
 				if (cm) this.inline.open(cm);
 			},
 		});
 		editorCmd("rewrite-selection", "Rewrite selection", (e, f) => this.rewrite(e, f), true);
-		editorCmd("describe", "Describe (senses)", (e, f) => this.describe(e, f), true);
+		editorCmd("describe", "Describe selection", (e, f) => this.describe(e, f), true);
 		editorCmd("expand", "Expand selection", (e, f) => this.expand(e, f), true);
 		editorCmd("brainstorm", "Brainstorm", (e, f) => this.brainstorm(e, f));
 		editorCmd("summarize-chapter", "Summarize chapter", (e, f) => this.summarize(f, e));
 		editorCmd("critique-chapter", "Critique chapter", (_e, f) => this.critique(f));
-		editorCmd("continuity-check", "Continuity check", (e, f) => this.continuity(f, e));
+		editorCmd("continuity-check", "Check continuity", (e, f) => this.continuity(f, e));
 		this.addCommand({
 			id: "check-writing",
-			name: "Check writing (proofread this chapter)",
+			name: "Check writing",
 			editorCheckCallback: (checking, editor, ctx) => {
 				const f = ctx.file;
 				if (!f || !this.index.chapterForPath(f.path)) return false;
@@ -528,7 +531,7 @@ export default class StoryloomPlugin extends Plugin {
 		this.addCommand({ id: "toggle-ai-review", name: "Turn AI review on or off", callback: () => void this.setAiReview(!this.settings.writingNotes) });
 		this.addCommand({
 			id: "update-story-state",
-			name: "Sync chapter (update the codex from this chapter)",
+			name: "Sync chapter",
 			checkCallback: (checking) => {
 				const f = this.activeMarkdownFile();
 				if (!f || !this.index.chapterForPath(f.path)) return false;
@@ -538,7 +541,7 @@ export default class StoryloomPlugin extends Plugin {
 		});
 		this.addCommand({
 			id: "extract-entities",
-			name: "Extract new entities",
+			name: "Find new codex entries",
 			checkCallback: (checking) => {
 				const f = this.activeMarkdownFile();
 				if (!f) return false;
@@ -548,9 +551,9 @@ export default class StoryloomPlugin extends Plugin {
 		});
 
 		this.addCommand({ id: "open-setup", name: "Open setup guide", callback: () => this.openSetup() });
-		this.addCommand({ id: "open-chapters", name: "Open chapters board", callback: () => void this.openView(CHAPTERS_VIEW, "tab") });
+		this.addCommand({ id: "open-chapters", name: "Open chapters", callback: () => void this.openView(CHAPTERS_VIEW, "tab") });
 		this.addCommand({ id: "open-codex", name: "Open codex", callback: () => void this.openView(CODEX_VIEW, "tab") });
-		this.addCommand({ id: "open-cast", name: "Open cast panel", callback: () => void this.openView(CAST_VIEW, "right") });
+		this.addCommand({ id: "open-cast", name: "Open cast", callback: () => void this.openView(CAST_VIEW, "right") });
 		this.addCommand({ id: "open-graph", name: "Open story graph", callback: () => void this.openView(GRAPH_VIEW, "tab") });
 		this.addCommand({ id: "open-timeline", name: "Open story timeline", callback: () => void this.openView(TIMELINE_VIEW, "tab") });
 		this.addCommand({ id: "open-chat", name: "Open story assistant", callback: () => void this.openView(CHAT_VIEW, "right") });
@@ -564,7 +567,7 @@ export default class StoryloomPlugin extends Plugin {
 		this.addCommand({ id: "word-count", name: "Word count by chapter", callback: () => void this.showWordCounts() });
 		this.addCommand({ id: "export-manuscript", name: "Export manuscript", callback: () => void this.exportManuscript() });
 		this.addCommand({ id: "clear-sample-content", name: "Clear sample content", callback: () => void this.clearSample() });
-		this.addCommand({ id: "rebuild-index", name: "Rebuild codex index", callback: () => void this.index.rebuild() });
+		this.addCommand({ id: "rebuild-index", name: "Refresh codex", callback: () => void this.index.rebuild() });
 	}
 
 	private registerEditorMenu() {
@@ -575,7 +578,7 @@ export default class StoryloomPlugin extends Plugin {
 				const sel = editor.somethingSelected();
 				menu.addSeparator();
 				const add = (title: string, icon: string, fn: () => void) => menu.addItem((i) => i.setTitle(title).setIcon(icon).setSection("storyloom").onClick(fn));
-				add(sel ? "Storyloom: Inline edit…" : "Storyloom: Write here…", "sparkles", () => {
+				add(sel ? "Storyloom: Ask AI…" : "Storyloom: Write here…", "sparkles", () => {
 					const cm = cmOf(editor);
 					if (cm) this.inline.open(cm);
 				});
@@ -698,14 +701,14 @@ export default class StoryloomPlugin extends Plugin {
 			title: "Chapter summary",
 			actions: [
 				{
-					label: "Save to summary",
+					label: "Save as chapter summary",
 					icon: "save",
 					cta: true,
 					run: async (text) => {
 						await this.app.fileManager.processFrontMatter(file, (fm) => {
 							fm.summary = text.replace(/\s+/g, " ").trim();
 						});
-						new Notice("Summary saved to the chapter's frontmatter.");
+						new Notice("Storyloom: saved the summary to the chapter's properties.");
 					},
 				},
 			],
@@ -745,6 +748,7 @@ export default class StoryloomPlugin extends Plugin {
 	async checkWriting(file: TFile, editor?: Editor) {
 		if (!this.settings.writingNotes) {
 			this.settings.writingNotes = true; // asking for a check means you want to see the notes
+			await this.saveData(this.settings);
 			this.refreshHeaderSync();
 		}
 		return this.once(`notes:${file.path}`, "checking this chapter", async () => {
@@ -769,13 +773,14 @@ export default class StoryloomPlugin extends Plugin {
 	}
 
 	async updateStoryState(file: TFile) {
+		if (this.running.has("reorder")) return void new Notice("Storyloom: chapters are being reordered. Sync when it's done.");
 		return this.once(`state:${file.path}`, "syncing this chapter", () => this.updateStoryStateNow(file));
 	}
 
 	private async updateStoryStateNow(file: TFile) {
 		const chapter = this.index.chapterForPath(file.path);
 		if (!chapter) {
-			new Notice("This note isn't a chapter (it needs `chapter: N` in its frontmatter).");
+			new Notice("Storyloom: this note isn't a chapter. Give it a chapter number in its properties to sync it.");
 			return;
 		}
 		const notice = new Notice(`Storyloom: syncing chapter ${chapter.chapter}…`, 0);
@@ -783,18 +788,34 @@ export default class StoryloomPlugin extends Plugin {
 			const text = await this.fileText(file, this.editorFor(file) ?? undefined);
 			const ctx = await this.ai.context({ file, text, asOf: chapter.chapter - 1 });
 			// Proofreading runs alongside the sync; if it fails, the sync still goes through.
-			const proofread = this.settings.writingNotes ? this.proofread(file, text).catch((e) => (this.settings.debug && console.warn("[Storyloom] writing notes failed", e), null)) : Promise.resolve(null);
+			let reviewError = "";
+			const proofread = this.settings.writingNotes
+				? this.proofread(file, text).catch((e) => {
+						reviewError = friendlyError(e);
+						return null;
+					})
+				: Promise.resolve(null);
 			const [update, notes] = await Promise.all([this.ai.completeJson(stateUpdatePrompt(ctx.text, chapter.chapter), validateStateUpdate, STATE_SCHEMA), proofread]);
 			notice.hide();
 			// A re-sync replaces what the last sync of this chapter wrote; compare against the codex without those lines.
 			const previous = this.settings.syncedLines[file.path] ?? [];
 			const rows = buildReviewRows(update, await this.withoutLines(previous), chapter.chapter);
 			// The codex follows the chapters: changes are written straight away (to change one, change the chapter).
-			const approved = this.settings.reviewStateChanges ? await StateReviewModal.review(this.app, chapter.chapter, rows) : approvedFrom(chapter.chapter, rows);
+			// (Nothing to review still clears what the last sync wrote, so skip the empty dialog.)
+			const nothing = !rows.groups.length && !rows.rels.length && !rows.entities.length;
+			const approved = this.settings.reviewStateChanges && !nothing ? await StateReviewModal.review(this.app, chapter.chapter, rows) : approvedFrom(chapter.chapter, rows);
 			if (!approved) return;
-			const replaced = await removeSyncedLines(this.app, previous);
-			const res = await applyChanges(this.app, this.index, this.settings, approved);
-			this.settings.syncedLines[file.path] = res.written;
+			// Record what was written even if a write fails partway, so the next sync can still replace it.
+			const written: SyncedLine[] = [];
+			let replaced = 0;
+			let res: Awaited<ReturnType<typeof applyChanges>>;
+			try {
+				replaced = await removeSyncedLines(this.app, previous);
+				res = await applyChanges(this.app, this.index, this.settings, approved, written);
+			} finally {
+				this.settings.syncedLines[file.path] = written;
+				await this.saveData(this.settings);
+			}
 			await this.markStateSynced(file, text);
 			const parts = [
 				res.lines ? `${res.lines} timeline ${res.lines === 1 ? "entry" : "entries"}` : "",
@@ -802,7 +823,7 @@ export default class StoryloomPlugin extends Plugin {
 				res.created ? `${res.created} new note${res.created === 1 ? "" : "s"}` : "",
 			].filter(Boolean);
 			const what = parts.length ? `Recorded ${parts.join(", ")}${res.touched.length ? ` (${res.touched.join(", ")})` : ""}.` : "Nothing new to record.";
-			const noteText = notes === null ? "" : notes.length ? ` ${notes.length} writing note${notes.length === 1 ? "" : "s"} underlined in the chapter.` : " No writing notes.";
+			const noteText = reviewError ? ` AI review couldn't run: ${reviewError}` : notes === null ? "" : notes.length ? ` ${notes.length} writing note${notes.length === 1 ? "" : "s"} underlined in the chapter.` : " No writing notes.";
 			new Notice(`Storyloom: synced chapter ${chapter.chapter}. ${what}${replaced ? ` Replaced ${replaced} line${replaced === 1 ? "" : "s"} from the last sync.` : ""}${noteText}`, 8000);
 		} catch (e) {
 			notice.hide();
@@ -825,15 +846,15 @@ export default class StoryloomPlugin extends Plugin {
 		this.refreshHeaderSync();
 		const file = this.activeMarkdownFile();
 		if (!on) {
-			new Notice("Storyloom: AI review is off. Your notes are kept and come back when you turn it on.");
+			new Notice("Storyloom: AI review is off. Your writing notes are kept and come back when you turn it on.");
 			return;
 		}
 		const unchecked = !!file && !!this.index.chapterForPath(file.path) && !this.settings.chapterNotes[file.path];
 		const frag = document.createDocumentFragment();
 		frag.createSpan({ text: "Storyloom: AI review is on. Chapters are proofread when you sync them." });
 		if (unchecked && file) {
-			const b = frag.createEl("button", { text: "Check this chapter now", cls: "storyloom-notice-btn mod-cta" });
-			b.addEventListener("click", () => void this.checkWriting(file, this.activeEditor() ?? undefined));
+			const b = frag.createEl("button", { text: "Check writing now", cls: "storyloom-notice-btn mod-cta" });
+			b.addEventListener("click", () => void this.checkWriting(file, this.editorFor(file) ?? undefined));
 		}
 		new Notice(frag, 8000);
 	}
@@ -842,7 +863,8 @@ export default class StoryloomPlugin extends Plugin {
 	async proofread(file: TFile, text: string): Promise<WritingNote[]> {
 		const body = stripFrontmatter(text);
 		const notes = await this.ai.completeJson(writingNotesPrompt(body, await this.styleGuide()), validateWritingNotes, WRITING_NOTES_SCHEMA);
-		const found = locateNotes(body, notes).map((l) => l.note); // drop quotes the model didn't copy exactly
+		// Keep only notes we can point at exactly: copied verbatim, found once, on word boundaries.
+		const found = reliableNotes(body, notes);
 		this.settings.chapterNotes[file.path] = { hash: proseHash(text), notes: found };
 		await this.saveData(this.settings);
 		this.notesChanged();
@@ -868,7 +890,8 @@ export default class StoryloomPlugin extends Plugin {
 
 	/** Notes that are still in the text, in order. */
 	visibleNotes(path: string, text: string): LocatedNote[] {
-		return locateNotes(text, this.notesFor(path));
+		const start = frontmatterEnd(text);
+		return locateNotes(text.slice(start), this.notesFor(path), start);
 	}
 
 	/** Move the cursor to the next writing note after it (wrapping around). */
@@ -944,6 +967,44 @@ export default class StoryloomPlugin extends Plugin {
 			notice.hide();
 			void this.updateStoryState(prev);
 		});
+	}
+
+	/**
+	 * Keep everything remembered per path in step with renames (chapters, and codex notes whose
+	 * synced lines we may need to replace). Links in those lines are renamed the way Obsidian renames them.
+	 */
+	private async onRename(path: string, old: string) {
+		const s = this.settings;
+		let changed = false;
+		for (const map of [s.stateSynced, s.syncedLines, s.chapterNotes] as Record<string, unknown>[]) {
+			if (old in map) {
+				map[path] = map[old];
+				delete map[old];
+				changed = true;
+			}
+		}
+		const base = (p: string) => p.split("/").pop()?.replace(/\.md$/, "") ?? p;
+		const [from, to] = [base(old), base(path)];
+		const relink = (line: string) => (from === to ? line : line.split(`[[${from}]]`).join(`[[${to}]]`).split(`[[${from}|`).join(`[[${to}|`));
+		for (const lines of Object.values(s.syncedLines)) {
+			for (const l of lines) {
+				const next = { path: l.path === old ? path : l.path, line: relink(l.line), restore: l.restore === undefined ? undefined : relink(l.restore) };
+				if (next.path !== l.path || next.line !== l.line || next.restore !== l.restore) {
+					Object.assign(l, next);
+					changed = true;
+				}
+			}
+		}
+		if (changed) await this.saveData(s);
+	}
+
+	/** A deleted chapter takes its sync status and writing notes with it. */
+	private async onDelete(path: string) {
+		const s = this.settings;
+		if (!(path in s.stateSynced) && !(path in s.chapterNotes)) return;
+		delete s.stateSynced[path];
+		delete s.chapterNotes[path];
+		await this.saveData(s);
 	}
 
 	/** Remember the prose we just synced, so the Cast panel can tell when the chapter changes again. */
@@ -1050,7 +1111,8 @@ export default class StoryloomPlugin extends Plugin {
 		const total = counts.reduce((a, c) => a + c.words, 0);
 		await ConfirmModal.ask(this.app, {
 			title: "Word count by chapter",
-			cta: "Close",
+			cta: "Done",
+			info: true,
 			body: (el) => {
 				const table = el.createEl("table", { cls: "storyloom-wordcount" });
 				for (const c of counts) {
@@ -1093,7 +1155,7 @@ export default class StoryloomPlugin extends Plugin {
 		if (!files.length) return new Notice("No sample content found.");
 		const ok = await ConfirmModal.ask(this.app, {
 			title: "Clear sample content?",
-			cta: "Delete sample files",
+			cta: "Move to trash",
 			warning: true,
 			body: (el) => {
 				el.createEl("p", { text: `This moves ${files.length} sample notes to the trash. Templates, Book.md, Start Here and your settings stay.` });
@@ -1103,7 +1165,7 @@ export default class StoryloomPlugin extends Plugin {
 		});
 		if (!ok) return;
 		for (const f of files) await this.app.fileManager.trashFile(f);
-		new Notice(`Removed ${files.length} sample notes.`);
+		new Notice(`Storyloom: moved ${files.length} sample notes to the trash.`);
 	}
 }
 

@@ -2,6 +2,7 @@ import { App, Component, MarkdownRenderer, Modal, Notice, setIcon } from "obsidi
 import { friendlyError } from "../llm/types";
 import type { ContinuityIssue } from "../llm/json";
 import { addSettingsButton, glass } from "../ui";
+import { focusable } from "../ui";
 
 /** Markdown report (critique) or a clickable list of continuity issues. */
 export class ReportModal extends Modal {
@@ -69,7 +70,7 @@ export class ReportModal extends Modal {
 		this.contentEl.createEl("p", { cls: "storyloom-muted", text: `${issues.length} possible issue${issues.length === 1 ? "" : "s"}. Click one to jump to the line.` });
 		const list = this.contentEl.createDiv({ cls: "storyloom-issues" });
 		for (const i of issues) {
-			const row = list.createDiv({ cls: "storyloom-issue" });
+			const row = focusable(list.createDiv({ cls: "storyloom-issue" }));
 			if (i.severity) row.createSpan({ cls: `storyloom-badge storyloom-sev-${i.severity.toLowerCase()}`, text: i.severity });
 			if (i.quote) row.createEl("blockquote", { text: i.quote });
 			const c = row.createDiv();
@@ -96,7 +97,7 @@ export class ReportModal extends Modal {
 		if (markdown) {
 			right.createEl("button", { text: "Copy" }).addEventListener("click", async () => {
 				await navigator.clipboard.writeText(markdown);
-				new Notice("Copied");
+				new Notice("Copied.");
 			});
 		}
 	}

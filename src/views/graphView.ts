@@ -3,7 +3,7 @@ import { ENTITY_TYPES, type Entity, type EntityType } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEmpty } from "./empty";
 import { renderNav } from "./nav";
-import { renderEntityCard } from "./card";
+import { hueOf, renderEntityPeek } from "./props";
 import { allPairs, edgesAt, forceLayout, type GraphEdge, type Point } from "./graphModel";
 
 export const GRAPH_VIEW = "storyloom-graph";
@@ -38,7 +38,19 @@ export class GraphView extends ItemView {
 	private view = { x: 0, y: 0, w: W, h: H };
 	/** Until the user pans or zooms, the view fits the nodes. */
 	private userMoved = false;
-	refresh = debounce(() => this.rebuild(), 300, true);
+	refresh = debounce(() => {
+		// The filter chips list each type with its count; rebuild the shell when those change.
+		if (this.typeKey() !== this.shellKey) {
+			this.buildShell(); // existing nodes keep their places; new ones are laid out around them
+		}
+		this.rebuild();
+	}, 300, true);
+	private shellKey = "";
+	private typeKey(): string {
+		const counts = new Map<string, number>();
+		for (const e of this.plugin.index.sortedEntities()) counts.set(e.type, (counts.get(e.type) ?? 0) + 1);
+		return [...counts].sort().join(",");
+	}
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -77,6 +89,7 @@ export class GraphView extends ItemView {
 	}
 
 	private buildShell() {
+		this.shellKey = this.typeKey();
 		const root = this.contentEl;
 		root.empty();
 		root.addClass("storyloom-graph");
@@ -180,7 +193,7 @@ export class GraphView extends ItemView {
 				: {
 						icon: "network",
 						title: "No one to show yet",
-						body: "The graph draws your characters, places and lore, and the relationships between them as of each chapter.",
+						body: "The graph draws your characters, locations and lore, and the relationships between them as of each chapter.",
 						actions: [{ label: "New character", icon: "user", cta: true, onClick: () => void this.plugin.newEntity("character") }],
 					});
 		}
@@ -245,7 +258,7 @@ export class GraphView extends ItemView {
 
 	private showTooltip(e: Entity, ev: PointerEvent) {
 		this.tooltipEl.empty();
-		renderEntityCard(this.tooltipEl, e, this.chapter);
+		renderEntityPeek(this.tooltipEl, e, this.chapter, { hue: hueOf(this.plugin.index.sortedEntities(), e) });
 		this.tooltipEl.show();
 		const stage = this.tooltipEl.parentElement as HTMLElement;
 		const rect = stage.getBoundingClientRect();

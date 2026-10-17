@@ -7,6 +7,7 @@ import { plural, renderMeta, renderNav } from "./nav";
 import { proseHash, wordCount } from "../util";
 import { normalizeStatus, STATUSES, type ChapterStatus } from "./chaptersModel";
 import { huePalette, initials } from "./timelineModel";
+import { focusable } from "../ui";
 
 export const CHAPTERS_VIEW = "storyloom-chapters";
 
@@ -103,7 +104,7 @@ export class ChaptersView extends ItemView {
 			renderEmpty(body, {
 				icon: "book-open",
 				title: "No chapters yet",
-				body: `Chapters are notes in ${this.plugin.settings.manuscriptFolder}/ with \`type: chapter\` in their frontmatter. New chapter makes one for you, numbered and ready to write.`,
+				body: `Each chapter is a note in your ${this.plugin.settings.manuscriptFolder} folder. Click New chapter to add one, numbered and ready to write.`,
 				actions: [
 					{ label: "New chapter", icon: "file-plus", cta: true, onClick: () => void this.plugin.newChapter() },
 					{ label: "Set up my book", icon: "sparkles", onClick: () => this.plugin.openSetup() },
@@ -121,11 +122,23 @@ export class ChaptersView extends ItemView {
 	private renderOutline(body: HTMLElement, chapters: ChapterInfo[], scans: Map<string, Scan>) {
 		const hint = body.createDiv({ cls: "sl-ch-hint" });
 		setIcon(hint.createSpan({ cls: "storyloom-btn-icon" }), "move");
-		hint.createSpan({ text: "Drag cards to reorder. Chapter numbers and codex timelines update to match." });
+		hint.createSpan({ text: "Drag cards to reorder (or focus one and press Alt+← / →). Chapter numbers and codex timelines update to match." });
 		const grid = body.createDiv({ cls: "sl-ch-grid" });
 		const maxWords = Math.max(1, ...[...scans.values()].map((s) => s.words));
 		chapters.forEach((c, i) => {
 			const card = this.card(grid, c, scans.get(c.path) as Scan, maxWords, i);
+			card.setAttr("aria-keyshortcuts", "Alt+ArrowLeft Alt+ArrowRight");
+			// Keyboard reordering: Alt+←/→ (or ↑/↓) moves the focused chapter one place.
+			card.addEventListener("keydown", (ev) => {
+				if (!ev.altKey || ev.target !== card) return;
+				const dir = ev.key === "ArrowLeft" || ev.key === "ArrowUp" ? -1 : ev.key === "ArrowRight" || ev.key === "ArrowDown" ? 1 : 0;
+				const j = i + dir;
+				if (!dir || j < 0 || j >= chapters.length) return;
+				ev.preventDefault();
+				const order = chapters.map((x) => x.path);
+				[order[i], order[j]] = [order[j], order[i]];
+				void this.plugin.reorderChapters(order);
+			});
 			card.addEventListener("dragover", (ev) => {
 				if (!this.dragging || this.dragging === c.path) return;
 				ev.preventDefault();
@@ -152,7 +165,7 @@ export class ChaptersView extends ItemView {
 				void this.plugin.reorderChapters(order);
 			});
 		});
-		const add = grid.createDiv({ cls: "sl-ch-card is-new" });
+		const add = focusable(grid.createDiv({ cls: "sl-ch-card is-new" }), "New chapter");
 		setIcon(add.createSpan({ cls: "sl-ch-new-icon" }), "plus");
 		add.createSpan({ text: "New chapter" });
 		add.addEventListener("click", () => void this.plugin.newChapter());
@@ -171,7 +184,7 @@ export class ChaptersView extends ItemView {
 			head.createSpan({ text: STATUS_LABEL[status] });
 			head.createSpan({ cls: "sl-ch-col-count", text: String(items.length) });
 			const words = items.reduce((a, c) => a + (scans.get(c.path)?.words ?? 0), 0);
-			head.createSpan({ cls: "sl-ch-col-words", text: `${words.toLocaleString()} words` });
+			head.createSpan({ cls: "sl-ch-col-words", text: plural(words, "word") });
 			const list = col.createDiv({ cls: "sl-ch-col-list" });
 			items.forEach((c, i) => this.card(list, c, scans.get(c.path) as Scan, maxWords, i));
 			if (!items.length) list.createDiv({ cls: "sl-ch-col-empty", text: "Drop chapters here" });
@@ -200,7 +213,7 @@ export class ChaptersView extends ItemView {
 
 	private card(parent: HTMLElement, c: ChapterInfo, s: Scan, maxWords: number, i: number): HTMLElement {
 		const status = normalizeStatus(c.status);
-		const card = parent.createDiv({ cls: `sl-ch-card is-${status}`, attr: { draggable: "true", "data-path": c.path } });
+		const card = focusable(parent.createDiv({ cls: `sl-ch-card is-${status}`, attr: { draggable: "true", "data-path": c.path } }));
 		card.style.animationDelay = `${Math.min(i, 20) * 28}ms`;
 		card.addEventListener("dragstart", (ev) => {
 			this.dragging = c.path;
@@ -222,7 +235,7 @@ export class ChaptersView extends ItemView {
 		setIcon(pill.createSpan({ cls: "sl-ch-status-icon" }), STATUS_ICON[status]);
 		pill.createSpan({ text: STATUS_LABEL[status] });
 		const synced = this.plugin.settings.stateSynced[c.path];
-		if (synced && synced !== s.hash) head.createDiv({ cls: "sl-ch-stale", attr: { "aria-label": "Edited since the last story-state update" } });
+		if (synced && synced !== s.hash) head.createDiv({ cls: "sl-ch-stale", attr: { "aria-label": "Edited since it was last synced" } });
 
 		const characters = this.plugin.index.sortedEntities().filter((e) => e.type === "character").map((e) => e.name);
 		const hue = huePalette(characters, 25);
@@ -253,7 +266,7 @@ export class ChaptersView extends ItemView {
 		}
 		if (s.cast.length > 5) cast.createDiv({ cls: "sl-tl-avatar is-small is-more", text: `+${s.cast.length - 5}` });
 		const w = foot.createDiv({ cls: "sl-ch-words" });
-		w.createSpan({ text: `${s.words.toLocaleString()} words` });
+		w.createSpan({ text: plural(s.words, "word") });
 		w.createDiv({ cls: "sl-tl-meter" }).createDiv({ cls: "sl-tl-meter-fill" }).style.width = `${Math.max(4, (s.words / maxWords) * 100)}%`;
 
 		card.addEventListener("click", () => {
