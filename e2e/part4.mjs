@@ -98,10 +98,10 @@ await open("Manuscript/02 - Lamplight.md");
 await sleep(800);
 await page.evaluate(async () => { const p = window.app.plugins.plugins.storyloom; const f = window.app.vault.getAbstractFileByPath("Manuscript/02 - Lamplight.md"); await p.markStateSynced(f, await window.app.vault.read(f)); });
 await sleep(600);
-const before = await page.locator(".storyloom-stale").count();
+const before = await page.locator(".storyloom-cast .sl-tag.is-warn").count();
 await page.evaluate(async () => { const f = window.app.vault.getAbstractFileByPath("Manuscript/02 - Lamplight.md"); await window.app.vault.process(f, (t) => t + "\nShe slept badly."); });
 await sleep(1200);
-const after = await page.locator(".storyloom-stale").count();
+const after = await page.locator(".storyloom-cast .sl-tag.is-warn").count();
 await shot(page, "p4-stale");
 ok(before === 0 && after === 1, "Cast flags a chapter edited since its last story-state update");
 

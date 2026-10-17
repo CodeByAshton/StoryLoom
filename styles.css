@@ -1290,3 +1290,128 @@ body.theme-dark {
 	.sl-cx-new > span:not(.storyloom-btn-icon) { display: none; }
 	.sl-cx-new { width: 30px; padding: 0; justify-content: center; }
 }
+
+/* =====================================================================
+   Side panels in the Notion idiom: flat, typographic, no boxes or glass.
+   Property rows (icon · name · value), 3px-corner tags, solid avatars,
+   hover washes mixed from the text colour, hairlines. Glass is kept for
+   things that float (inline edit, hover cards, scrubber, menus, dialogs).
+   ===================================================================== */
+body {
+	--sl-wash: color-mix(in srgb, var(--text-normal) 5.5%, transparent);
+	--sl-wash-strong: color-mix(in srgb, var(--text-normal) 8%, transparent);
+	--sl-hairline: color-mix(in srgb, var(--text-normal) 9.5%, transparent);
+	--sl-hairline-strong: color-mix(in srgb, var(--text-normal) 16%, transparent);
+	--sl-btn-ring: inset 0 0 0 1px var(--sl-hairline-strong), 0 1px 2px rgba(15, 15, 15, 0.06);
+}
+body.theme-dark { --sl-btn-ring: inset 0 0 0 1px var(--sl-hairline-strong), 0 1px 2px rgba(0, 0, 0, 0.3); }
+
+/* ---- Property rows ---- */
+.sl-props { display: flex; flex-direction: column; margin: 4px -6px; }
+.sl-prop { display: grid; grid-template-columns: minmax(88px, 36%) minmax(0, 1fr); align-items: start; border-radius: 6px; transition: background 120ms ease; }
+.sl-prop:hover { background: var(--sl-wash); }
+.sl-prop-name { display: flex; align-items: center; gap: 7px; min-width: 0; height: 30px; padding: 0 6px; color: var(--text-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl-prop-icon { display: inline-flex; flex-shrink: 0; color: var(--text-faint); }
+.sl-prop-icon svg { width: 14px; height: 14px; }
+.sl-prop-value { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; min-height: 30px; padding: 5px 6px; font-size: 13px; line-height: 20px; color: var(--text-normal); }
+.sl-prop-value.is-text { display: block; }
+.sl-prop-line + .sl-prop-line { margin-top: 2px; }
+.sl-prop-link { cursor: pointer; border-bottom: 1px solid var(--sl-hairline-strong); }
+.sl-prop-link:hover { color: var(--text-accent); border-color: currentColor; }
+.sl-prop-muted { color: var(--text-muted); }
+.sl-prop-empty { color: var(--text-faint); }
+
+/* ---- Tags (Notion select options) ---- */
+.sl-tag {
+	--sl-tag-bg: color-mix(in srgb, var(--sl-color, #9b9a97) 20%, #ffffff);
+	--sl-tag-fg: color-mix(in srgb, var(--sl-color, #9b9a97) 32%, #1f1e1c);
+	display: inline-flex; align-items: center; height: 20px; max-width: 100%; padding: 0 6px; border-radius: 3px;
+	background: var(--sl-tag-bg); color: var(--sl-tag-fg);
+	font-size: 12.5px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sl-tag.is-neutral { --sl-tag-bg: #e3e2e0; --sl-tag-fg: #32302c; }
+.sl-tag.is-ok { --sl-color: #448361; }
+.sl-tag.is-warn { --sl-color: #d9730d; }
+body.theme-dark .sl-tag { --sl-tag-bg: color-mix(in srgb, var(--sl-color, #9b9a97) 42%, #252525); --sl-tag-fg: rgba(255, 255, 255, 0.88); }
+body.theme-dark .sl-tag.is-neutral { --sl-tag-bg: #373737; --sl-tag-fg: rgba(255, 255, 255, 0.85); }
+
+/* ---- Solid avatars ---- */
+.sl-avatar { display: inline-grid; place-items: center; flex-shrink: 0; border-radius: 50%; background: hsl(var(--hue, 220) 40% 52%); color: #fff; font-weight: 600; letter-spacing: 0.01em; }
+body.theme-dark .sl-avatar { background: hsl(var(--hue, 220) 34% 42%); }
+.sl-avatar.is-sm { width: 20px; height: 20px; font-size: 9px; }
+.sl-avatar.is-md { width: 28px; height: 28px; font-size: 11px; }
+.sl-avatar.is-lg { width: 52px; height: 52px; font-size: 18px; }
+
+/* ---- Buttons in panels: Notion's white button ---- */
+.storyloom-cast-actions button, .sl-cx-actions button {
+	display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
+	border: none !important; border-radius: 6px !important; background: transparent !important;
+	box-shadow: var(--sl-btn-ring) !important; color: var(--text-normal); font-size: 13px; font-weight: 500;
+	transition: background 120ms ease;
+}
+.storyloom-cast-actions button:hover, .sl-cx-actions button:hover { background: var(--sl-wash) !important; }
+.storyloom-cast-actions button.mod-cta { background: var(--interactive-accent) !important; color: var(--text-on-accent); box-shadow: none !important; }
+.storyloom-cast-actions button.mod-cta:hover { opacity: 0.9; }
+.storyloom-cast-actions button .storyloom-btn-icon svg, .sl-cx-actions button .storyloom-btn-icon svg { width: 14px; height: 14px; }
+
+/* ---- Cast panel ---- */
+.storyloom-cast { padding: 18px 16px 28px; }
+.storyloom-cast-header { padding: 0; }
+.storyloom-cast .sl-cast-eyebrow { color: var(--text-muted); font-size: 12px; font-weight: 500; }
+.storyloom-cast .storyloom-cast-title { font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -0.015em; margin: 4px 0 8px; }
+.storyloom-cast .sl-cast-meta { font-size: 13px; color: var(--text-muted); }
+.storyloom-cast .storyloom-cast-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+.storyloom-cast .storyloom-cast-actions button { justify-content: flex-start; min-width: 0; width: auto; }
+.storyloom-cast-section { margin-top: 18px; font-size: 13px; }
+.storyloom-cast .storyloom-section-title { display: flex; align-items: center; margin: 0 0 2px; padding: 0; font-size: 12px; font-weight: 500; color: var(--text-faint); }
+.sl-count { margin-left: 6px; font-weight: 400; color: var(--text-faint); opacity: 0.8; }
+details.storyloom-cast-section > summary { list-style: none; cursor: pointer; border-radius: 6px; padding: 4px 6px; margin: 0 -6px 2px; }
+details.storyloom-cast-section > summary::-webkit-details-marker { display: none; }
+details.storyloom-cast-section > summary::before { content: ""; width: 0; height: 0; margin-right: 7px; border-left: 4.5px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; transition: transform 160ms ease; }
+details.storyloom-cast-section[open] > summary::before { transform: rotate(90deg); }
+details.storyloom-cast-section > summary:hover { background: var(--sl-wash); color: var(--text-muted); }
+
+/* ---- Entity blocks (Cast) ---- */
+.sl-ent { padding: 10px 0 8px; border-top: 1px solid var(--sl-hairline); }
+.storyloom-section-title + .sl-ent, summary + .sl-ent { border-top: none; }
+.sl-ent-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.sl-ent-name { min-width: 0; font-size: 14px; font-weight: 600; color: var(--text-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl-ent-name.is-link { cursor: pointer; }
+.sl-ent-name.is-link:hover { text-decoration: underline; text-decoration-color: var(--sl-hairline-strong); text-underline-offset: 3px; }
+.sl-ent-head .sl-tag { flex-shrink: 1; min-width: 0; }
+.sl-ent-tools { display: flex; gap: 0; margin-left: auto; opacity: 0; transition: opacity 120ms ease; }
+.sl-ent:hover .sl-ent-tools, .sl-ent:focus-within .sl-ent-tools { opacity: 1; }
+.sl-ent-tools .clickable-icon { width: 24px; height: 24px; padding: 4px; }
+.sl-ent .sl-props { margin-top: 4px; }
+.sl-ent-none { padding: 4px 0 0 28px; font-size: 13px; color: var(--text-faint); }
+
+/* ---- Codex detail as a side peek ---- */
+.sl-cx-detail { padding: 8px 28px 36px; background: var(--background-primary); border-left: 1px solid var(--sl-hairline); }
+.sl-peek-bar { display: flex; gap: 2px; margin: 0 -14px 10px; }
+.sl-peek-bar .clickable-icon { width: 28px; height: 28px; color: var(--text-muted); }
+.sl-cx-detail .sl-cx-detail-head { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin: 6px 0 12px; }
+.sl-cx-detail .sl-cx-detail-name { font-size: 30px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+.sl-cx-detail .sl-props { margin-bottom: 12px; }
+.sl-cx-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.sl-cx-detail .sl-cx-section { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--sl-hairline); font-size: 14px; line-height: 1.6; }
+.sl-cx-detail .sl-cx-section-title { margin-bottom: 6px; font-size: 12px; font-weight: 500; color: var(--text-faint); }
+.sl-cx-rel { border-radius: 6px; padding: 5px 6px; margin: 0 -6px; border: none; }
+.sl-cx-rel:hover { background: var(--sl-wash); }
+
+/* ---- Story assistant: Notion AI-style grey bubble for you, plain text for the answer ---- */
+.storyloom-chat-msg.is-user { background: var(--sl-wash-strong); color: var(--text-normal); border-radius: 16px; border-bottom-right-radius: 16px; }
+.storyloom-chat-field .storyloom-chat-send { opacity: 1; transform: none; background: var(--sl-wash-strong) !important; color: var(--text-faint); box-shadow: none !important; }
+.storyloom-chat-field.has-text .storyloom-chat-send { background: var(--interactive-accent) !important; color: var(--text-on-accent); }
+.storyloom-chat-head { border-bottom: none; }
+
+/* ---- Cards in the main views: Notion board cards (lifted fill, no shadow in dark) ---- */
+body.theme-dark .sl-ch-card, body.theme-dark .sl-cx-card { background: color-mix(in srgb, var(--text-normal) 4%, var(--background-primary)); box-shadow: 0 0 0 1px var(--sl-hairline); }
+body.theme-dark .sl-ch-card:hover, body.theme-dark .sl-cx-card:hover { background: color-mix(in srgb, var(--text-normal) 6.5%, var(--background-primary)); box-shadow: 0 0 0 1px var(--sl-hairline-strong); transform: none; }
+.sl-ch-card:hover, .sl-cx-card:hover { transform: none; }
+.sl-prop-value .sl-tag { height: auto; min-height: 20px; padding: 2px 6px; line-height: 1.3; white-space: normal; overflow: visible; }
+.sl-ent-name { flex-shrink: 0; max-width: 68%; }
+.sl-ent-head .sl-tag { flex-shrink: 1; }
+/* One avatar style everywhere: a flat mid-tone circle with white initials (Notion). */
+.sl-tl-avatar { color: #fff; background: hsl(var(--hue) 40% 52%); box-shadow: none; letter-spacing: 0.01em; }
+body.theme-dark .sl-tl-avatar { color: #fff; background: hsl(var(--hue) 34% 42%); box-shadow: none; }
+.sl-tl-avatar.is-more { background: var(--sl-wash-strong); color: var(--text-muted); filter: none; }

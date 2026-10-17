@@ -4,6 +4,7 @@ import { resolveState, sortedTimeline } from "../codex/state";
 import { ENTITY_TYPES, type Entity, type EntityType } from "../codex/types";
 import type StoryloomPlugin from "../main";
 import { renderEmpty } from "./empty";
+import { avatar, renderProps, stateRows, tag, type PropRow } from "./props";
 import { renderNav } from "./nav";
 import { huePalette, initials } from "./timelineModel";
 
@@ -180,50 +181,42 @@ export class CodexView extends ItemView {
 	}
 
 	private renderDetail(el: HTMLElement, e: Entity) {
-		const s = resolveState(e, Infinity);
-		const head = el.createDiv({ cls: `sl-cx-detail-head storyloom-type-${e.type}` });
-		const av = head.createDiv({ cls: "sl-tl-avatar is-large", text: initials(e.name) });
-		av.style.setProperty("--hue", String(this.hue(e.name)));
-		const t = head.createDiv({ cls: "sl-cx-detail-title" });
-		t.createDiv({ cls: "sl-cx-detail-name", text: e.name });
-		t.createDiv({ cls: "sl-cx-card-type", text: [cap(e.type), e.role].filter(Boolean).join(" · ") });
-		const close = head.createEl("button", { cls: "clickable-icon sl-cx-close", attr: { "aria-label": "Close" } });
-		setIcon(close, "x");
+		el.addClass(`storyloom-type-${e.type}`);
+		const bar = el.createDiv({ cls: "sl-peek-bar" });
+		const close = bar.createEl("button", { cls: "clickable-icon sl-cx-close", attr: { "aria-label": "Close" } });
+		setIcon(close, "chevrons-right");
 		close.addEventListener("click", () => this.select(null));
+		const open = bar.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Open note" } });
+		setIcon(open, "maximize-2");
+		open.addEventListener("click", () => void this.app.workspace.openLinkText(e.path, "", false));
+
+		const head = el.createDiv({ cls: "sl-cx-detail-head" });
+		avatar(head, e.name, this.hue(e.name), "lg");
+		head.createDiv({ cls: "sl-cx-detail-name", text: e.name });
+
+		const rows: PropRow[] = [
+			{ icon: "shapes", name: "Type", value: (c) => tag(c, cap(e.type), "is-type") },
+			...(e.role ? [{ icon: "user-round", name: "Role", value: (c: HTMLElement) => c.setText(e.role ?? "") }] : []),
+			...(e.aliases.length ? [{ icon: "at-sign", name: "Also called", value: (c: HTMLElement) => { c.addClass("is-text"); c.setText(e.aliases.join(", ")); } }] : []),
+			...stateRows(e, Infinity, { openLink: (t) => { const x = this.plugin.index.getEntity(t); if (x) this.select(x.name); } }),
+		];
+		renderProps(el, rows);
 
 		const actions = el.createDiv({ cls: "sl-cx-actions" });
-		const act = (label: string, icon: string, fn: () => void, cta = false) => {
-			const b = actions.createEl("button", { cls: cta ? "mod-cta" : "" });
+		const act = (label: string, icon: string, fn: () => void) => {
+			const b = actions.createEl("button");
 			setIcon(b.createSpan({ cls: "storyloom-btn-icon" }), icon);
 			b.createSpan({ text: label });
 			b.addEventListener("click", fn);
 		};
-		act("Open note", "file-pen-line", () => void this.app.workspace.openLinkText(e.path, "", false), true);
 		act("Add timeline entry", "plus", () => this.plugin.addTimelineEntry(e, this.plugin.index.lastChapter || 1));
+		act("Open note", "file-pen-line", () => void this.app.workspace.openLinkText(e.path, "", false));
 
-		if (e.aliases.length) this.section(el, "Also called").setText(e.aliases.join(", "));
 		if (e.description) this.section(el, "Description").setText(stripWikilinks(e.description));
 		if (e.voice) this.section(el, "Voice").setText(stripWikilinks(e.voice));
 
-		const fields = Object.entries(s.fields).filter(([k]) => k !== "knows");
-		if (fields.length || s.knows.length) {
-			const now = this.section(el, "Now");
-			const grid = now.createDiv({ cls: "storyloom-card-fields" });
-			for (const [k, v] of fields) {
-				grid.createDiv({ cls: "storyloom-card-label", text: k.charAt(0).toUpperCase() + k.slice(1) });
-				const val = grid.createDiv({ cls: "storyloom-card-value" });
-				val.createSpan({ text: stripWikilinks(v) });
-				if (s.lastChangedIn[k] !== undefined) val.createSpan({ cls: "storyloom-since", text: `since ch ${s.lastChangedIn[k]}` });
-			}
-			if (s.knows.length) {
-				grid.createDiv({ cls: "storyloom-card-label", text: "Knows" });
-				const list = grid.createDiv({ cls: "storyloom-card-value" });
-				for (const k of s.knows) list.createDiv({ text: `• ${stripWikilinks(k)}` });
-			}
-		}
-
 		if (e.relationships.length) {
-			const rel = this.section(el, "Relationships");
+			const rel = this.section(el, "Relationship history");
 			for (const r of e.relationships) {
 				const row = rel.createDiv({ cls: "sl-cx-rel" });
 				const target = this.plugin.index.getEntity(r.target);
