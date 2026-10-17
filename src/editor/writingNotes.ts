@@ -2,6 +2,7 @@ import { StateEffect, type Extension } from "@codemirror/state";
 import { closeHoverTooltips, Decoration, EditorView, hoverTooltip, ViewPlugin, type DecorationSet, type Tooltip, type ViewUpdate } from "@codemirror/view";
 import { editorInfoField, setIcon } from "obsidian";
 import type StoryloomPlugin from "../main";
+import { fitInEditor } from "./fit";
 import { locateNotes, NOTE_KINDS, type LocatedNote } from "../notes/model";
 
 /** Dispatched to every editor when a chapter's writing notes change. */
@@ -53,10 +54,10 @@ export function writingNotesExtension(plugin: StoryloomPlugin): Extension {
 			return {
 				pos: hit.from,
 				end: hit.to,
-				above: true,
+				above: false,
 				create: () => {
 					const dom = renderNoteCard(plugin, view, path, hit);
-					return { dom, mount: () => dom.closest(".cm-tooltip")?.addClass("storyloom-hover-host") };
+					return { dom, mount: () => dom.closest(".cm-tooltip")?.addClass("storyloom-hover-host"), positioned: () => fitInEditor(view, dom) };
 				},
 			};
 		},

@@ -4,6 +4,7 @@ import type StoryloomPlugin from "../main";
 import { renderEntityCard } from "../views/card";
 import { frontmatterEnd, shouldHighlight } from "./highlight";
 import { noteAt } from "./writingNotes";
+import { fitInEditor } from "./fit";
 
 export function entityHover(plugin: StoryloomPlugin) {
 	return hoverTooltip(
@@ -37,7 +38,7 @@ export function entityHover(plugin: StoryloomPlugin) {
 							},
 						});
 						// CodeMirror wraps hover sections in its own .cm-tooltip box; make that wrapper invisible.
-						return { dom, mount: () => dom.closest(".cm-tooltip")?.addClass("storyloom-hover-host") };
+						return { dom, mount: () => dom.closest(".cm-tooltip")?.addClass("storyloom-hover-host"), positioned: () => fitInEditor(view, dom) };
 					},
 				};
 			}

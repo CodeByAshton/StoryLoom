@@ -1,83 +1,203 @@
-# Storyloom
+<div align="center">
 
-An AI novel-writing plugin for Obsidian. It combines Sudowrite-style writing tools with Novelcrafter-style story tracking: characters, locations, lore, relationships, and **where every character is at any point in the story**. It uses your own API key, with no subscription and no separate app.
+# 🧶 Storyloom
 
-Everything lives in plain Markdown notes that you can edit by hand. The plugin keeps no hidden database.
+**An AI writing studio for novelists, living inside Obsidian.**
 
-## Quick start
+*Write your book. Storyloom keeps track of it.*
 
-1. `npm install && npm run vault`. This builds the plugin and copies it into the sample vault.
-2. Open the `My Book/` folder as a vault in Obsidian (1.5+). When Obsidian asks, choose **Trust author and enable plugins**.
-3. Read `Start Here.md` in the vault. It walks through the sample story, the hover cards, the Cast panel, the graph and the timeline.
-4. A setup guide opens on first run. It connects an AI (your Claude subscription through Claude Code, an API key, or Ollama), with a test button. You can reopen it from the Storyloom menu or with **Open setup guide**.
+[![Obsidian](https://img.shields.io/badge/Obsidian-1.5%2B-7c3aed?logo=obsidian&logoColor=white)](https://obsidian.md)
+[![Version](https://img.shields.io/badge/version-0.1.0-8b5cf6)](manifest.json)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Bring your own AI](https://img.shields.io/badge/AI-Claude%20%C2%B7%20OpenAI%20%C2%B7%20Ollama-22a06b)](#-connect-an-ai)
 
-To use Storyloom in an existing vault, copy `main.js`, `manifest.json` and `styles.css` into `<vault>/.obsidian/plugins/storyloom/` and enable the plugin. The setup guide's **Your book** step creates whatever is missing: the Manuscript and Codex folders, templates, and a Book note. It never overwrites existing files.
+<img src="docs/screenshots/hero.png" alt="A chapter open in Obsidian, with character names underlined, two writing notes, and the Cast panel showing everyone's state as of this chapter" width="860">
 
-## What it does
+</div>
 
-| Area | Features |
+---
+
+You're on chapter 23. Where was Mara in chapter 9? Does Elias know about the ledger yet? Were those two still friends when the fire happened?
+
+**Storyloom remembers so you don't have to.** Finish a chapter, click **Sync**, and the AI reads it and records what changed: who moved, who learned what, who stopped trusting whom. Hover any name in your manuscript to see that character *as of the chapter you're in*. It also gives you Sudowrite-style writing tools and a proofreader that underlines the "their" that should be "there".
+
+It's all plain Markdown in your vault. No hidden database, no lock-in, no subscription to us.
+
+## ✨ What's in the box
+
+### 🪄 Ask AI, right where you write
+Select a passage, press **⌘K** / **Ctrl+K** (or click the little **Ask AI** pill), and say what you want: *"tighter"*, *"more dread"*, *"show, don't tell"*. A floating glass panel streams the new version in and shows a word-by-word diff. **Tab** keeps it, **Esc** throws it away, and one undo brings the original back. With nothing selected, it writes at the cursor.
+
+<img src="docs/screenshots/inline.png" alt="The Ask AI panel floating over a paragraph, streaming a tighter rewrite with Replace and Discard buttons" width="760">
+
+### 🔄 Sync chapter: a story bible that writes itself
+When you finish a chapter, hit **Sync**. You'll find it in the ribbon, at the top of every chapter and in the Cast panel. Storyloom reads the chapter and writes the changes into your codex: new locations, injuries, secrets learned, alliances made and broken, and new characters as they show up.
+
+- **The chapters are the source of truth.** There's nothing to approve. Rewrite the chapter, sync again, and the codex follows. Storyloom replaces exactly what its last sync wrote and never touches lines you typed by hand.
+- **It's always in sync.** A dot on the Sync button tells you a chapter changed since its last sync.
+- **It survives reordering.** Drag chapter 7 to position 3 and every timeline line and relationship range follows it.
+
+### 🔍 AI review: a proofreader that stays in its lane
+While it syncs, Storyloom also proofreads the chapter. It looks for typos, grammar, words used with the wrong meaning (*their/there, affect/effect, peak/peek*), run-on sentences and clunky repetition. **It never touches your story**: no plot opinions, no "have you considered a dragon".
+
+Each note is a wavy underline. Hover it to see what's wrong, then **Fix** it in one click or **Dismiss** it. Turn AI review on or off with the ✓ switch at the top of any chapter.
+
+<img src="docs/screenshots/review.png" alt="A wavy underline under 'Mara walked the length of the quay' with a card explaining the word choice, a before/after preview, and Fix and Dismiss buttons" width="760">
+
+### 👥 The Cast panel
+A side panel that follows you from chapter to chapter. For everyone in the scene it shows where they are, who they're with, how they're doing, what they know and who they're tangled up with, all *as of this chapter*. It also shows the chapter's word count, point of view and sync status.
+
+### 📚 Chapters, Codex, Timeline, Graph
+Four views that share one tab bar and swap in place, so they feel like one app.
+
+| | |
 |---|---|
-| **Inline edit** | Select text and press Cmd/Ctrl+K (or click the **Ask AI** pill), then type an instruction or pick a chip. A floating glass panel streams the answer in, then shows a word-by-word diff. Your text never moves and the note isn't touched until you press **Tab**. **Esc** discards; there's also Retry and a "refine" field. Accepting is a single undo step. With no selection it writes at the cursor. |
-| **Writing tools** | Continue writing, Rewrite (2–3 versions), Describe (five senses), Expand, Brainstorm, Summarize chapter (writes to `summary`), Critique, Continuity check (click an issue to jump to the line). Available from the command palette and the editor's right-click menu. |
-| **Codex** | Character, location and lore notes with `## Relationships` (chapter ranges) and `## Timeline` (`- ch N \| key: value`). |
-| **State as of chapter N** | Entity names are underlined in chapters. Hovering one shows that entity's state as of the current chapter. Cmd/Ctrl+click opens the note. |
-| **Sync chapter** | Reads a chapter and writes what changed straight into the codex: timeline lines, relationship changes and new entities. The chapters are the source of truth, so to change the record you change the chapter and sync again. A re-sync replaces the lines the last sync of that chapter wrote; lines you typed by hand are never touched. Sync from the ribbon's refresh button, the button in a chapter's header, the Cast panel or the status bar. To approve each change first, turn on **Review changes before syncing** in settings. |
-| **Views** | Chapters (cards with summary, POV, cast and word count; drag to reorder, and every codex timeline line and relationship range follows its chapter; or a Draft/Revised/Final board), Codex (its own button: searchable cards and a detail panel; the Codex folder can be hidden from the file explorer), Cast panel (right sidebar), Story graph (with a chapter scrubber), Story timeline (swimlanes: location bars spanning chapters, status/knowledge markers, a Locations mode showing who is where), Story assistant chat (`@` mentions). |
-| **AI review** | When you sync a chapter, Storyloom also proofreads it: spelling, grammar, words used with the wrong meaning (their/there, affect/effect), run-on sentences, clunky repetition. Never story feedback. Each note is a wavy underline; hover it to see what's wrong, then **Fix** (one click, one undo) or **Dismiss**. The Cast panel and status bar count what's left, and **Go to next writing note** jumps through them. Turn it on or off with the switch at the top of any chapter, in the Storyloom menu or in settings. **Check writing** proofreads without syncing. |
-| **Getting around** | One **Storyloom** ribbon button (a feather) opens a menu of every view and quick action. You can switch to separate buttons in settings. Chapters, Codex, Timeline and Graph share a tab bar and swap in place. A status-bar item shows the current chapter with a dot when its story state is out of date; click it for chapter actions. Empty views say what's missing and offer a button to fix it. |
-| **Housekeeping** | New chapter (auto-numbered), New character/location/lore, next/previous chapter, word count by chapter, Export manuscript, Clear sample content. |
+| **Chapters.** A card per chapter with summary, POV, cast and word count. Drag to reorder (the codex follows), or switch to a **Draft → Revised → Final** board. | **Codex.** Every character, place and piece of lore, with search, type filters and a Notion-style side peek. |
+| <img src="docs/screenshots/board.png" alt="Chapters board with Draft, Revised and Final columns"> | <img src="docs/screenshots/codex.png" alt="Codex with Mara Winston open in a side peek showing her properties"> |
+| **Timeline.** One lane per character and one column per chapter. Locations are coloured bars across the chapters someone stays put; hover any square to see them at that moment. | **Graph.** Your cast as a network. Drag the chapter slider and watch relationships form and fall apart. |
+| <img src="docs/screenshots/timeline.png" alt="Story timeline with location bars across chapters and a hover card"> | <img src="docs/screenshots/graph.png" alt="Story graph with characters, places and relationship lines, and a floating chapter slider"> |
 
-## Providers
+### 🛠️ And the rest of the toolbox
+- **Writing tools:** Continue writing, Rewrite (2–3 versions), Describe (five senses), Expand, Brainstorm, Summarize chapter, Critique and Continuity check (click an issue to jump to the line). They're in the command palette and on the right-click menu.
+- **Story assistant:** a chat that knows your codex and chapter summaries. Type `@` to pull in a character or chapter.
+- **Housekeeping:**
+  - New chapter (auto-numbered) and new character, location or lore entry;
+  - next and previous chapter;
+  - word count by chapter;
+  - Export manuscript;
+  - a status-bar item for the current chapter.
+- **A friendly setup guide** connects your AI and creates the folders, templates and Book note your story needs.
 
-- **Claude Code (your Claude subscription).** Desktop only. Storyloom runs the Claude Code app installed on your computer (`claude -p`), so requests use whatever Claude Code is signed in with, such as a Pro or Max plan. Storyloom never reads, stores or forwards your Claude login; you sign in once by running `claude` in a terminal. Each run is tool-less, uses safe mode (your CLAUDE.md, plugins and hooks aren't loaded), isn't saved to your Claude Code history, and starts outside your vault. Usage counts toward your plan's limits. Anthropic's terms allow your own subscription for your own use of Claude Code; for anything shared with other people, use an API key.
+<div align="center"><img src="docs/screenshots/setup.png" alt="The setup guide's 'You're ready' step with tips" width="620"></div>
 
-- **Anthropic** (default model `claude-sonnet-5-5`). Effort and refusal-fallback options are in settings. Claude 4.7+ models reject custom `temperature`, so it's only sent to older models.
-- **OpenAI-compatible**: OpenAI, OpenRouter, Ollama (`http://localhost:11434/v1`, no key), LM Studio, or any custom base URL.
+## 📦 Install
 
-Answers stream in as they're written. Streaming uses `fetch`. If a provider blocks that from inside Obsidian (for example a local server without CORS enabled), Storyloom quietly falls back to Obsidian's `requestUrl` for the rest of the session. With Anthropic, the stable part of the context (book, codex, earlier summaries) is sent as a cached prompt block. Repeated requests while you work on one chapter then pay full price only for the chapter text. Your key is stored unencrypted in `.obsidian/plugins/storyloom/data.json`. The vault's `.gitignore` excludes that file.
+**Option 1: try the sample book (recommended for a first look).**
+1. Download or clone this repo.
+2. Run `npm install && npm run vault`.
+3. Open the **`My Book/`** folder as a vault in Obsidian, and choose **Trust author and enable plugins**.
+4. Open `Start Here.md` and take the tour of a little detective story that's already set up.
 
-## Data formats
+**Option 2: add it to your own vault.**
+1. Grab `main.js`, `manifest.json` and `styles.css` from the [latest release](../../releases), or build them with `npm install && npm run build`.
+2. Put them in `<your vault>/.obsidian/plugins/storyloom/`.
+3. Enable **Storyloom** under **Settings → Community plugins**.
+4. The setup guide takes it from there.
+
+> Storyloom isn't marked desktop-only, but it's built and tested on desktop. The **Claude Code** provider needs desktop, because it runs the Claude Code app on your computer.
+
+## 🤖 Connect an AI
+
+Bring your own. Storyloom never sends your writing anywhere except the provider you pick.
+
+| Provider | Why you'd pick it |
+|---|---|
+| **Claude Code** (your Claude subscription) | Already pay for Claude Pro or Max? Storyloom runs the Claude Code app on your computer, so there's no API key. Storyloom never reads, stores or forwards your Claude login. |
+| **Anthropic** (API key) | Pay per use, with prompt caching so long books stay cheap. The default model is `claude-sonnet-5-5`. |
+| **OpenAI · OpenRouter** | Any model they serve. |
+| **Ollama · LM Studio** | Free, private and offline, running on your own machine. |
+| **Custom** | Any OpenAI-compatible endpoint. |
+
+Answers stream in as they're written. With Anthropic, your book's stable context (codex, summaries, style guide) is sent as a cached block, so repeated requests on the same chapter only pay full price for the chapter itself.
+
+## ⌨️ The good stuff, at your fingertips
+
+| Do this | How |
+|---|---|
+| Ask AI about a selection | **⌘K** / **Ctrl+K**, or the **Ask AI** pill |
+| Keep or toss the suggestion | **Tab** / **Esc** |
+| Sync the chapter | 🔄 in the ribbon or the chapter's header, or *Sync chapter* in the command palette |
+| Turn AI review on or off | ✓ in the chapter's header, or the Storyloom menu |
+| Jump to the next writing note | *Go to next writing note* |
+| See a character as of this chapter | Hover their name. **⌘/Ctrl-click** opens their note. |
+| Open everything else | The 🪶 **Storyloom** button in the ribbon |
+
+## 🗂️ How your story is stored
+
+Everything is a normal note you can read and edit:
+
+```
+My Book/
+├── Book.md                 premise, style guide, voice sample
+├── Manuscript/
+│   ├── 01 - The Manor.md   type: chapter, chapter: 1
+│   └── 02 - Lamplight.md
+└── Codex/
+    ├── Characters/Mara Winston.md
+    ├── Locations/Old Harbor.md
+    └── Lore/The Ledger.md
+```
+
+A codex note keeps its history in two plain sections:
 
 ```markdown
 ## Relationships
 - [[Arthur Vane]]: reluctant ally (ch 1-6)
 - [[Arthur Vane|Vane]]: rival (ch 7+)
-- [[Elias Crane]]: former partner
 
 ## Timeline
-- ch 1 | location: [[Blackwood Manor]] | status: Safe | with: [[Arthur Vane]] | note: arrives
+- ch 1 | location: [[Blackwood Manor]] | status: Safe | with: [[Arthur Vane]]
 - ch 4 | status: Injured
-- ch 7 | location: [[Old Harbor]] | with: — | knows: Arthur lied about the ledger
+- ch 7 | location: [[Old Harbor]] | knows: Arthur lied about the ledger
 ```
 
-- `(ch 3)` and `(ch 3+)` mean from chapter 3 on, `(ch 1-6)` is inclusive, and no range means always.
-- Later timeline entries override earlier ones. `—`, `-` or `none` clears a key, and `knows` accumulates instead of overriding.
-- Names and aliases are matched case-sensitively, on whole words.
+How to read these lines:
+- `(ch 3+)` means from chapter 3 on, and `(ch 1-6)` includes both ends.
+- Later timeline lines override earlier ones, `—` clears a value, and `knows` keeps adding up.
+- Names and aliases are matched as whole words.
 
-## Development
+## 🔒 Privacy
 
-```
-npm run build    # type-check + bundle main.js
-npm test         # vitest: parsers, state resolver, writers, JSON, LLM clients + streaming, context builder, diff, graph model, sample vault
-npm run vault    # build and install into My Book/
+- Your notes stay in your vault.
+- Requests go only to the provider you choose.
+- API keys are stored locally in `.obsidian/plugins/storyloom/data.json`, which the sample vault's `.gitignore` already excludes. Don't sync or commit that file.
+- The Claude Code provider runs each request with no tools, in safe mode, outside your vault, and keeps it out of your Claude Code history.
+
+## 🙋 FAQ
+
+**Will it write my book for me?**
+No, and that's on purpose. It's a co-pilot: it rewrites what you point at, keeps your story bible honest and catches your typos. The words are yours.
+
+**What if the AI gets something wrong in the codex?**
+Change the chapter, or just edit the codex note: it's Markdown. Lines you write by hand are never overwritten by a sync.
+
+**Can I use it for a series?**
+Point the Codex folder setting at a folder you share between books.
+
+**I don't want AI review.**
+Click the ✓ at the top of any chapter. Your existing notes are kept for when you change your mind.
+
+## 🗺️ Roadmap
+
+Next up: **import and export**. Bring in Word, Markdown or HTML drafts split into chapters, and export Word, EPUB and print-ready PDF. See [ROADMAP.md](ROADMAP.md).
+
+## 🧑‍💻 Development
+
+```bash
+npm install
 npm run dev      # watch mode
+npm run build    # type-check + bundle main.js
+npm test         # unit tests (vitest)
+npm run vault    # build and install into My Book/
 ```
+
+End-to-end tests drive the real Obsidian app; see [`e2e/README.md`](e2e/README.md).
 
 ```
 src/
-  main.ts              plugin entry, commands, AI tool flows
-  settings.ts          settings + tab
-  ai.ts                context gathering, preview, JSON retry
-  llm/                 provider-agnostic client, Anthropic, OpenAI-compatible, JSON extraction
-  codex/               parse.ts / state.ts / write.ts (pure, tested), index.ts, apply.ts
-  context/             builder.ts (budgeted context, pure), prompts.ts (every prompt)
-  editor/              highlight.ts, hover.ts, inlineEdit.ts (CM6)
-  views/               cast, graph (+ pure graphModel), timeline, chat, shared card
-  modals/              result, instruction, review, report, timeline entry
+  main.ts        plugin entry, commands, sync, AI tool flows
+  settings.ts    settings and the settings tab
+  llm/           providers (Anthropic, OpenAI-compatible, Claude Code), streaming, retries
+  codex/         parsing, story state, writing changes back (pure and tested)
+  context/       context building and every prompt
+  editor/        highlights, hover cards, inline edit, writing notes (CodeMirror 6)
+  notes/         writing-note model (pure and tested)
+  views/         chapters, codex, timeline, graph, cast, assistant
+  modals/        setup guide, review and report dialogs
 ```
 
-Series support can come from pointing the Codex folder setting at a shared folder.
+Pull requests are welcome. Please run `npm test` and `npm run build` first.
 
-## License
+## 📄 License
 
-Apache-2.0
+[Apache-2.0](LICENSE). Go write something wonderful. 🖋️
